@@ -16,7 +16,8 @@ open, confidence, cost and a verifiable bill of materials.
 >   Postgres store
 >
 > - the HTTP API (deploys to Railway from `railway.json`)
-> - the web app (console with the live Exploded View, verdict pages, verify, ledger, status)
+> - the web app: a landing page plus independent pages for how it works, the console
+>   (live Exploded View), verdicts, verify, policies, ledger, status and integrate
 >
 > Skein Desk comes next. No paid call has been made;
 > the client refuses to pay before the season opens on Nov 1 (UTC).

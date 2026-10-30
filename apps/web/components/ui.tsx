@@ -20,17 +20,19 @@ export const VERDICT_COLOR: Record<Verdict, string> = {
   ABSTAIN: "var(--color-abstain)",
 };
 
+/** A square dark panel (the cards of the immersive sections). */
 export function CornerCard({ children, className = "", as: As = "div" }: { children: ReactNode; className?: string; as?: "div" | "section" | "article" }) {
-  return <As className={`corner-card p-4 ${className}`}>{children}</As>;
+  return <As className={`border border-edge bg-panel p-5 ${className}`}>{children}</As>;
 }
+export const Panel = CornerCard;
 
 export function VerdictBadge({ verdict, size = "md" }: { verdict: Verdict; size?: "md" | "lg" }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-sm border px-2 font-sans font-medium tracking-wide ${size === "lg" ? "py-1 text-[20px]" : "py-0.5 text-[12px]"}`}
+      className={`inline-flex items-center gap-2 border font-mono uppercase tracking-wider ${size === "lg" ? "px-3 py-1.5 text-[14px]" : "px-2 py-0.5 text-[11px]"}`}
       style={{ color: VERDICT_COLOR[verdict], borderColor: VERDICT_COLOR[verdict] }}
     >
-      <span className="h-2 w-2 rounded-full" style={{ background: VERDICT_COLOR[verdict] }} aria-hidden />
+      <span className="h-2 w-2" style={{ background: VERDICT_COLOR[verdict] }} aria-hidden />
       {verdict}
     </span>
   );
@@ -41,7 +43,7 @@ export function StatusDot({ status }: { status: Status | "PENDING" | "SKIPPED" }
   return (
     <span
       aria-hidden
-      className="inline-block h-2 w-2 shrink-0 rounded-full"
+      className="inline-block h-2 w-2 shrink-0"
       style={hollow ? { border: `1px solid ${STATUS_COLOR[status]}` } : { background: STATUS_COLOR[status] }}
     />
   );
@@ -61,14 +63,14 @@ export function NetworkPill({ network }: { network: string }) {
   );
 }
 
-export function StatTile({ label, value, gold = false }: { label: string; value: ReactNode; gold?: boolean }) {
+export function StatTile({ label, value, gold = false, light = false }: { label: string; value: ReactNode; gold?: boolean; light?: boolean }) {
   return (
-    <CornerCard className="min-w-0">
-      <div className="text-[12px] uppercase tracking-wider text-muted">{label}</div>
-      <div className="mt-1 truncate font-sans text-[28px] font-medium" style={{ color: gold ? "var(--color-knot)" : undefined }}>
+    <div className={`min-w-0 border-t pt-4 ${light ? "border-ink" : "border-edge"}`}>
+      <div className={`font-mono text-[12px] uppercase tracking-wider ${light ? "text-ink-2" : "text-muted"}`}>{label}</div>
+      <div className="display mt-3 truncate text-[44px] md:text-[64px]" style={{ color: gold ? (light ? "var(--color-knot-deep)" : "var(--color-knot)") : undefined }}>
         {value}
       </div>
-    </CornerCard>
+    </div>
   );
 }
 
@@ -77,7 +79,7 @@ export function ReceiptChip({ hash, href }: { hash: string | null | undefined; h
   if (!hash) return <span className="text-muted">—</span>;
   return (
     <span className="inline-flex items-center gap-1.5">
-      <code className="text-[12px]" title={hash}>
+      <code className="font-mono text-[12px]" title={hash}>
         {hash.slice(0, 10)}…{hash.slice(-6)}
       </code>
       <button
@@ -103,7 +105,7 @@ export function ReceiptChip({ hash, href }: { hash: string | null | undefined; h
 
 export function JsonPane({ value }: { value: unknown }) {
   return (
-    <pre className="max-h-[480px] overflow-auto rounded-sm border border-line bg-bg p-3 text-[12px] leading-relaxed text-muted">
+    <pre className="max-h-[520px] overflow-auto border border-edge bg-bg p-4 font-mono text-[12px] leading-relaxed text-muted">
       {JSON.stringify(value, null, 2)}
     </pre>
   );
@@ -126,7 +128,7 @@ export function Mark({ size = 22 }: { size?: number }) {
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: readonly T[]; value: T; onChange: (t: T) => void }) {
   return (
-    <div role="tablist" className="flex gap-1 border-b border-line">
+    <div role="tablist" className="flex gap-0 overflow-x-auto">
       {tabs.map((t) => (
         <button
           key={t}
@@ -134,7 +136,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: readon
           aria-selected={value === t}
           type="button"
           onClick={() => onChange(t)}
-          className={`-mb-px border-b px-3 py-2 text-[12px] uppercase tracking-wider ${value === t ? "border-thread text-text" : "border-transparent text-muted hover:text-text"}`}
+          className={`h-11 shrink-0 px-5 font-mono text-[13px] uppercase tracking-wider transition-colors ${value === t ? "bg-thread text-[#001510]" : "bg-panel-2 text-muted hover:text-text"}`}
         >
           {t}
         </button>

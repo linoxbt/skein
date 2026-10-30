@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { CornerCard, VerdictBadge } from "@/components/ui";
+import { PageHero, Section } from "@/components/site/Section";
+import { VerdictBadge } from "@/components/ui";
 import { GraphWithPanel } from "@/components/VerdictView";
 import { API, CHAINS, createVerdict, getPolicy, listPolicies, short, SkeinError } from "@/lib/api";
 import { EMPTY, liveReduce, type GraphState, type LiveEvent } from "@/lib/graph";
@@ -116,75 +117,126 @@ function ConsoleInner() {
     }
   }
 
-  const field = "w-full rounded-sm border border-line bg-surface-2 px-2 py-1.5 text-[14px] outline-none focus:border-thread";
+  const EXAMPLES: [string, number, string][] = [
+    ["WETH · Base", 8453, "0x4200000000000000000000000000000000000006"],
+    ["USDC · Base", 8453, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"],
+    ["PEPE · Ethereum", 1, "0x6982508145454Ce325dDbE47a25d4ec3d2311933"],
+    ["ARB · Arbitrum", 42161, "0x912CE59144191C1204E64559FE8253a0e49E6548"],
+  ];
+  const label2 = "mb-2 block font-mono text-[12px] uppercase tracking-wider text-muted";
+  const running = phase === "running";
+  const answered = graph.nodes.filter((n) => n.status !== "PENDING" && n.status !== "UNAVAILABLE").length;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-sans text-[28px] font-medium">Console</h1>
-        <p className="text-muted">Paste any EVM token. Skein plans the checks, buys each one through Telegraph, and shows every thread as it lands.</p>
-      </div>
-      <form onSubmit={run} className="corner-card grid gap-3 p-4 sm:grid-cols-6">
-        <label className="sm:col-span-1">
-          <span className="mb-1 block text-[12px] text-muted">chain</span>
-          <select className={field} value={form.chainId} onChange={(e) => setForm({ ...form, chainId: Number(e.target.value) })}>
-            {Object.entries(CHAINS).map(([id, name]) => (
-              <option key={id} value={id}>{name} ({id})</option>
-            ))}
-          </select>
-        </label>
-        <label className="sm:col-span-3">
-          <span className="mb-1 block text-[12px] text-muted">token address</span>
-          <input className={field} required pattern="^0x[0-9a-fA-F]{40}$" placeholder="0x…" value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} />
-        </label>
-        <label className="sm:col-span-2">
-          <span className="mb-1 block text-[12px] text-muted">policy</span>
-          <select className={field} value={form.policy} onChange={(e) => setForm({ ...form, policy: e.target.value })}>
-            {(policies.length ? policies.map((p) => p.ref) : ["dex-list@0.1.0"]).map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </label>
-        <label className="sm:col-span-2">
-          <span className="mb-1 block text-[12px] text-muted">social handle (optional)</span>
-          <input className={field} placeholder="project" value={form.social} onChange={(e) => setForm({ ...form, social: e.target.value })} />
-        </label>
-        <label className="sm:col-span-2">
-          <span className="mb-1 block text-[12px] text-muted">repo url (optional)</span>
-          <input className={field} placeholder="https://github.com/org/repo" value={form.repo} onChange={(e) => setForm({ ...form, repo: e.target.value })} />
-        </label>
-        <label className="sm:col-span-1">
-          <span className="mb-1 block text-[12px] text-muted">budget USDC</span>
-          <input className={field} inputMode="decimal" placeholder="0.20" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
-        </label>
-        <label className="sm:col-span-1">
-          <span className="mb-1 block text-[12px] text-muted">partner key</span>
-          <input className={field} type="password" required autoComplete="off" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} />
-        </label>
-        <div className="flex items-center gap-4 sm:col-span-6">
-          <button type="submit" disabled={phase === "running"} className="rounded-sm border border-thread px-4 py-1.5 text-thread hover:bg-surface-2 disabled:opacity-50">
-            {phase === "running" ? "Running…" : "Run verdict"}
-          </button>
-          {verdictId && phase === "done" ? (
-            <Link href={`/v/${verdictId}`} className="text-thread hover:underline">Open verdict {verdictId} →</Link>
-          ) : null}
-          {graph.verdict ? <VerdictBadge verdict={graph.verdict.verdict} /> : null}
+    <>
+      <PageHero
+        compact
+        tag="Console"
+        title="Run a verdict"
+        sub="Paste any EVM token. Skein plans the checks, buys each one from a ranked Telegraph miner, and draws every thread as its receipt lands."
+      />
+      <Section tone="dark" inner="pb-24">
+        <div className="grid gap-px bg-edge lg:grid-cols-[420px_1fr]">
+          <form onSubmit={run} className="space-y-5 bg-panel p-6 md:p-8" aria-label="Verdict request">
+            <div>
+              <span className={label2}>examples</span>
+              <div className="flex flex-wrap gap-2">
+                {EXAMPLES.map(([name, chain, token]) => (
+                  <button key={name} type="button" onClick={() => setForm((f) => ({ ...f, chainId: chain, token }))} className="bg-panel-2 px-3 py-1.5 font-mono text-[12px] text-muted hover:text-thread">
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="block">
+              <span className={label2}>token address</span>
+              <input className="field" required pattern="^0x[0-9a-fA-F]{40}$" placeholder="0x…" value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} />
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block">
+                <span className={label2}>chain</span>
+                <select className="field" value={form.chainId} onChange={(e) => setForm({ ...form, chainId: Number(e.target.value) })}>
+                  {Object.entries(CHAINS).map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className={label2}>policy</span>
+                <select className="field" value={form.policy} onChange={(e) => setForm({ ...form, policy: e.target.value })}>
+                  {(policies.length ? policies.map((p) => p.ref) : ["dex-list@0.1.0"]).map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block">
+                <span className={label2}>social handle</span>
+                <input className="field" placeholder="optional" value={form.social} onChange={(e) => setForm({ ...form, social: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className={label2}>budget usdc</span>
+                <input className="field" inputMode="decimal" placeholder="0.20" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
+              </label>
+            </div>
+            <label className="block">
+              <span className={label2}>repo url</span>
+              <input className="field" placeholder="https://github.com/org/repo (optional)" value={form.repo} onChange={(e) => setForm({ ...form, repo: e.target.value })} />
+            </label>
+            <label className="block">
+              <span className={label2}>partner key</span>
+              <input className="field" type="password" required autoComplete="off" placeholder="sk_part_…" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} />
+            </label>
+            <button type="submit" disabled={running} className="btn btn-primary w-full">
+              {running ? `Buying… ${answered}/${graph.nodes.filter((n) => n.status !== "UNAVAILABLE").length || "…"}` : "Run verdict"}
+            </button>
+            <p className="font-mono text-[11px] leading-relaxed text-muted">
+              Keys are free for hackathon partners and stay in this tab only. Every verdict is stored, receipted and public by id.
+            </p>
+          </form>
+
+          <div className="min-w-0 bg-bg p-4 md:p-8">
+            {error ? <div className="mb-6 border border-reject/50 bg-reject/10 p-4 font-mono text-[13px] text-reject">{error}</div> : null}
+            {graph.nodes.length ? (
+              <GraphWithPanel state={graph} live={running} {...(verdictId ? { verdictId } : {})} />
+            ) : (
+              <div className="grid h-full min-h-[420px] place-items-center border border-dashed border-edge p-8 text-center">
+                <div>
+                  <div className="display text-[40px] text-muted md:text-[56px]">Waiting for a token.</div>
+                  <p className="mt-3 font-mono text-[12px] text-muted">The Exploded View draws here, one thread per paid input.</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </form>
-      {error ? <CornerCard className="text-reject">{error}</CornerCard> : null}
-      {graph.nodes.length ? <GraphWithPanel state={graph} live={phase === "running"} {...(verdictId ? { verdictId } : {})} /> : null}
-      {log.length ? (
-        <CornerCard>
-          <div className="mb-2 text-[12px] uppercase tracking-wider text-muted">live log</div>
-          <ol className="max-h-72 space-y-0.5 overflow-auto text-[12px]" aria-live="polite">
+
+        <div className="mt-px border border-edge bg-panel">
+          <div className="flex items-center justify-between border-b border-edge px-5 py-3 font-mono text-[12px] text-muted">
+            <span>live log</span>
+            <span>{verdictId ?? "idle"}</span>
+          </div>
+          <ol className="max-h-80 space-y-1 overflow-auto p-5 font-mono text-[13px]" aria-live="polite">
             {log.map((l, i) => (
               <li key={i} className={l.tone === "gold" ? "text-knot" : l.tone === "bad" ? "text-reject" : l.tone === "muted" ? "text-muted" : ""}>
                 <span className="text-muted">{l.t}</span> {l.text}
               </li>
             ))}
+            <li className="text-thread"><span className="blink">▌</span></li>
           </ol>
-        </CornerCard>
-      ) : null}
-    </div>
+        </div>
+
+        {phase === "done" && verdictId ? (
+          <div className="mt-px flex flex-col items-start justify-between gap-6 border border-edge bg-panel p-6 md:flex-row md:items-center md:p-10">
+            <div className="flex flex-wrap items-center gap-4">
+              {graph.verdict ? <VerdictBadge verdict={graph.verdict.verdict} size="lg" /> : null}
+              <span className="display text-[32px] md:text-[44px]">Sealed and stored.</span>
+            </div>
+            <Link href={`/v/${verdictId}`} className="btn btn-primary">Open verdict {verdictId.slice(0, 12)}…</Link>
+          </div>
+        ) : null}
+      </Section>
+    </>
   );
 }
 
