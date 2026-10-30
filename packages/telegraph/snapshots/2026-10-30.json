@@ -1,0 +1,3244 @@
+{
+ "source": "https://devnode.telegraphprotocol.com",
+ "fetched_at": "2026-10-30T04:53:00Z",
+ "note": "Pre-season snapshot of free endpoints (/engine/v1/intents/{INTENT}, /api/miners?intent=). Untrusted external data; re-check on Nov 1.",
+ "intents": {
+  "SMART_CONTRACT_AUDIT_GENERAL": {
+   "class": "judgment",
+   "miner_count": 12,
+   "onchain_ready": false,
+   "request": [],
+   "response": [],
+   "miners": [
+    {
+     "id": "151001",
+     "name": "4byte Signature Audit",
+     "base_url": "https://www.4byte.directory",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "hex_signature"
+     ]
+    },
+    {
+     "id": "151002",
+     "name": "4byte Ownable Sig",
+     "base_url": "https://www.4byte.directory",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "hex_signature"
+     ]
+    },
+    {
+     "id": "200001",
+     "name": "GoPlus Security",
+     "base_url": "https://api.gopluslabs.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /token-security"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "151010",
+     "name": "CourtListener Audit",
+     "base_url": "https://www.courtlistener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "format",
+      "q",
+      "type"
+     ]
+    },
+    {
+     "id": "151004",
+     "name": "OpenAlex Audit Research",
+     "base_url": "https://api.openalex.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "per_page",
+      "search"
+     ]
+    },
+    {
+     "id": "151005",
+     "name": "Crossref Audit",
+     "base_url": "https://api.crossref.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "query",
+      "rows"
+     ]
+    },
+    {
+     "id": "151006",
+     "name": "OSV Contract Vuln",
+     "base_url": "https://api.osv.dev",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "id"
+     ]
+    },
+    {
+     "id": "151003",
+     "name": "OpenChain Sig Audit",
+     "base_url": "https://api.openchain.xyz",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "function"
+     ]
+    },
+    {
+     "id": "151009",
+     "name": "Zenodo Audit",
+     "base_url": "https://zenodo.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "q",
+      "size"
+     ]
+    },
+    {
+     "id": "151007",
+     "name": "GHSA Audit Advisories",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "per_page"
+     ]
+    },
+    {
+     "id": "200002",
+     "name": "Sourcify Verified Contracts",
+     "base_url": "https://sourcify.dev",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /contract"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "151008",
+     "name": "DefiLlama Protocol Audit",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    }
+   ]
+  },
+  "SANCTIONS_SCREENING_MATCH_GENERAL": {
+   "class": "judgment",
+   "miner_count": 13,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "name",
+     "type": "string",
+     "required": true,
+     "description": "Person or entity name"
+    }
+   ],
+   "response": [
+    {
+     "name": "name",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "matched",
+     "type": "bool",
+     "scored": true
+    },
+    {
+     "name": "matches",
+     "type": "list",
+     "off_chain": true
+    },
+    {
+     "name": "lists",
+     "type": "list",
+     "off_chain": true
+    },
+    {
+     "name": "match_score",
+     "type": "number",
+     "range": [
+      0,
+      1
+     ],
+     "unit": "fraction (0-1)",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "78008",
+     "name": "EveryPolitician Countries",
+     "base_url": "https://cdn.jsdelivr.net",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "78004",
+     "name": "OpenSanctions US OFAC Index",
+     "base_url": "https://data.opensanctions.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "9002",
+     "name": "TxLens",
+     "base_url": "https://telegraph-onchain-tx-lookup-miner.onrender.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /check-tx",
+      "GET /gas-price",
+      "GET /wallet-balance"
+     ],
+     "input_params": [
+      "address",
+      "amount",
+      "block",
+      "card_number",
+      "carrier",
+      "categories",
+      "chain",
+      "chains",
+      "claim",
+      "code",
+      "coin_id",
+      "company",
+      "content",
+      "contract",
+      "cve",
+      "cve_id",
+      "date",
+      "days",
+      "description",
+      "destination",
+      "domain",
+      "economic_indicator",
+      "facts",
+      "focus",
+      "from",
+      "from_year",
+      "height",
+      "hours",
+      "indicator",
+      "instruction",
+      "ip",
+      "jurisdiction",
+      "labels",
+      "language",
+      "length",
+      "limit",
+      "location",
+      "max_results",
+      "max_sources",
+      "message",
+      "messages",
+      "mode",
+      "name",
+      "origin",
+      "output",
+      "payment_method",
+      "price_chain",
+      "prompt",
+      "protocol",
+      "query",
+      "question",
+      "reference",
+      "result",
+      "retailer",
+      "review",
+      "route",
+      "service",
+      "target",
+      "target_language",
+      "task",
+      "team",
+      "text",
+      "text1",
+      "text2",
+      "ticker",
+      "ticket",
+      "to",
+      "to_year",
+      "token",
+      "topic",
+      "topic_mode",
+      "tracking_number",
+      "tvl_chain",
+      "tx_hash",
+      "url",
+      "venue",
+      "wallet",
+      "when",
+      "zip_code"
+     ]
+    },
+    {
+     "id": "78001",
+     "name": "OpenSanctions EU FSF Index",
+     "base_url": "https://data.opensanctions.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "78009",
+     "name": "OpenSanctions Issue Levels",
+     "base_url": "https://data.opensanctions.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "78005",
+     "name": "OpenSanctions Dataset Index",
+     "base_url": "https://data.opensanctions.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "4433",
+     "name": "LiveCert \u2014 Sourced Answers for Agents",
+     "base_url": "https://miner-wine.vercel.app",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /ssl-check",
+      "GET /storm-alert",
+      "GET /papers"
+     ],
+     "input_params": [
+      "company",
+      "company_number",
+      "country",
+      "days",
+      "domain",
+      "forecast_days",
+      "forecast_hours",
+      "form",
+      "hours",
+      "indicator",
+      "ip",
+      "lat",
+      "latitude",
+      "location",
+      "lon",
+      "longitude",
+      "name",
+      "q",
+      "query",
+      "source_language",
+      "target_language",
+      "text",
+      "topic",
+      "wallet"
+     ]
+    },
+    {
+     "id": "78022",
+     "name": "UN Consolidated Sanctions Screen",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "entity"
+     ]
+    },
+    {
+     "id": "78006",
+     "name": "OpenSanctions Dataset Stats",
+     "base_url": "https://data.opensanctions.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "78007",
+     "name": "OpenSanctions AU DFAT Index",
+     "base_url": "https://data.opensanctions.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "78021",
+     "name": "OFAC SDN Entity Screen",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "entity"
+     ]
+    },
+    {
+     "id": "78003",
+     "name": "OFAC SDN XML",
+     "base_url": "https://www.treasury.gov",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "78010",
+     "name": "CourtListener Entity Search",
+     "base_url": "https://www.courtlistener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "format",
+      "q",
+      "type"
+     ]
+    }
+   ]
+  },
+  "TOKEN_HOLDER_COUNT_GENERAL": {
+   "class": "judgment",
+   "miner_count": 15,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "token",
+     "type": "string",
+     "required": true,
+     "description": "Token contract address or name"
+    },
+    {
+     "name": "chain",
+     "type": "string",
+     "required": true,
+     "description": "Chain of the token"
+    }
+   ],
+   "response": [
+    {
+     "name": "token",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "chain",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "holders_count",
+     "type": "number",
+     "range": [
+      0,
+      10000000000
+     ],
+     "unit": "addresses",
+     "scored": true
+    },
+    {
+     "name": "token_symbol",
+     "type": "string",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "51003",
+     "name": "Blockscout ETH USDT Info",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "51009",
+     "name": "Blockscout ETH WBTC Counters",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "51004",
+     "name": "Blockscout ETH USDC Counters",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "7302",
+     "name": "ChainWire Token Holder Count",
+     "base_url": "https://telegraph-chain.margyn.workers.dev",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /holders"
+     ],
+     "input_params": [
+      "chain",
+      "token"
+     ]
+    },
+    {
+     "id": "51010",
+     "name": "DefiLlama Token Price Context",
+     "base_url": "https://coins.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "coins"
+     ]
+    },
+    {
+     "id": "51008",
+     "name": "Blockscout Base USDC Info",
+     "base_url": "https://base.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "51002",
+     "name": "Blockscout ETH USDT Holders",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "51001",
+     "name": "Blockscout ETH USDT Counters",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "51007",
+     "name": "Blockscout Base USDC Counters",
+     "base_url": "https://base.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "900",
+     "name": "OnChain Intel Miner",
+     "base_url": "https://telegraph-onchain-miner-production.up.railway.app",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /ask",
+      "GET /gas-price",
+      "GET /wallet-balance"
+     ],
+     "input_params": [
+      "address",
+      "chain",
+      "hash",
+      "protocol",
+      "query",
+      "symbol",
+      "token"
+     ]
+    },
+    {
+     "id": "51005",
+     "name": "Blockscout ETH USDC Holders",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "9002",
+     "name": "TxLens",
+     "base_url": "https://telegraph-onchain-tx-lookup-miner.onrender.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /check-tx",
+      "GET /gas-price",
+      "GET /wallet-balance"
+     ],
+     "input_params": [
+      "address",
+      "amount",
+      "block",
+      "card_number",
+      "carrier",
+      "categories",
+      "chain",
+      "chains",
+      "claim",
+      "code",
+      "coin_id",
+      "company",
+      "content",
+      "contract",
+      "cve",
+      "cve_id",
+      "date",
+      "days",
+      "description",
+      "destination",
+      "domain",
+      "economic_indicator",
+      "facts",
+      "focus",
+      "from",
+      "from_year",
+      "height",
+      "hours",
+      "indicator",
+      "instruction",
+      "ip",
+      "jurisdiction",
+      "labels",
+      "language",
+      "length",
+      "limit",
+      "location",
+      "max_results",
+      "max_sources",
+      "message",
+      "messages",
+      "mode",
+      "name",
+      "origin",
+      "output",
+      "payment_method",
+      "price_chain",
+      "prompt",
+      "protocol",
+      "query",
+      "question",
+      "reference",
+      "result",
+      "retailer",
+      "review",
+      "route",
+      "service",
+      "target",
+      "target_language",
+      "task",
+      "team",
+      "text",
+      "text1",
+      "text2",
+      "ticker",
+      "ticket",
+      "to",
+      "to_year",
+      "token",
+      "topic",
+      "topic_mode",
+      "tracking_number",
+      "tvl_chain",
+      "tx_hash",
+      "url",
+      "venue",
+      "wallet",
+      "when",
+      "zip_code"
+     ]
+    },
+    {
+     "id": "152",
+     "name": "Kriterion-Pramagraph",
+     "base_url": "https://kriterion-research-h1-production.up.railway.app",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "POST /research/query",
+      "POST /web/search",
+      "POST /financial/data"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "51006",
+     "name": "Blockscout ETH WETH Counters",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "4433",
+     "name": "LiveCert \u2014 Sourced Answers for Agents",
+     "base_url": "https://miner-wine.vercel.app",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /ssl-check",
+      "GET /storm-alert",
+      "GET /papers"
+     ],
+     "input_params": [
+      "company",
+      "company_number",
+      "country",
+      "days",
+      "domain",
+      "forecast_days",
+      "forecast_hours",
+      "form",
+      "hours",
+      "indicator",
+      "ip",
+      "lat",
+      "latitude",
+      "location",
+      "lon",
+      "longitude",
+      "name",
+      "q",
+      "query",
+      "source_language",
+      "target_language",
+      "text",
+      "topic",
+      "wallet"
+     ]
+    }
+   ]
+  },
+  "ONCHAIN_METRIC_VERIFY_GENERAL": {
+   "class": "judgment",
+   "miner_count": 35,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "address",
+     "type": "string",
+     "required": true,
+     "description": "Wallet address"
+    },
+    {
+     "name": "block",
+     "type": "integer",
+     "required": true,
+     "description": "Block number to read the balance at"
+    }
+   ],
+   "response": [
+    {
+     "name": "balance_gwei",
+     "type": "number",
+     "range": [
+      0,
+      100000000000000000000
+     ],
+     "unit": "Gwei",
+     "scored": true
+    },
+    {
+     "name": "address",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "block",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "chain",
+     "type": "string",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "93104",
+     "name": "ETH Balance via MEW",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "190031",
+     "name": "Ocm Blockscout Gnosis",
+     "base_url": "https://gnosis.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "190150",
+     "name": "Ocm Publicnode Rpc",
+     "base_url": "https://ethereum-rpc.publicnode.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "93102",
+     "name": "ETH Balance via PublicNode",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "71021",
+     "name": "ETH Balance At Block",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block"
+     ]
+    },
+    {
+     "id": "190034",
+     "name": "Ocm Blockscout Scroll",
+     "base_url": "https://scroll.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "71006",
+     "name": "Mempool Fee Metrics",
+     "base_url": "https://mempool.space",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "190033",
+     "name": "Ocm Blockscout Polygon",
+     "base_url": "https://polygon.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "190036",
+     "name": "Ocm Ethplorer Addr",
+     "base_url": "https://api.ethplorer.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "apiKey"
+     ]
+    },
+    {
+     "id": "93103",
+     "name": "ETH Balance via Flashbots",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "71010",
+     "name": "Mempool Difficulty Metrics",
+     "base_url": "https://mempool.space",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "71002",
+     "name": "Llama Chains TVL",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "93106",
+     "name": "ETH Balance via MEV Blocker",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "190151",
+     "name": "Ocm Trezor Blockbook",
+     "base_url": "https://btc1.trezor.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "btc_address",
+      "details"
+     ]
+    },
+    {
+     "id": "93105",
+     "name": "ETH Balance via Merkle",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "91002",
+     "name": "ETH Balance via 1RPC",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "71004",
+     "name": "Llama Fees Overview",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "5530",
+     "name": "Telegraph Verity Intelligence",
+     "base_url": "https://telegraph-verity-intelligence-api.onrender.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "POST /v1/intent"
+     ],
+     "input_params": [
+      "input",
+      "intent"
+     ]
+    },
+    {
+     "id": "93108",
+     "name": "ETH Balance Pool Peer C",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "190030",
+     "name": "Ocm Blockscout ETH",
+     "base_url": "https://eth.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "71001",
+     "name": "Llama Protocols Metrics",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "190028",
+     "name": "Ocm Blockscout Arbitrum",
+     "base_url": "https://arbitrum.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "190027",
+     "name": "Ocm Blockcypher ETH",
+     "base_url": "https://api.blockcypher.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "71008",
+     "name": "Blockchain.info Metrics",
+     "base_url": "https://blockchain.info",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "format"
+     ]
+    },
+    {
+     "id": "71003",
+     "name": "Llama DEX Volumes",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "93107",
+     "name": "ETH Balance via BlastAPI",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "71009",
+     "name": "CoinGecko Crypto Metrics",
+     "base_url": "https://api.coingecko.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "71005",
+     "name": "Llama Stablecoin Metrics",
+     "base_url": "https://stablecoins.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "includePrices"
+     ]
+    },
+    {
+     "id": "93101",
+     "name": "ETH Balance via dRPC",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "block",
+      "rpc"
+     ]
+    },
+    {
+     "id": "190035",
+     "name": "Ocm Blockstream BTC",
+     "base_url": "https://blockstream.info",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "btc_address"
+     ]
+    },
+    {
+     "id": "7375",
+     "name": "VerifyWire Onchain Metric Verify",
+     "base_url": "https://telegraph-verify.margyn.workers.dev",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /metric"
+     ],
+     "input_params": [
+      "block",
+      "chain",
+      "data",
+      "hash",
+      "holder",
+      "question",
+      "slot",
+      "to",
+      "token"
+     ]
+    },
+    {
+     "id": "190029",
+     "name": "Ocm Blockscout Base",
+     "base_url": "https://base.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "190032",
+     "name": "Ocm Blockscout Optimism",
+     "base_url": "https://optimism.blockscout.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "9602",
+     "name": "OnChain Metric Verify (Ethplorer Ethereum)",
+     "base_url": "https://api.ethplorer.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "apiKey",
+      "showETHTotals",
+      "token"
+     ]
+    },
+    {
+     "id": "190149",
+     "name": "Ocm Drpc Rpc",
+     "base_url": "https://eth.drpc.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    }
+   ]
+  },
+  "LIQUIDITY_DEPTH_VERIFY_GENERAL": {
+   "class": "judgment",
+   "miner_count": 32,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "pool",
+     "type": "string",
+     "required": true,
+     "description": "DEX pool address or name"
+    },
+    {
+     "name": "chain",
+     "type": "string",
+     "required": true,
+     "description": "Chain of the pool"
+    }
+   ],
+   "response": [
+    {
+     "name": "liquidity_usd",
+     "type": "number",
+     "range": [
+      1,
+      1000000000000
+     ],
+     "unit": "USD",
+     "scored": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "190136",
+     "name": "Liq Bitget Book",
+     "base_url": "https://api.bitget.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "limit",
+      "symbol",
+      "type"
+     ]
+    },
+    {
+     "id": "190144",
+     "name": "Liq Kraken Depth",
+     "base_url": "https://api.kraken.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "count",
+      "pair"
+     ]
+    },
+    {
+     "id": "72003",
+     "name": "DexScreener Token Boosts",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "190145",
+     "name": "Liq Kucoin Book",
+     "base_url": "https://api.kucoin.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "symbol"
+     ]
+    },
+    {
+     "id": "72006",
+     "name": "GeckoTerminal Pool",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "72010",
+     "name": "ParaSwap Token List",
+     "base_url": "https://apiv5.paraswap.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "network"
+     ]
+    },
+    {
+     "id": "72008",
+     "name": "Llama Fees Liquidity Proxy",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "72004",
+     "name": "GeckoTerminal Trending",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "page"
+     ]
+    },
+    {
+     "id": "190024",
+     "name": "Liq Gecko Base Trending",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "network"
+     ]
+    },
+    {
+     "id": "190139",
+     "name": "Liq Coinbase Book",
+     "base_url": "https://api.exchange.coinbase.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "level"
+     ]
+    },
+    {
+     "id": "190135",
+     "name": "Liq Bitfinex Book",
+     "base_url": "https://api-pub.bitfinex.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "len"
+     ]
+    },
+    {
+     "id": "72007",
+     "name": "Llama DEX Liquidity",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "190026",
+     "name": "Liq Gecko Search ETH",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "network",
+      "query"
+     ]
+    },
+    {
+     "id": "190140",
+     "name": "Liq Cryptocom Book",
+     "base_url": "https://api.crypto.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "depth",
+      "instrument_name"
+     ]
+    },
+    {
+     "id": "72001",
+     "name": "DexScreener ETH Pair",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "chainId",
+      "pairAddresses"
+     ]
+    },
+    {
+     "id": "72022",
+     "name": "DexScreener Pair Cents",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "chainId",
+      "pairAddresses"
+     ]
+    },
+    {
+     "id": "190023",
+     "name": "Liq Dexscreener Token Weth",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "72005",
+     "name": "GeckoTerminal ETH Pools",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "page"
+     ]
+    },
+    {
+     "id": "190022",
+     "name": "Liq Dexscreener Search BTC",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "q"
+     ]
+    },
+    {
+     "id": "72002",
+     "name": "DexScreener Search",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "q"
+     ]
+    },
+    {
+     "id": "190025",
+     "name": "Liq Gecko ETH USDC Pool",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "network"
+     ]
+    },
+    {
+     "id": "190143",
+     "name": "Liq Htx Depth",
+     "base_url": "https://api.huobi.pro",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "symbol",
+      "type"
+     ]
+    },
+    {
+     "id": "190021",
+     "name": "Liq Dexscreener Pair",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address"
+     ]
+    },
+    {
+     "id": "190142",
+     "name": "Liq Gemini Book",
+     "base_url": "https://api.gemini.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "72021",
+     "name": "GeckoTerminal Pool Cents",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "address",
+      "network"
+     ]
+    },
+    {
+     "id": "190137",
+     "name": "Liq Bitstamp Book",
+     "base_url": "https://www.bitstamp.net",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "190134",
+     "name": "Liq Binance Depth",
+     "base_url": "https://api.binance.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "limit",
+      "symbol"
+     ]
+    },
+    {
+     "id": "7373",
+     "name": "VerifyWire Liquidity Depth",
+     "base_url": "https://telegraph-verify.margyn.workers.dev",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /depth"
+     ],
+     "input_params": [
+      "chain",
+      "pair",
+      "question",
+      "size"
+     ]
+    },
+    {
+     "id": "190138",
+     "name": "Liq Bybit Book",
+     "base_url": "https://api.bybit.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "category",
+      "limit",
+      "symbol"
+     ]
+    },
+    {
+     "id": "190141",
+     "name": "Liq Gate Book",
+     "base_url": "https://api.gateio.ws",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "currency_pair",
+      "limit"
+     ]
+    },
+    {
+     "id": "190146",
+     "name": "Liq Mexc Depth",
+     "base_url": "https://api.mexc.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "limit",
+      "symbol"
+     ]
+    },
+    {
+     "id": "72009",
+     "name": "DexScreener WETH Token",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "tokenAddresses"
+     ]
+    }
+   ]
+  },
+  "WASH_TRADING_DETECTION_GENERAL": {
+   "class": "judgment",
+   "miner_count": 12,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "subject",
+     "type": "string",
+     "required": true,
+     "description": "Token, pair, pool or address"
+    }
+   ],
+   "response": [
+    {
+     "name": "subject",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "verdict",
+     "type": "enum",
+     "allowed": [
+      "wash_trading",
+      "likely_wash_trading",
+      "inconclusive",
+      "organic"
+     ]
+    },
+    {
+     "name": "wash_volume_pct",
+     "type": "number",
+     "range": [
+      0,
+      100
+     ],
+     "unit": "percent",
+     "scored": true
+    },
+    {
+     "name": "signals",
+     "type": "list",
+     "off_chain": true
+    },
+    {
+     "name": "summary",
+     "type": "string",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "80004",
+     "name": "DexScreener Token Boosts",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "80007",
+     "name": "DefiLlama DEX Overview",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "80010",
+     "name": "Binance 24h Ticker",
+     "base_url": "https://api.binance.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "symbol"
+     ]
+    },
+    {
+     "id": "80001",
+     "name": "DexScreener Token Pairs",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "token"
+     ]
+    },
+    {
+     "id": "80003",
+     "name": "DexScreener Pair",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "chain",
+      "pair"
+     ]
+    },
+    {
+     "id": "80005",
+     "name": "GeckoTerminal Trending",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "7378",
+     "name": "VerifyWire Wash Trading Detection",
+     "base_url": "https://telegraph-verify.margyn.workers.dev",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /washtrade"
+     ],
+     "input_params": [
+      "blocks",
+      "chain",
+      "question",
+      "token"
+     ]
+    },
+    {
+     "id": "80009",
+     "name": "DefiLlama Fees Overview",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "80002",
+     "name": "DexScreener Search",
+     "base_url": "https://api.dexscreener.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "q"
+     ]
+    },
+    {
+     "id": "80008",
+     "name": "DefiLlama Uniswap Volume",
+     "base_url": "https://api.llama.fi",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "protocol"
+     ]
+    },
+    {
+     "id": "80006",
+     "name": "GeckoTerminal Pool",
+     "base_url": "https://api.geckoterminal.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "pool"
+     ]
+    },
+    {
+     "id": "80021",
+     "name": "DexScreener H24 Volume",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "chainId",
+      "pairAddresses"
+     ]
+    }
+   ]
+  },
+  "SOCIAL_BOT_DETECTION_GENERAL": {
+   "class": "judgment",
+   "miner_count": 11,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "account",
+     "type": "string",
+     "required": true,
+     "description": "Account or handle"
+    }
+   ],
+   "response": [
+    {
+     "name": "account",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "verdict",
+     "type": "enum",
+     "allowed": [
+      "bot",
+      "likely_bot",
+      "inconclusive",
+      "likely_human",
+      "human"
+     ]
+    },
+    {
+     "name": "bot_score",
+     "type": "number",
+     "range": [
+      0,
+      1
+     ],
+     "unit": "fraction (0-1)",
+     "off_chain": true
+    },
+    {
+     "name": "signals",
+     "type": "list",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "108010",
+     "name": "HN Updates",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "108001",
+     "name": "HN Top Stories",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "108004",
+     "name": "HN Ask Stories",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "108007",
+     "name": "HN Item",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "id"
+     ]
+    },
+    {
+     "id": "7457",
+     "name": "TradeWire Social Bot Detection",
+     "base_url": "https://telegraph-trade.margyn.workers.dev",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /bot-detect"
+     ],
+     "input_params": [
+      "account",
+      "followers",
+      "following",
+      "question",
+      "text"
+     ]
+    },
+    {
+     "id": "108002",
+     "name": "HN New Stories",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "108003",
+     "name": "HN Best Stories",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "108008",
+     "name": "HN User",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "user"
+     ]
+    },
+    {
+     "id": "108009",
+     "name": "HN Max Item",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "108006",
+     "name": "HN Job Stories",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    },
+    {
+     "id": "108005",
+     "name": "HN Show Stories",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": []
+    }
+   ]
+  },
+  "CODE_REVIEW_GENERAL": {
+   "class": "judgment",
+   "miner_count": 12,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "code",
+     "type": "string",
+     "required": true,
+     "description": "The code to review, or a link to the change"
+    }
+   ],
+   "response": [
+    {
+     "name": "verdict",
+     "type": "enum",
+     "allowed": [
+      "Approve",
+      "Request changes",
+      "Comment"
+     ]
+    },
+    {
+     "name": "findings",
+     "type": "list",
+     "off_chain": true
+    },
+    {
+     "name": "summary",
+     "type": "string",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "60006",
+     "name": "GitHub File Contents",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "owner",
+      "path",
+      "repo"
+     ]
+    },
+    {
+     "id": "60009",
+     "name": "Codeberg Pull Requests",
+     "base_url": "https://codeberg.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "limit",
+      "owner",
+      "repo",
+      "state"
+     ]
+    },
+    {
+     "id": "60002",
+     "name": "GitHub PR Files",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "owner",
+      "pull_number",
+      "repo"
+     ]
+    },
+    {
+     "id": "60005",
+     "name": "GitHub Commits",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "owner",
+      "per_page",
+      "repo"
+     ]
+    },
+    {
+     "id": "60004",
+     "name": "GitHub Languages",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "owner",
+      "repo"
+     ]
+    },
+    {
+     "id": "60010",
+     "name": "NPM Package Metadata",
+     "base_url": "https://registry.npmjs.org",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "pkg"
+     ]
+    },
+    {
+     "id": "60008",
+     "name": "GitLab Merge Requests",
+     "base_url": "https://gitlab.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "per_page",
+      "project",
+      "state"
+     ]
+    },
+    {
+     "id": "5530",
+     "name": "Telegraph Verity Intelligence",
+     "base_url": "https://telegraph-verity-intelligence-api.onrender.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "POST /v1/intent"
+     ],
+     "input_params": [
+      "input",
+      "intent"
+     ]
+    },
+    {
+     "id": "60001",
+     "name": "GitHub Pull Request",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "owner",
+      "pull_number",
+      "repo"
+     ]
+    },
+    {
+     "id": "60003",
+     "name": "GitHub Compare",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "basehead",
+      "owner",
+      "repo"
+     ]
+    },
+    {
+     "id": "60007",
+     "name": "GitHub Review Comments",
+     "base_url": "https://api.github.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /query"
+     ],
+     "input_params": [
+      "owner",
+      "pull_number",
+      "repo"
+     ]
+    },
+    {
+     "id": "9002",
+     "name": "TxLens",
+     "base_url": "https://telegraph-onchain-tx-lookup-miner.onrender.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /check-tx",
+      "GET /gas-price",
+      "GET /wallet-balance"
+     ],
+     "input_params": [
+      "address",
+      "amount",
+      "block",
+      "card_number",
+      "carrier",
+      "categories",
+      "chain",
+      "chains",
+      "claim",
+      "code",
+      "coin_id",
+      "company",
+      "content",
+      "contract",
+      "cve",
+      "cve_id",
+      "date",
+      "days",
+      "description",
+      "destination",
+      "domain",
+      "economic_indicator",
+      "facts",
+      "focus",
+      "from",
+      "from_year",
+      "height",
+      "hours",
+      "indicator",
+      "instruction",
+      "ip",
+      "jurisdiction",
+      "labels",
+      "language",
+      "length",
+      "limit",
+      "location",
+      "max_results",
+      "max_sources",
+      "message",
+      "messages",
+      "mode",
+      "name",
+      "origin",
+      "output",
+      "payment_method",
+      "price_chain",
+      "prompt",
+      "protocol",
+      "query",
+      "question",
+      "reference",
+      "result",
+      "retailer",
+      "review",
+      "route",
+      "service",
+      "target",
+      "target_language",
+      "task",
+      "team",
+      "text",
+      "text1",
+      "text2",
+      "ticker",
+      "ticket",
+      "to",
+      "to_year",
+      "token",
+      "topic",
+      "topic_mode",
+      "tracking_number",
+      "tvl_chain",
+      "tx_hash",
+      "url",
+      "venue",
+      "wallet",
+      "when",
+      "zip_code"
+     ]
+    }
+   ]
+  },
+  "TEXT_SUMMARIZATION_GENERAL": {
+   "class": "judgment",
+   "miner_count": 15,
+   "onchain_ready": false,
+   "request": [],
+   "response": [],
+   "miners": [
+    {
+     "id": "152002",
+     "name": "Crossref Summarization",
+     "base_url": "https://api.crossref.org",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152005",
+     "name": "HN Top Summary",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "9002",
+     "name": "TxLens",
+     "base_url": "https://telegraph-onchain-tx-lookup-miner.onrender.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /check-tx",
+      "GET /gas-price",
+      "GET /wallet-balance"
+     ],
+     "input_params": [
+      "address",
+      "amount",
+      "block",
+      "card_number",
+      "carrier",
+      "categories",
+      "chain",
+      "chains",
+      "claim",
+      "code",
+      "coin_id",
+      "company",
+      "content",
+      "contract",
+      "cve",
+      "cve_id",
+      "date",
+      "days",
+      "description",
+      "destination",
+      "domain",
+      "economic_indicator",
+      "facts",
+      "focus",
+      "from",
+      "from_year",
+      "height",
+      "hours",
+      "indicator",
+      "instruction",
+      "ip",
+      "jurisdiction",
+      "labels",
+      "language",
+      "length",
+      "limit",
+      "location",
+      "max_results",
+      "max_sources",
+      "message",
+      "messages",
+      "mode",
+      "name",
+      "origin",
+      "output",
+      "payment_method",
+      "price_chain",
+      "prompt",
+      "protocol",
+      "query",
+      "question",
+      "reference",
+      "result",
+      "retailer",
+      "review",
+      "route",
+      "service",
+      "target",
+      "target_language",
+      "task",
+      "team",
+      "text",
+      "text1",
+      "text2",
+      "ticker",
+      "ticket",
+      "to",
+      "to_year",
+      "token",
+      "topic",
+      "topic_mode",
+      "tracking_number",
+      "tvl_chain",
+      "tx_hash",
+      "url",
+      "venue",
+      "wallet",
+      "when",
+      "zip_code"
+     ]
+    },
+    {
+     "id": "152009",
+     "name": "CourtListener Summary",
+     "base_url": "https://www.courtlistener.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152003",
+     "name": "Zenodo Summarization",
+     "base_url": "https://zenodo.org",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152007",
+     "name": "BBC Sci Summary",
+     "base_url": "https://feeds.bbci.co.uk",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "180203",
+     "name": "HF DistilBART-CNN",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152006",
+     "name": "BBC Summary Feed",
+     "base_url": "https://feeds.bbci.co.uk",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "180201",
+     "name": "HF BART-large-CNN",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152004",
+     "name": "HN Item Summary Source",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152008",
+     "name": "HN Best Summary",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "180204",
+     "name": "Pollinations LLM summarize",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152001",
+     "name": "OpenAlex Summarization",
+     "base_url": "https://api.openalex.org",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "180202",
+     "name": "HF Pegasus-XSum",
+     "base_url": "https://omni-chat.13.237.89.59.sslip.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "152010",
+     "name": "HN Ask Summary",
+     "base_url": "https://hacker-news.firebaseio.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    }
+   ]
+  },
+  "FRAUD_RISK_GENERAL": {
+   "class": "judgment",
+   "miner_count": 11,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "subject",
+     "type": "string",
+     "required": true,
+     "description": "Entity, payment or account to assess"
+    }
+   ],
+   "response": [
+    {
+     "name": "risk_level",
+     "type": "enum",
+     "allowed": [
+      "LOW",
+      "MEDIUM",
+      "HIGH",
+      "CRITICAL"
+     ]
+    },
+    {
+     "name": "risk_score",
+     "type": "number",
+     "range": [
+      0,
+      1
+     ],
+     "unit": "fraction (0-1)",
+     "off_chain": true
+    },
+    {
+     "name": "signals",
+     "type": "list",
+     "off_chain": true
+    },
+    {
+     "name": "summary",
+     "type": "string",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "97008",
+     "name": "URLhaus Fraud URLs",
+     "base_url": "https://urlhaus.abuse.ch",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97002",
+     "name": "IPWho Google Fraud IP",
+     "base_url": "https://ipwho.is",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "7431",
+     "name": "RiskWire Fraud Risk",
+     "base_url": "https://telegraph-risk.margyn.workers.dev",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97003",
+     "name": "GeoJS Fraud IP",
+     "base_url": "https://get.geojs.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97005",
+     "name": "IP2Location Fraud",
+     "base_url": "https://api.ip2location.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97007",
+     "name": "Binlist Payment Fraud",
+     "base_url": "https://lookup.binlist.net",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97009",
+     "name": "CERT.PL Fraud Domains",
+     "base_url": "https://hole.cert.pl",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97004",
+     "name": "IPinfo Fraud IP",
+     "base_url": "https://ipinfo.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97001",
+     "name": "IPWho Fraud IP",
+     "base_url": "https://ipwho.is",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97010",
+     "name": "OpenPhish Fraud Feed",
+     "base_url": "https://openphish.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "97006",
+     "name": "OTX IP Fraud",
+     "base_url": "https://otx.alienvault.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    }
+   ]
+  },
+  "FRAUD_DETECTION_GENERAL": {
+   "class": "judgment",
+   "miner_count": 24,
+   "onchain_ready": true,
+   "request": [
+    {
+     "name": "subject",
+     "type": "string",
+     "required": true,
+     "description": "Entity, transaction or action to assess"
+    }
+   ],
+   "response": [
+    {
+     "name": "subject",
+     "type": "string",
+     "off_chain": true
+    },
+    {
+     "name": "verdict",
+     "type": "enum",
+     "allowed": [
+      "FRAUD",
+      "LIKELY_FRAUD",
+      "SUSPICIOUS",
+      "LEGITIMATE",
+      "INCONCLUSIVE",
+      "LOW",
+      "ELEVATED",
+      "HIGH"
+     ]
+    },
+    {
+     "name": "risk_score",
+     "type": "number",
+     "range": [
+      0,
+      1
+     ],
+     "unit": "fraction (0-1)",
+     "scored": true
+    },
+    {
+     "name": "signals",
+     "type": "list",
+     "off_chain": true
+    },
+    {
+     "name": "summary",
+     "type": "string",
+     "off_chain": true
+    }
+   ],
+   "miners": [
+    {
+     "id": "402",
+     "name": "AgentFeed Crypto Market Intelligence",
+     "base_url": "https://x402.ochinimus.app",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120001",
+     "name": "OpenPhish Fraud Feed",
+     "base_url": "https://openphish.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "7421",
+     "name": "RiskWire Fraud Detection",
+     "base_url": "https://telegraph-risk.margyn.workers.dev",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120002",
+     "name": "CERT.PL Fraud Domains",
+     "base_url": "https://hole.cert.pl",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120010",
+     "name": "HandyAPI Fraud BIN",
+     "base_url": "https://data.handyapi.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120008",
+     "name": "IPWho Fraud Geo",
+     "base_url": "https://ipwho.is",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "84532",
+     "name": "Zengawd Transaction Guard",
+     "base_url": "https://zengawd-web.vercel.app",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120007",
+     "name": "GeoJS Fraud Geo",
+     "base_url": "https://get.geojs.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "95822412",
+     "name": "Refut On-Chain Risk",
+     "base_url": "https://refut-fraud-miner.timjosh507.workers.dev",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "251",
+     "name": "Sigvora Fraud Intelligence",
+     "base_url": "https://sigvora-staging.onrender.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120004",
+     "name": "Binlist Fraud MC",
+     "base_url": "https://lookup.binlist.net",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "403",
+     "name": "AgentFeed Crypto Market Intelligence",
+     "base_url": "https://x402.ochinimus.app",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "9002",
+     "name": "TxLens",
+     "base_url": "https://telegraph-onchain-tx-lookup-miner.onrender.com",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /check-tx",
+      "GET /gas-price",
+      "GET /wallet-balance"
+     ],
+     "input_params": [
+      "address",
+      "amount",
+      "block",
+      "card_number",
+      "carrier",
+      "categories",
+      "chain",
+      "chains",
+      "claim",
+      "code",
+      "coin_id",
+      "company",
+      "content",
+      "contract",
+      "cve",
+      "cve_id",
+      "date",
+      "days",
+      "description",
+      "destination",
+      "domain",
+      "economic_indicator",
+      "facts",
+      "focus",
+      "from",
+      "from_year",
+      "height",
+      "hours",
+      "indicator",
+      "instruction",
+      "ip",
+      "jurisdiction",
+      "labels",
+      "language",
+      "length",
+      "limit",
+      "location",
+      "max_results",
+      "max_sources",
+      "message",
+      "messages",
+      "mode",
+      "name",
+      "origin",
+      "output",
+      "payment_method",
+      "price_chain",
+      "prompt",
+      "protocol",
+      "query",
+      "question",
+      "reference",
+      "result",
+      "retailer",
+      "review",
+      "route",
+      "service",
+      "target",
+      "target_language",
+      "task",
+      "team",
+      "text",
+      "text1",
+      "text2",
+      "ticker",
+      "ticket",
+      "to",
+      "to_year",
+      "token",
+      "topic",
+      "topic_mode",
+      "tracking_number",
+      "tvl_chain",
+      "tx_hash",
+      "url",
+      "venue",
+      "wallet",
+      "when",
+      "zip_code"
+     ]
+    },
+    {
+     "id": "120005",
+     "name": "OTX Fraud Domain",
+     "base_url": "https://otx.alienvault.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "232",
+     "name": "EviPlan \u2014 Evidence Firewall for Agents",
+     "base_url": "https://eviplan-miner.onrender.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "8421",
+     "name": "TrustGate Fraud Detection",
+     "base_url": "https://www.trustgated.xyz",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120006",
+     "name": "OTX Fraud IP",
+     "base_url": "https://otx.alienvault.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "120003",
+     "name": "Binlist Fraud BIN",
+     "base_url": "https://lookup.binlist.net",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "94217603",
+     "name": "Telegraph Sentinel",
+     "base_url": "https://telegraph-sentinel-40vp.onrender.com",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "4433",
+     "name": "LiveCert \u2014 Sourced Answers for Agents",
+     "base_url": "https://miner-wine.vercel.app",
+     "min_price_uusdc": 10000,
+     "activation_status": "active",
+     "endpoints": [
+      "GET /ssl-check",
+      "GET /storm-alert",
+      "GET /papers"
+     ],
+     "input_params": [
+      "company",
+      "company_number",
+      "country",
+      "days",
+      "domain",
+      "forecast_days",
+      "forecast_hours",
+      "form",
+      "hours",
+      "indicator",
+      "ip",
+      "lat",
+      "latitude",
+      "location",
+      "lon",
+      "longitude",
+      "name",
+      "q",
+      "query",
+      "source_language",
+      "target_language",
+      "text",
+      "topic",
+      "wallet"
+     ]
+    },
+    {
+     "id": "120009",
+     "name": "IPinfo Fraud Geo",
+     "base_url": "https://ipinfo.io",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "49",
+     "name": "Anchor",
+     "base_url": "https://anchor-miner.vercel.app",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "91001",
+     "name": "SarzOps Fraud Intelligence",
+     "base_url": "https://telegraph-intelligence-stack-production.up.railway.app",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    },
+    {
+     "id": "1001",
+     "name": "Veridex",
+     "base_url": "https://veridex-ecru.vercel.app",
+     "min_price_uusdc": null,
+     "activation_status": null,
+     "endpoints": [],
+     "input_params": []
+    }
+   ]
+  }
+ }
+}

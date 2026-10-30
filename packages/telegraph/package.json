@@ -1,0 +1,15 @@
+{
+  "name": "@skein/telegraph",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Telegraph network facts Skein depends on: intent ids, provider families, the miner allowlist. Typed client to follow on Nov 1.",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@skein/engine": "workspace:*"
+  }
+}

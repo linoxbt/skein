@@ -1,0 +1,42 @@
+id: cex-standard
+version: 0.1.0
+description: >
+  Centralised-exchange listing review. Draft: thresholds are starting values,
+  to be tuned on the labelled set and frozen as 1.0.0 before evaluation.
+blockers:            # any one of these -> REJECT
+  - { check: sanctions, status: FAIL }
+  - { check: contract_audit, status: FAIL, minSeverity: 3 }
+required: [contract_audit, sanctions, holder_concentration, liquidity_depth, wash_trading]
+optional: [holder_count, social_bots, code_review]
+thresholds:
+  holder_concentration: { warn: 0.40, fail: 0.60, field: top10_holders_pct }
+  # Total pool reserve, which is what LIQUIDITY_DEPTH_VERIFY returns. The spec's
+  # 2%-depth limits ($50k / $10k) are roughly 0.5% of a constant-product pool's
+  # reserve, so they map to about $10M / $2M of reserve.
+  liquidity_depth: { warn: 10000000, fail: 2000000, field: liquidity_usd }
+  wash_trading: { warn: 20, fail: 50, field: wash_volume_pct }
+  holder_count: { warn: 1000, fail: 200, field: holders_count }
+weights: { contract_audit: 0.30, wash_trading: 0.20, holder_concentration: 0.20,
+           liquidity_depth: 0.15, social_bots: 0.10, code_review: 0.05, holder_count: 0.05 }
+# sanctions is a blocker with no scoring weight; abstain_on_missing_required
+# still makes its absence an ABSTAIN.
+conflicts:
+  - code: MARKET_INTEGRITY_CONFLICT
+    detail: audit PASS but wash_trading FAIL
+    when: [{ check: contract_audit, status: PASS }, { check: wash_trading, status: FAIL }]
+  - code: LIQUIDITY_CONTROLLED_BY_INSIDERS
+    detail: liquidity PASS but holder_concentration FAIL
+    when: [{ check: liquidity_depth, status: PASS }, { check: holder_concentration, status: FAIL }]
+decision:
+  approve_below_risk_bps: 2500
+  reject_above_risk_bps: 6500
+  min_coverage: 0.80           # share of total policy weight with a real answer
+  min_confidence: 0.60
+  conflict_escalates: true
+  abstain_on_missing_required: true
+  required_fail_blocks_approve: true
+  agreement_penalty: 0.25
+scoring:
+  status_risk: { PASS: 0, WARN: 0.5, FAIL: 1 }
+  severity_multiplier: [0.6, 0.8, 1.0, 1.0]
+budget: { max_usdc: 0.20, per_check_timeout_ms: { contract_audit: 16000, default: 4000 } }
