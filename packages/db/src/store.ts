@@ -50,7 +50,10 @@ export interface VerdictMeta {
   durationMs: number;
   consumerId?: string;
   idempotencyKey?: string;
+  requestHash?: string;
   id?: string;
+  /** Defaults to the database clock; pass the caller's clock to keep one time source. */
+  createdAt?: Date;
 }
 
 /** Time-sortable verdict id. */
@@ -91,6 +94,8 @@ export async function saveVerdictRun(db: Db, run: RunToStore, meta: VerdictMeta)
       durationMs: meta.durationMs,
       ...(meta.consumerId ? { consumerId: meta.consumerId } : {}),
       ...(meta.idempotencyKey ? { idempotencyKey: meta.idempotencyKey } : {}),
+      ...(meta.requestHash ? { requestHash: meta.requestHash } : {}),
+      ...(meta.createdAt ? { createdAt: meta.createdAt } : {}),
     });
     if (run.purchases.length > 0) {
       await tx.insert(schema.purchases).values(

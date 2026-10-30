@@ -15,6 +15,13 @@
       "when": 1793338724621,
       "tag": "0001_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793349916949,
+      "tag": "0002_request_hash",
+      "breakpoints": true
     }
   ]
 }

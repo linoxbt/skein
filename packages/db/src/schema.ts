@@ -18,16 +18,21 @@ import {
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
-export const consumers = pgTable("consumers", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  kind: text("kind", { enum: ["agent", "team", "contract"] }).notNull(),
-  wallet: text("wallet"),
-  apiKeyHash: text("api_key_hash"),
-  plan: text("plan").notNull().default("partner"),
-  dailyCapUusdc: bigint("daily_cap_uusdc", { mode: "number" }).notNull().default(2_000_000),
-  createdAt: createdAt(),
-});
+export const consumers = pgTable(
+  "consumers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["agent", "team", "contract"] }).notNull(),
+    wallet: text("wallet"),
+    /** SHA-256 of a 256-bit random partner key; only the hash is stored. */
+    apiKeyHash: text("api_key_hash"),
+    plan: text("plan").notNull().default("partner"),
+    dailyCapUusdc: bigint("daily_cap_uusdc", { mode: "number" }).notNull().default(2_000_000),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("consumers_api_key_hash").on(t.apiKeyHash)],
+);
 
 export const policies = pgTable(
   "policies",
@@ -68,6 +73,8 @@ export const verdicts = pgTable(
     network: text("network").notNull(),
     consumerId: uuid("consumer_id").references(() => consumers.id),
     idempotencyKey: text("idempotency_key"),
+    /** SHA-256 of the canonical request body, to spot an idempotency key reused with a different body. */
+    requestHash: text("request_hash"),
     durationMs: integer("duration_ms").notNull(),
     createdAt: createdAt(),
   },
