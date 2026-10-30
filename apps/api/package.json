@@ -1,0 +1,31 @@
+{
+  "name": "@skein/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Skein HTTP API: verdicts, SSE events, bill of materials, verify, quote, status, ledger, and the Telegraph miner endpoint.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "tsx src/server.ts",
+    "migrate": "tsx bin/migrate.ts",
+    "partner:add": "tsx bin/partner-add.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.5",
+    "@skein/db": "workspace:*",
+    "@skein/engine": "workspace:*",
+    "@skein/pipeline": "workspace:*",
+    "@skein/policies": "workspace:*",
+    "@skein/telegraph": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.13",
+    "pg": "8.23.1",
+    "tsx": "4.23.15",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.9",
+    "@types/pg": "8.23.1"
+  }
+}
