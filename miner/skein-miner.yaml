@@ -1,0 +1,49 @@
+# DRAFT, not registered. Validate before spending gas (miner/validate.sh).
+# base_url is fixed at registration: buy the real domain first.
+version: "1"
+kind: miner
+id: 0 # TODO: an unused numeric id, chosen at registration
+slug: skein-listing-verdict
+protocol: generic
+name: Skein Listing Verdict
+description: >
+  Composite token-listing verdict (APPROVE/REJECT/ESCALATE/ABSTAIN) for an EVM token,
+  fused from ranked Telegraph inputs, with reasons, confidence and a receipt bill of materials.
+  Not for price prediction or trading signals.
+base_url: https://api.skein.xyz
+auth:
+  type: header
+  header_name: X-Skein-Miner-Key
+rate_limit_per_sec: 5
+cache_ttl_sec: 600
+circuit_threshold: 5
+circuit_cooldown_seconds: 30
+errors:
+  message_path: error.message
+  code_path: error.code
+endpoints:
+  - path: /verdict
+    external_path: /miner/verdict
+    method: POST
+    description: Listing verdict for one token
+semantics:
+  signal_mapping:
+    confidence_field: confidence
+    label_field: verdict
+    reason_field: summary
+  supported_intents:
+    - FRAUD_RISK_TOKEN_LISTING
+# The live intents declare their own on-chain layout (onchain.request /
+# onchain.response, "served_by"), so this block must match whatever response
+# format the intent proposal is approved with. Under Plan B on
+# FRAUD_RISK_GENERAL the layout is a single enum string (risk_level) instead.
+on_chain:
+  transform: direct
+  min_price_usdc: 0.25
+  fields:
+    integers:
+      - { index: 0, name: verdict_code, source_path: verdict_code } # 0 ABSTAIN, 1 APPROVE, 2 ESCALATE, 3 REJECT
+      - { index: 1, name: risk_bps, source_path: risk_bps }
+      - { index: 2, name: confidence_bps, source_path: confidence_bps }
+    strings:
+      - { index: 0, name: bom_root, source_path: bom.root }
