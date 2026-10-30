@@ -17,7 +17,7 @@ export type Behaviour =
 export interface FakeNodeOptions {
   priceUusdc?: number;
   /** Decides what a paid call returns, per miner id ("" for routed) and body. */
-  respond: (minerId: string, body: Record<string, unknown>, callNo: number) => Behaviour;
+  respond: (minerId: string, body: Record<string, unknown>, callNo: number) => Behaviour | Promise<Behaviour>;
   nowSec?: () => number;
 }
 
@@ -108,7 +108,7 @@ export class FakeNode {
     const n = (this.calls.get(minerId) ?? 0) + 1;
     this.calls.set(minerId, n);
     const body = JSON.parse(String(init.body ?? "{}")) as Record<string, unknown>;
-    const b = this.opts.respond(minerId, body, n);
+    const b = await this.opts.respond(minerId, body, n);
     if (b.kind === "hang") {
       await new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(init.signal!.reason)));
     }

@@ -11,7 +11,7 @@ const WAYS: [string, string, string, typeof IconThreads][] = [
   ["Direct API", "One authenticated POST. Partner keys are free during the hackathon.", "live", IconTerminal],
   ["Through Telegraph", "One paid /engine/v1/ask, routed to the Skein miner or pinned to its ID.", "Nov 1", IconThreads],
   ["Verify anything", "POST any verdict id to /v1/verify and get each recomputed step back.", "live", IconReplay],
-  ["SDK and MCP", "@skein/sdk for TypeScript, @skein/mcp for LLM agents.", "next", IconPlug],
+  ["SDK and MCP", "@skein/sdk for TypeScript agents; @skein/mcp gives Claude, Cursor or any MCP client three tools.", "live", IconPlug],
 ];
 
 const ENDPOINTS: [string, string, string, string][] = [
@@ -54,6 +54,31 @@ const sse = (api: string) => `const id = (await res.json()).id;
 const events = new EventSource("${api}/v1/verdicts/" + id + "/events");
 events.addEventListener("finding", (e) => draw(JSON.parse(e.data)));
 events.addEventListener("done", (e) => seal(JSON.parse(e.data)));`;
+
+const sdk = (api: string) => `import { Skein } from "@skein/sdk";
+
+const skein = new Skein({
+  apiUrl: "${api}",
+  payer: { kind: "apiKey", key: process.env.SKEIN_KEY! },
+  maxUsdcPerCall: 0.3, // refused before paying above this
+});
+
+const v = await skein.verdict({
+  subject: { chainId: 8453, token: "0x…" },
+});
+if (v.verdict !== "APPROVE") return skip(v.reasons);
+await skein.verify(v.id); // recompute it`;
+
+const mcp = `{
+  "mcpServers": {
+    "skein": {
+      "command": "npx",
+      "args": ["tsx", "skein/packages/mcp/bin/skein-mcp.ts"],
+      "env": { "SKEIN_API_KEY": "sk_part_…" }
+    }
+  }
+}
+// tools: skein_verdict · skein_quote · skein_verify`;
 
 const ask = `POST /engine/v1/ask
 {
@@ -160,6 +185,31 @@ export default function DocsPage() {
           <Code label="telegraph · /engine/v1/ask">{ask}</Code>
         </div>
       </section>
+
+      {/* SDK and MCP. */}
+      <Section tone="dark" inner="py-20 md:py-28">
+        <Lead tag="SDK and MCP" dark />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="min-w-0">
+            <h2 className="display text-[36px] md:text-[56px]">One function.</h2>
+            <p className="mt-4 max-w-lg text-muted">
+              verdict(), quote(), verify() and stream(), typed errors, retries that reuse the idempotency key, and a spend cap checked before any payment. Pays with a partner key or through Telegraph.
+            </p>
+            <div className="mt-8">
+              <Code label="typescript · @skein/sdk">{sdk(API)}</Code>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <h2 className="display text-[36px] md:text-[56px]">One server entry.</h2>
+            <p className="mt-4 max-w-lg text-muted">
+              The MCP server pays inside, with a per-call and a per-session cap, and returns the verdict as text an agent can act on plus the full object.
+            </p>
+            <div className="mt-8">
+              <Code label="mcp client config · @skein/mcp">{mcp}</Code>
+            </div>
+          </div>
+        </div>
+      </Section>
 
       {/* Endpoints. */}
       <Section tone="paper" id="endpoints" inner="py-20 md:py-28">

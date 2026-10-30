@@ -19,7 +19,10 @@ open, confidence, cost and a verifiable bill of materials.
 > - the web app: a landing page plus independent pages for how it works, the console
 >   (live Exploded View), verdicts, verify, policies, ledger, status and integrate
 >
-> Skein Desk comes next. No paid call has been made;
+> - `@skein/sdk` and `@skein/mcp`, the integration kit
+> - Skein Desk, the reference consumer: a listing queue decided by an agent
+>
+> No paid call has been made;
 > the client refuses to pay before the season opens on Nov 1 (UTC).
 
 ## Layout
@@ -33,11 +36,16 @@ packages/
               miner allowlist, catalogue snapshot, and a fake node for tests
   pipeline/   request builders, purchaser, runVerdict(); the verdict and repro CLIs
   db/         Drizzle schema and migrations (append-only evidence, RLS), verdict store
+  sdk/        @skein/sdk: verdict(), quote(), verify(), stream(), submit()/wait(), typed
+              errors, retries, spend cap; pays with a partner key or through Telegraph
+  mcp/        @skein/mcp: stdio MCP server with skein_verdict, skein_quote, skein_verify
 apps/
   api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
               /v1/status, /v1/ledger, /v1/policies, /miner/verdict; Dockerfile
   web/        Next.js 15 console: live Exploded View, verdict pages, verify, policies,
-              ledger, status, integrate; Dockerfile (standalone) or Vercel
+              ledger, status, integrate; Dockerfile (standalone) or Netlify
+  desk/       Skein Desk: a fictional exchange's listing queue; an agent buys a verdict
+              per application and shortlists, declines or routes it to an analyst
 miner/        draft skein-miner.yaml, validate.sh, intent proposal
 eval/         labelled-set protocol (point-in-time)
 docs/         DECISIONS.md: deviations from the build spec and live-network findings
@@ -62,6 +70,11 @@ pnpm repro out/verdicts/<file>.json   # re-run adapters and engine; exit 1 on an
 pnpm dev:api                   # http://localhost:8787, partner key sk_dev_local_simulated
 NEXT_PUBLIC_SKEIN_API=http://localhost:8787 pnpm dev:web   # http://localhost:3000
 # In the console: a token ending in "c" shows the conflict; the rest are clean.
+SKEIN_API_URL=http://localhost:8787 DESK_SKEIN_KEY=sk_dev_local_simulated \
+  pnpm --filter @skein/desk dev                            # http://localhost:3100
+
+# MCP server for Claude Desktop, Cursor and others (stdio):
+SKEIN_API_KEY=sk_part_… npx tsx packages/mcp/bin/skein-mcp.ts
 
 # API (needs Postgres). Migrations run on start.
 DATABASE_URL=postgres://… pnpm --filter @skein/api start
@@ -77,11 +90,14 @@ PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --soc
 |---|---|---|
 | Web app | Netlify | https://skein-web.netlify.app |
 | API | Railway (Docker, `railway.json`) | https://api-production-9396.up.railway.app |
+| Skein Desk | Netlify | https://skein-desk.netlify.app |
 | Postgres | Railway | private network only |
 
-The API redeploys on every push to the branch. The web app is a manual
-upload for now: copy `apps/web` without `node_modules`, `.next` and `test/`,
-then run Netlify's deploy command from that copy. Connecting the repo to
+The API redeploys on every push to the branch. The web app and the Desk are
+manual uploads for now: copy the app without `node_modules`, `.next` and
+`test/`, then run Netlify's deploy command from that copy. For the Desk,
+copy `packages/sdk` into `vendor/sdk` and point `@skein/sdk` at
+`file:./vendor/sdk`, since Netlify builds it outside the workspace. Connecting the repo to
 Netlify (Project configuration → Build & deploy, base directory `apps/web`)
 makes it redeploy on push.
 
