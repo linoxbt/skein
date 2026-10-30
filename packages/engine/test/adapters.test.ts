@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ADAPTERS,
+  ALL_ADAPTER_VERSIONS,
+  adapterFor,
   codeReview,
   contractAudit,
   holderCount,
@@ -19,6 +21,24 @@ describe("field lookup", () => {
     expect(pick({ result: { data: { verdict: "bot" } } }, "verdict")).toBe("bot");
     expect(pick({ a: { verdict: "x" } }, "verdict")).toBeUndefined();
     expect(pick({ result: { result: { result: { result: { result: { verdict: "x" } } } } } }, "verdict")).toBeUndefined();
+  });
+});
+
+describe("adapter versions", () => {
+  // Every version ever published. Stored verdicts replay with the version they
+  // recorded, so removing one from the registry breaks their reproducibility.
+  const PUBLISHED = [
+    "contract_audit@0.1.0", "holder_concentration@0.1.0", "holder_count@0.1.0", "sanctions@0.1.0", "sanctions@0.2.0",
+    "wash_trading@0.1.0", "liquidity_depth@0.1.0", "liquidity_depth@0.2.0", "social_bots@0.1.0", "code_review@0.1.0",
+  ];
+  it("every published version is still registered, and each check has exactly one current adapter", () => {
+    expect(ALL_ADAPTER_VERSIONS.map((a) => `${a.check}@${a.version}`).sort()).toEqual([...PUBLISHED].sort());
+    expect(new Set(ADAPTERS.map((a) => a.check)).size).toBe(ADAPTERS.length);
+  });
+  it("adapterFor defaults to the current version and resolves superseded ones", () => {
+    expect(adapterFor("sanctions").version).toBe("0.2.0");
+    expect(adapterFor("sanctions", "0.1.0").adapt({ on_list: true }, ctx).status).toBe("UNKNOWN");
+    expect(adapterFor("sanctions", "0.2.0").adapt({ on_list: true }, ctx).status).toBe("FAIL");
   });
 });
 
@@ -64,6 +84,8 @@ describe("sanctions (SANCTIONS_SCREENING_MATCH)", () => {
     expect(sanctions.adapt({ matched: "clear" }, ctx).status).toBe("PASS");
     expect(sanctions.adapt({ matched: true, match_score: 0.97 }, ctx)).toMatchObject({ status: "FAIL", severity: 3, value: 0.97 });
     expect(sanctions.adapt({ matched: "maybe" }, ctx).status).toBe("UNKNOWN");
+    expect(sanctions.adapt({ on_list: false, entity: "0xabc" }, ctx).status).toBe("PASS"); // OFAC SDN Entity Screen, native form
+    expect(sanctions.adapt({ on_list: true }, ctx)).toMatchObject({ status: "FAIL", severity: 3 });
   });
 });
 
@@ -72,6 +94,10 @@ describe("metrics", () => {
     expect(liquidityDepth.adapt({ liquidity_usd: "1250000.5" }, ctx)).toMatchObject({ status: "PASS", metric: "liquidity_usd", value: 1_250_000.5 });
     expect(holderCount.adapt({ holders_count: 812 }, ctx)).toMatchObject({ metric: "holders_count", value: 812 });
     expect(liquidityDepth.adapt({ liquidity_usd: -5 }, ctx).status).toBe("UNKNOWN");
+    // GeckoTerminal's native answer, from the native-form request
+    expect(liquidityDepth.adapt({ data: { id: "base_0xd0b5", attributes: { reserve_in_usd: "3120456.77" } } }, ctx)).toMatchObject({
+      status: "PASS", metric: "liquidity_usd", value: 3_120_456.77,
+    });
   });
 });
 

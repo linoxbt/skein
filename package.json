@@ -11,7 +11,9 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run typecheck",
-    "policies:lock": "pnpm --filter @skein/policies lock"
+    "policies:lock": "pnpm --filter @skein/policies lock",
+    "verdict": "pnpm --silent --filter @skein/pipeline verdict",
+    "repro": "pnpm --silent --filter @skein/pipeline repro"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
