@@ -8,7 +8,7 @@ import {
   merkleRoot,
   parseSubject,
   reproduce,
-  sanctions,
+  adapterFor,
   toChecksumAddress,
   ZERO_HASH,
   type StoredVerdict,
@@ -81,11 +81,12 @@ describe("evaluate and seal", () => {
 });
 
 describe("reproduce", () => {
-  it("re-derives findings from raw answers and matches the stored hash", () => {
+  it("re-derives findings from raw answers with the recorded adapter version and matches the stored hash", () => {
     const policy = cex();
     const ctx = { check: "sanctions" as const, adapterVersion: "0.1.0", sourceGroup: "opensanctions", minerId: "78021", receiptHash: r(99) };
     const raw = { matched: "no match", match_score: 0.1 };
-    const findings = [...cleanCex({ sanctions: null }), sanctions.adapt(raw, ctx)];
+    // Recorded with a superseded adapter version: it must still replay.
+    const findings = [...cleanCex({ sanctions: null }), adapterFor("sanctions", "0.1.0").adapt(raw, ctx)];
     const sealed = evaluate(policy, subject, findings);
     const others = findings.filter((x) => x.check !== "sanctions");
     const stored: StoredVerdict = {

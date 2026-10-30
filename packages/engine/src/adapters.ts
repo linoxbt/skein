@@ -31,7 +31,7 @@ export interface Adapter {
   adapt(raw: unknown, ctx: AdapterContext): Finding;
 }
 
-const WRAPPERS = ["result", "data", "response", "answer", "fields", "output", "payload"];
+const WRAPPERS = ["result", "data", "response", "answer", "fields", "output", "payload", "attributes"];
 const MAX_DEPTH = 3;
 const MAX_STRING = 256;
 
@@ -159,8 +159,13 @@ function enumAdapter(
   };
 }
 
-function metricAdapter(check: Check, intent: string | null, name: string, min: number, max: number, unit: string): Adapter {
-  const version = "0.1.0";
+/**
+ * A numeric check. `names` lists the field to read: the intent's own field
+ * first, then known native spellings from allowlisted miners asked in the
+ * native form.
+ */
+function metricAdapter(check: Check, intent: string | null, names: readonly string[], min: number, max: number, unit: string, version = "0.1.0"): Adapter {
+  const metric = names[0]!;
   const defaultConfidence = 0.7;
   return {
     check,
@@ -171,11 +176,15 @@ function metricAdapter(check: Check, intent: string | null, name: string, min: n
       const b = { check, version, ctx };
       const early = guard(b, raw);
       if (early) return early;
-      const value = pickNumber(raw, name, min, max);
-      if (value === "out_of_range") return unknown(b, `${name}_out_of_range`);
-      if (value === undefined) return unknown(b, `missing_${name}`);
+      let value: number | "out_of_range" | undefined;
+      for (const n of names) {
+        value = pickNumber(raw, n, min, max);
+        if (value !== undefined) break;
+      }
+      if (value === "out_of_range") return unknown(b, `${metric}_out_of_range`);
+      if (value === undefined) return unknown(b, `missing_${metric}`);
       // PASS here means "answered"; the policy threshold sets the real status.
-      return finding(b, { status: "PASS", severity: 0, metric: name, value, unit, confidence: confidenceOf(raw, defaultConfidence), notes: [] });
+      return finding(b, { status: "PASS", severity: 0, metric, value, unit, confidence: confidenceOf(raw, defaultConfidence), notes: [] });
     },
   };
 }
@@ -210,40 +219,55 @@ export const codeReview = enumAdapter("code_review", "CODE_REVIEW_GENERAL", "ver
   "Request changes": { status: "WARN", severity: 2 },
 });
 
-/** LIQUIDITY_DEPTH_VERIFY: total pool reserve in USD (not 2% depth). */
-export const liquidityDepth = metricAdapter("liquidity_depth", "LIQUIDITY_DEPTH_VERIFY_GENERAL", "liquidity_usd", 0, 1e12, "USD");
+/**
+ * LIQUIDITY_DEPTH_VERIFY: total pool reserve in USD (not 2% depth).
+ * reserve_in_usd is GeckoTerminal's own field, for the native-form miner.
+ */
+export const liquidityDepth = metricAdapter("liquidity_depth", "LIQUIDITY_DEPTH_VERIFY_GENERAL", ["liquidity_usd", "reserve_in_usd"], 0, 1e12, "USD", "0.2.0");
 
 /** TOKEN_HOLDER_COUNT: distinct holder addresses. */
-export const holderCount = metricAdapter("holder_count", "TOKEN_HOLDER_COUNT_GENERAL", "holders_count", 0, 1e10, "addresses");
+export const holderCount = metricAdapter("holder_count", "TOKEN_HOLDER_COUNT_GENERAL", ["holders_count"], 0, 1e10, "addresses");
 
 /**
  * Top-10 holder share. No live intent supplies it (ONCHAIN_METRIC_VERIFY is an
  * ETH balance read), so this adapter waits for a disclosed miner.
  */
-export const holderConcentration = metricAdapter("holder_concentration", null, "top10_holders_pct", 0, 1, "fraction");
+export const holderConcentration = metricAdapter("holder_concentration", null, ["top10_holders_pct"], 0, 1, "fraction");
 
-/** SANCTIONS_SCREENING_MATCH: matched bool (name screening). */
-export const sanctions: Adapter = {
-  check: "sanctions",
-  version: "0.1.0",
-  intent: "SANCTIONS_SCREENING_MATCH_GENERAL",
-  defaultConfidence: 0.8,
-  adapt(raw, ctx) {
-    const b = { check: "sanctions" as const, version: "0.1.0", ctx };
-    const early = guard(b, raw);
-    if (early) return early;
-    const matched = pickBool(raw, "matched");
-    if (matched === undefined) return unknown(b, "missing_matched");
-    const score = pickNumber(raw, "match_score", 0, 1);
-    return finding(b, {
-      status: matched ? "FAIL" : "PASS",
-      severity: matched ? 3 : 0,
-      ...(typeof score === "number" ? { metric: "match_score", value: score, unit: "fraction" } : {}),
-      confidence: confidenceOf(raw, 0.8),
-      notes: [matched ? "sanctions_match" : "no_match"],
-    });
-  },
-};
+/**
+ * SANCTIONS_SCREENING_MATCH: matched bool (name screening). From 0.2.0 it also
+ * reads on_list, the OFAC SDN Entity Screen miner's field in the native form.
+ */
+function sanctionsAdapter(version: string, fields: readonly string[]): Adapter {
+  const defaultConfidence = 0.8;
+  return {
+    check: "sanctions",
+    version,
+    intent: "SANCTIONS_SCREENING_MATCH_GENERAL",
+    defaultConfidence,
+    adapt(raw, ctx) {
+      const b = { check: "sanctions" as const, version, ctx };
+      const early = guard(b, raw);
+      if (early) return early;
+      let matched: boolean | undefined;
+      for (const f of fields) {
+        matched = pickBool(raw, f);
+        if (matched !== undefined) break;
+      }
+      if (matched === undefined) return unknown(b, "missing_matched");
+      const score = pickNumber(raw, "match_score", 0, 1);
+      return finding(b, {
+        status: matched ? "FAIL" : "PASS",
+        severity: matched ? 3 : 0,
+        ...(typeof score === "number" ? { metric: "match_score", value: score, unit: "fraction" } : {}),
+        confidence: confidenceOf(raw, defaultConfidence),
+        notes: [matched ? "sanctions_match" : "no_match"],
+      });
+    },
+  };
+}
+
+export const sanctions = sanctionsAdapter("0.2.0", ["matched", "on_list"]);
 
 /**
  * SMART_CONTRACT_AUDIT has no response format on the network, so this adapter
@@ -325,6 +349,13 @@ export const contractAudit: Adapter = {
   },
 };
 
+/** Superseded versions stay registered so verdicts stored with them still replay. */
+const SUPERSEDED: readonly Adapter[] = [
+  sanctionsAdapter("0.1.0", ["matched"]),
+  metricAdapter("liquidity_depth", "LIQUIDITY_DEPTH_VERIFY_GENERAL", ["liquidity_usd"], 0, 1e12, "USD", "0.1.0"),
+];
+
+/** Current adapters, one per check. Never edit a published version: add a new one. */
 export const ADAPTERS: readonly Adapter[] = [
   contractAudit,
   holderConcentration,
@@ -336,8 +367,12 @@ export const ADAPTERS: readonly Adapter[] = [
   codeReview,
 ];
 
+export const ALL_ADAPTER_VERSIONS: readonly Adapter[] = [...ADAPTERS, ...SUPERSEDED];
+
+/** The current adapter for a check, or a specific (possibly superseded) version. */
 export function adapterFor(check: Check, version?: string): Adapter {
-  const a = ADAPTERS.find((x) => x.check === check && (version === undefined || x.version === version));
+  const pool = version === undefined ? ADAPTERS : ALL_ADAPTER_VERSIONS;
+  const a = pool.find((x) => x.check === check && (version === undefined || x.version === version));
   if (!a) throw new Error(`no adapter for ${check}${version ? `@${version}` : ""}`);
   return a;
 }
