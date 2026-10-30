@@ -70,6 +70,20 @@ DATABASE_URL=postgres://… pnpm --filter @skein/api partner:add "Team name" 2  
 PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --social <handle>
 ```
 
+## Deployed
+
+| Service | Host | URL |
+|---|---|---|
+| Web app | Netlify | https://skein-web.netlify.app |
+| API | Railway (Docker, `railway.json`) | https://api-production-9396.up.railway.app |
+| Postgres | Railway | private network only |
+
+The API redeploys on every push to the branch. The web app is a manual
+upload for now: copy `apps/web` without `node_modules`, `.next` and `test/`,
+then run Netlify's deploy command from that copy. Connecting the repo to
+Netlify (Project configuration → Build & deploy, base directory `apps/web`)
+makes it redeploy on push.
+
 ## How a verdict is decided
 
 The rows are evaluated in order, and the first one that matches decides the

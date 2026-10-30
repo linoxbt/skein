@@ -105,6 +105,13 @@ client now aborts with its own `setTimeout`, cleared after each call.
   replica.
 - **Partner keys:** stored as SHA-256 of a 256-bit random key, not argon2. Argon2
   protects low-entropy passwords; a random key needs no slow hash.
+- **Web hosting:** Netlify (`skein-web.netlify.app`), not Vercel. Neither
+  Vercel's nor a second Railway service was available: Vercel's GitHub app
+  can't see the repo, and Railway's free plan allows no third service.
+  `apps/web` has no workspace dependencies, so it is uploaded on its own
+  (without `test/`) and built on Netlify with the Next.js runtime plugin. It
+  is not connected to Git yet, so a push does not redeploy it. The Dockerfile
+  (standalone, `BUILD_STANDALONE=1`) stays for any container host.
 - **Default policy on the deployed service:** dex-list (`DEFAULT_POLICY`).
   cex-standard is refused until a miner supplies holder concentration (L2).
 

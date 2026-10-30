@@ -7,7 +7,7 @@ COPY apps/web ./apps/web
 RUN pnpm install --frozen-lockfile --filter "@skein/web..."
 # Inlined into the client bundle at build time.
 ARG NEXT_PUBLIC_SKEIN_API
-ENV NEXT_PUBLIC_SKEIN_API=$NEXT_PUBLIC_SKEIN_API NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_SKEIN_API=$NEXT_PUBLIC_SKEIN_API NEXT_TELEMETRY_DISABLED=1 BUILD_STANDALONE=1
 RUN pnpm --filter @skein/web build
 
 FROM node:22.20.0-slim
