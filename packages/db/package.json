@@ -1,0 +1,24 @@
+{
+  "name": "@skein/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Postgres schema, migrations and the verdict store.",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@skein/engine": "workspace:*",
+    "drizzle-orm": "0.45.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.9",
+    "@skein/pipeline": "workspace:*",
+    "@skein/policies": "workspace:*",
+    "@skein/telegraph": "workspace:*",
+    "drizzle-kit": "0.31.11"
+  }
+}
