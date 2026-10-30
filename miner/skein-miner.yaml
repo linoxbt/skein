@@ -25,7 +25,27 @@ endpoints:
   - path: /verdict
     external_path: /miner/verdict
     method: POST
-    description: Listing verdict for one token
+    description: >
+      Listing verdict for one EVM token under a named policy. Returns
+      APPROVE, REJECT, ESCALATE or ABSTAIN with reason codes, risk and
+      confidence in basis points, and the Merkle root of the paid inputs.
+    intents: [FRAUD_RISK_TOKEN_LISTING]
+    params:
+      body:
+        required:
+          - name: token
+            type: string
+            intents: ["*"]
+            description: "ERC-20 contract address, 0x-prefixed, 40 hex characters."
+          - name: chain
+            type: string
+            intents: ["*"]
+            description: "Chain of the token: one of ethereum, base, bsc, arbitrum."
+        optional:
+          - name: policy
+            type: string
+            intents: ["*"]
+            description: "Policy id and version, e.g. cex-standard@1.0.0. Defaults to the latest cex-standard."
 semantics:
   signal_mapping:
     confidence_field: confidence
@@ -33,17 +53,7 @@ semantics:
     reason_field: summary
   supported_intents:
     - FRAUD_RISK_TOKEN_LISTING
-# The live intents declare their own on-chain layout (onchain.request /
-# onchain.response, "served_by"), so this block must match whatever response
-# format the intent proposal is approved with. Under Plan B on
-# FRAUD_RISK_GENERAL the layout is a single enum string (risk_level) instead.
-on_chain:
-  transform: direct
-  min_price_usdc: 0.25
-  fields:
-    integers:
-      - { index: 0, name: verdict_code, source_path: verdict_code } # 0 ABSTAIN, 1 APPROVE, 2 ESCALATE, 3 REJECT
-      - { index: 1, name: risk_bps, source_path: risk_bps }
-      - { index: 2, name: confidence_bps, source_path: confidence_bps }
-    strings:
-      - { index: 0, name: bom_root, source_path: bom.root }
+# No on_chain block: since V2 the node builds job requests and callbacks from
+# the intent's own layout, so the intent proposal defines what a contract sees
+# (verdict_code, risk_bps, confidence_bps, bom_root). The price floor is the
+# registerMiner MIN_PRICE argument (0.25 USDC = 250000).

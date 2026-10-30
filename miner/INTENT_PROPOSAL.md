@@ -4,6 +4,12 @@ Draft for `proposeIntent(...)` (Plan A). It is written in the style of the live
 intent descriptions, which give a positive example and a "Not:" example that
 names the neighbouring intent.
 
+`FRAUD_RISK` is a judgment prefix, so the name is valid and the spec argument
+is empty: `(0,0,0,[],"","","","","")`. A proposal posts a $1 bond in MACHINA
+(read `intentProposalParams()`), released on approval, rejection or withdrawal.
+After approval the intent still needs a request and response format, or answers
+come back raw and on-chain jobs fail; the tables below are what to ask for.
+
 ## Description
 
 Query asks whether a specific EVM token contract is fit to be listed (on an

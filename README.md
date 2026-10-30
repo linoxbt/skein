@@ -9,9 +9,14 @@ and code review), fuses them with deterministic rules, and returns APPROVE,
 REJECT, ESCALATE or ABSTAIN. Each verdict comes with reasons, the risks still
 open, confidence, cost and a verifiable bill of materials.
 
-> Status: week 0 of the build (Oct 29–31). The decision engine, policies and
-> network facts are built and tested. The API, worker, web app and Skein Desk come
-> next. No event-period transactions have been made.
+> Status: week 0 of the build (Oct 29–31). Built and tested so far:
+> - the decision engine and policies
+> - the escrow-paying Telegraph client
+> - the purchaser pipeline, the `pnpm verdict` / `pnpm repro` CLI, and the
+>   Postgres store
+>
+> The API, worker, web app and Skein Desk come next. No paid call has been made;
+> the client refuses to pay before the season opens on Nov 1 (UTC).
 
 ## Layout
 
@@ -20,7 +25,10 @@ packages/
   engine/     planner, adapters, scoring, reconcile, decide, seal, reproduce
               (pure TypeScript, no network calls)
   policies/   versioned YAML policies, immutable once published (policies.lock.json)
-  telegraph/  intent map, provider families, miner allowlist, catalogue snapshot
+  telegraph/  network config, escrow-paying client, intent map, provider families,
+              miner allowlist, catalogue snapshot, and a fake node for tests
+  pipeline/   request builders, purchaser, runVerdict(); the verdict and repro CLIs
+  db/         Drizzle schema and migrations (append-only evidence, RLS), verdict store
 miner/        draft skein-miner.yaml, validate.sh, intent proposal
 eval/         labelled-set protocol (point-in-time)
 docs/         DECISIONS.md: deviations from the build spec and live-network findings
@@ -36,6 +44,13 @@ pnpm typecheck
 pnpm test                      # unit, adapter-contract and property tests
 FC_RUNS=20000 pnpm --filter @skein/engine exec vitest run test/properties.test.ts --testTimeout=300000
 pnpm policies:lock             # record a newly published policy version
+
+# One verdict. Without --live it is SIMULATED (canned answers, labelled, never evidence).
+pnpm verdict --chain 8453 --token 0x4200000000000000000000000000000000000006 --scenario conflict
+pnpm repro out/verdicts/<file>.json   # re-run adapters and engine; exit 1 on any mismatch
+
+# Live, from Nov 1: a burner key with test USDC deposited in escrow.
+PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --social <handle>
 ```
 
 ## How a verdict is decided
@@ -67,5 +82,9 @@ not investment advice.
 
 ## Disclosures
 
-Reused libraries: `zod`, `@noble/hashes`, `yaml`, `vitest`, `fast-check`,
-`turbo`, `tsx`. No templates were used.
+Reused libraries: `zod`, `@noble/hashes`, `yaml`, `viem`, `drizzle-orm`,
+`drizzle-kit`, `@electric-sql/pglite` (tests), `vitest`, `fast-check`, `turbo` and
+`tsx`. No templates were used.
+
+Non-Telegraph lookups: DexScreener's public token endpoint, used only to find a
+token's main pool. The liquidity figure itself is bought through Telegraph.
