@@ -82,6 +82,10 @@ export interface PolicyDoc {
     optional: string[];
     weights: Record<string, number>;
     conflicts: { code: string; detail: string; when: { check: string; status: Status }[] }[];
+    blockers?: { check: string; status: Status; minSeverity?: number }[];
+    thresholds?: Record<string, { warn: number; fail: number; field: string }>;
+    decision?: { approve_below_risk_bps: number; reject_above_risk_bps: number; min_coverage: number; min_confidence: number };
+    budget?: { max_usdc: number };
   };
 }
 

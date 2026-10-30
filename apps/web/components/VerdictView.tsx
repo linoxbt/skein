@@ -4,7 +4,7 @@ import { short, usd } from "@/lib/api";
 import type { GraphNode, GraphState } from "@/lib/graph";
 import type { Bom, VerdictObject } from "@/lib/types";
 import { ThreadGraph } from "./ThreadGraph";
-import { CornerCard, JsonPane, ReceiptChip, StatusDot, Tabs, VerdictBadge } from "./ui";
+import { CornerCard, JsonPane, ReceiptChip, StatusDot, Tabs } from "./ui";
 
 const label = (c: string) => c.replace(/_/g, " ");
 
@@ -20,7 +20,7 @@ function value(n: GraphNode) {
 export function NodePanel({ node, verdictId }: { node: GraphNode | null; verdictId?: string }) {
   if (!node) {
     return (
-      <CornerCard className="text-[12px] text-muted">
+      <CornerCard className="font-mono text-[12px] text-muted">
         Select a thread to see its receipt, miner, price, latency and answer.
       </CornerCard>
     );
@@ -42,8 +42,8 @@ export function NodePanel({ node, verdictId }: { node: GraphNode | null; verdict
   ];
   return (
     <CornerCard>
-      <div className="mb-3 font-sans text-[16px] uppercase tracking-wide">{label(node.check)}</div>
-      <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+      <div className="mb-4 font-mono text-[14px] uppercase tracking-wider text-thread">{label(node.check)}</div>
+      <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-2 font-mono text-[12px]">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">
             <dt className="text-muted">{k}</dt>
@@ -105,7 +105,7 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
       <div className="pt-4">
         {tab === "findings" ? (
           <div className="space-y-4">
-            <ul className="space-y-1 text-[12px]">
+            <ul className="space-y-2 font-mono text-[13px]">
               {v.reasons.map((r, i) => (
                 <li key={i} className="flex gap-3">
                   <code className="shrink-0 text-thread">{r.code}</code>
@@ -121,7 +121,7 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
               </div>
             ) : null}
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-[12px]">
+            <table className="w-full min-w-[640px] text-left font-mono text-[13px]">
               <thead className="text-muted">
                 <tr><th className="py-1 font-normal">check</th><th className="font-normal">status</th><th className="font-normal">severity</th><th className="font-normal">value</th><th className="font-normal">confidence</th><th className="font-normal">source</th></tr>
               </thead>
@@ -146,7 +146,7 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
             <div className="text-[12px] text-muted">
               BOM root <ReceiptChip hash={v.bom.root} href={`/verify?id=${v.id}`} /> · {v.bom.items} receipts
             </div>
-            <table className="w-full min-w-[720px] text-left text-[12px]">
+            <table className="w-full min-w-[720px] text-left font-mono text-[13px]">
               <thead className="text-muted">
                 <tr><th className="py-1 font-normal">check</th><th className="font-normal">miner</th><th className="font-normal">receipt</th><th className="font-normal">signal</th><th className="font-normal">price</th><th className="font-normal">latency</th><th className="font-normal">result</th></tr>
               </thead>
@@ -167,7 +167,7 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
           </div>
         ) : null}
         {tab === "cost" ? (
-          <dl className="grid max-w-md grid-cols-[1fr_auto] gap-y-2 text-[12px]">
+          <dl className="grid max-w-md grid-cols-[1fr_auto] gap-y-3 font-mono text-[13px]">
             <dt className="text-muted">upstream (paid inputs)</dt><dd className="text-knot">{usd(v.cost.upstreamUsdc)}</dd>
             <dt className="text-muted">price of this verdict</dt><dd>{usd(v.cost.priceUsdc)}</dd>
             <dt className="text-muted">receipts billed</dt><dd>{bom?.lines.filter((l) => l.billed).length ?? v.bom.items}</dd>
@@ -181,18 +181,28 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
   );
 }
 
-export function VerdictHeader({ v }: { v: VerdictObject }) {
+const VCOLOR: Record<string, string> = {
+  APPROVE: "var(--color-approve)",
+  REJECT: "var(--color-reject)",
+  ESCALATE: "var(--color-escalate)",
+  ABSTAIN: "var(--color-abstain)",
+};
+
+export function VerdictHeader({ v, size = "md" }: { v: VerdictObject; size?: "md" | "xl" }) {
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <VerdictBadge verdict={v.verdict} size="lg" />
-        <code className="text-[12px] text-muted">{v.id}</code>
-        <span className="text-[12px] text-muted">{v.policy.id}@{v.policy.version}</span>
-        {v.cached ? <span className="text-[12px] text-thread">cached</span> : null}
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3 font-mono text-[12px] text-muted">
+        <span className="tag tag-dark">{v.policy.id}@{v.policy.version}</span>
+        <span>{v.id}</span>
+        {v.cached ? <span className="text-thread">cached</span> : null}
+        <span>{new Date(v.createdAt).toUTCString()}</span>
       </div>
-      <p className="font-sans text-[16px]">{v.summary}</p>
-      <div className="text-[12px] text-muted">
-        <code className="break-all">{v.subject.token}</code> on chain {v.subject.chainId} · {new Date(v.createdAt).toLocaleString()} · hash <code title={v.verdictHash}>{short(v.verdictHash)}</code>
+      <h2 className={`display ${size === "xl" ? "text-[72px] md:text-[160px]" : "text-[56px] md:text-[96px]"}`} style={{ color: VCOLOR[v.verdict] }}>
+        {v.verdict.charAt(0) + v.verdict.slice(1).toLowerCase()}
+      </h2>
+      <p className="statement max-w-4xl text-[22px] md:text-[30px]">{v.summary}</p>
+      <div className="font-mono text-[12px] text-muted">
+        <code className="break-all">{v.subject.token}</code> · chain {v.subject.chainId} · verdict hash <code title={v.verdictHash}>{short(v.verdictHash)}</code>
       </div>
     </div>
   );
