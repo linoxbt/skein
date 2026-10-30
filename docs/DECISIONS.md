@@ -93,6 +93,21 @@ read the native fields of two allowlisted miners (L11).
 process with nothing else pending exited mid-verdict while a miner hung. The
 client now aborts with its own `setTimeout`, cleared after each call.
 
+**D11. Hosting deviations for the hackathon build.**
+- **Database:** Railway Postgres, not Supabase. The Supabase org's free plan
+  allows 2 active projects and both slots were in use. The schema has no
+  Supabase-specific parts (RLS and the browser-role revokes apply wherever the
+  roles exist), so moving means changing `DATABASE_URL`, plus `DATABASE_CA_CERT`
+  for Supabase's TLS root.
+- **Background runs:** verdicts run in-process in the API, with SSE from a
+  per-run buffer, instead of a separate pg-boss worker. At one replica this is
+  simpler and loses nothing. The worker split comes when there is a second
+  replica.
+- **Partner keys:** stored as SHA-256 of a 256-bit random key, not argon2. Argon2
+  protects low-entropy passwords; a random key needs no slow hash.
+- **Default policy on the deployed service:** dex-list (`DEFAULT_POLICY`).
+  cex-standard is refused until a miner supplies holder concentration (L2).
+
 ## What the live node said (2026-10-30)
 
 Snapshot: `packages/telegraph/snapshots/2026-10-30.json`. Re-check all of this on Nov 1.

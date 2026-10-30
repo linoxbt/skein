@@ -15,7 +15,9 @@ open, confidence, cost and a verifiable bill of materials.
 > - the purchaser pipeline, the `pnpm verdict` / `pnpm repro` CLI, and the
 >   Postgres store
 >
-> The API, worker, web app and Skein Desk come next. No paid call has been made;
+> - the HTTP API (deploys to Railway from `railway.json`)
+>
+> The web app and Skein Desk come next. No paid call has been made;
 > the client refuses to pay before the season opens on Nov 1 (UTC).
 
 ## Layout
@@ -29,6 +31,9 @@ packages/
               miner allowlist, catalogue snapshot, and a fake node for tests
   pipeline/   request builders, purchaser, runVerdict(); the verdict and repro CLIs
   db/         Drizzle schema and migrations (append-only evidence, RLS), verdict store
+apps/
+  api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
+              /v1/status, /v1/ledger, /v1/policies, /miner/verdict; Dockerfile
 miner/        draft skein-miner.yaml, validate.sh, intent proposal
 eval/         labelled-set protocol (point-in-time)
 docs/         DECISIONS.md: deviations from the build spec and live-network findings
@@ -48,6 +53,10 @@ pnpm policies:lock             # record a newly published policy version
 # One verdict. Without --live it is SIMULATED (canned answers, labelled, never evidence).
 pnpm verdict --chain 8453 --token 0x4200000000000000000000000000000000000006 --scenario conflict
 pnpm repro out/verdicts/<file>.json   # re-run adapters and engine; exit 1 on any mismatch
+
+# API (needs Postgres). Migrations run on start.
+DATABASE_URL=postgres://… pnpm --filter @skein/api start
+DATABASE_URL=postgres://… pnpm --filter @skein/api partner:add "Team name" 2   # prints a key once
 
 # Live, from Nov 1: a burner key with test USDC deposited in escrow.
 PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --social <handle>
