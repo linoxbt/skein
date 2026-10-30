@@ -152,7 +152,7 @@ export class VerdictService {
         await saveVerdictRun(this.db, run, {
           id: req.id,
           channel: req.channel,
-          network: this.deps.config.network.caip2,
+          network: this.deps.config.networkLabel ?? this.deps.config.network.caip2,
           priceUusdc: this.deps.config.priceUusdc,
           durationMs: this.now().getTime() - started,
           createdAt: this.now(),

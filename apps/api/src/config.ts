@@ -14,6 +14,10 @@ export interface ApiConfig {
   minerAuthKey?: string;
   allowPreSeason: boolean;
   defaultPolicy: string;
+  /** Origins allowed to call the API from a browser. */
+  webOrigins: string[];
+  /** Shown instead of the CAIP-2 id, e.g. "simulated" for the local dev stack. */
+  networkLabel?: string;
 }
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -32,5 +36,7 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     ...(env.MINER_AUTH_KEY ? { minerAuthKey: env.MINER_AUTH_KEY } : {}),
     allowPreSeason: env.ALLOW_PRE_SEASON === "true",
     defaultPolicy: env.DEFAULT_POLICY || "cex-standard",
+    webOrigins: (env.WEB_ORIGINS || "http://localhost:3000").split(",").map((o) => o.trim()).filter(Boolean),
+    ...(env.NETWORK_LABEL ? { networkLabel: env.NETWORK_LABEL } : {}),
   };
 }

@@ -36,7 +36,7 @@ export async function verdictObject(db: Db, id: string) {
     engineVersion: v.engineVersion,
     verdictHash: v.verdictHash,
     channel: v.channel,
-    network: v.network.startsWith("eip155:11155111") ? "testnet" : v.network,
+    network: v.network === "eip155:11155111" ? "testnet" : v.network,
     createdAt: v.createdAt.toISOString(),
     durationMs: v.durationMs,
     disclaimer: "Risk evidence, not investment advice.",

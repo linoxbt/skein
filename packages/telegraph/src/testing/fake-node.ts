@@ -10,7 +10,7 @@ import { fillTemplate, MAX_WINDOW_SEC, type Authorization } from "../escrow";
  */
 
 export type Behaviour =
-  | { kind: "answer"; result: unknown; resultShape?: "intent" | "raw"; status?: number }
+  | { kind: "answer"; result: unknown; resultShape?: "intent" | "raw"; status?: number; delayMs?: number }
   | { kind: "status"; status: number; body?: unknown }
   | { kind: "hang" };
 
@@ -117,6 +117,7 @@ export class FakeNode {
       return new Response(JSON.stringify(b.body ?? { error: "upstream failure" }), { status: b.status });
     }
     if (b.kind !== "answer") throw new Error("unreachable");
+    if (b.delayMs) await new Promise((r) => setTimeout(r, b.delayMs));
     const receiptHash = keccak256(toHex(`${a.from}:${a.nonce}`));
     this.charges.push({ minerId, payer: a.from, amountUusdc: this.price, receiptHash, nonce: a.nonce });
     const receipt = {

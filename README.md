@@ -16,8 +16,9 @@ open, confidence, cost and a verifiable bill of materials.
 >   Postgres store
 >
 > - the HTTP API (deploys to Railway from `railway.json`)
+> - the web app (console with the live Exploded View, verdict pages, verify, ledger, status)
 >
-> The web app and Skein Desk come next. No paid call has been made;
+> Skein Desk comes next. No paid call has been made;
 > the client refuses to pay before the season opens on Nov 1 (UTC).
 
 ## Layout
@@ -34,6 +35,8 @@ packages/
 apps/
   api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
               /v1/status, /v1/ledger, /v1/policies, /miner/verdict; Dockerfile
+  web/        Next.js 15 console: live Exploded View, verdict pages, verify, policies,
+              ledger, status, integrate; Dockerfile (standalone) or Vercel
 miner/        draft skein-miner.yaml, validate.sh, intent proposal
 eval/         labelled-set protocol (point-in-time)
 docs/         DECISIONS.md: deviations from the build spec and live-network findings
@@ -53,6 +56,11 @@ pnpm policies:lock             # record a newly published policy version
 # One verdict. Without --live it is SIMULATED (canned answers, labelled, never evidence).
 pnpm verdict --chain 8453 --token 0x4200000000000000000000000000000000000006 --scenario conflict
 pnpm repro out/verdicts/<file>.json   # re-run adapters and engine; exit 1 on any mismatch
+
+# Local stack, no accounts: the real API on PGlite + a fake Telegraph node (all SIMULATED).
+pnpm dev:api                   # http://localhost:8787, partner key sk_dev_local_simulated
+NEXT_PUBLIC_SKEIN_API=http://localhost:8787 pnpm dev:web   # http://localhost:3000
+# In the console: a token ending in "c" shows the conflict; the rest are clean.
 
 # API (needs Postgres). Migrations run on start.
 DATABASE_URL=postgres://… pnpm --filter @skein/api start
