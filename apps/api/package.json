@@ -28,5 +28,8 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",
     "@types/pg": "8.23.1"
+  },
+  "exports": {
+    "./simulated": "./src/simulated.ts"
   }
 }

@@ -4,6 +4,7 @@ import { TelegraphClient, viemSigner } from "@skein/telegraph";
 import { createApp } from "./app";
 import { configFromEnv } from "./config";
 import { connect, runMigrations } from "./db";
+import { parseSeedConsumers, seedConsumers } from "./seed";
 import { VerdictService } from "./service";
 
 const config = configFromEnv();
@@ -11,6 +12,8 @@ const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is required");
 const { db, pool } = connect(url);
 await runMigrations(pool);
+const seeded = await seedConsumers(db, parseSeedConsumers(process.env.SEED_CONSUMERS));
+if (seeded.length) console.log(`seeded consumers: ${seeded.join(", ")}`);
 
 const key = process.env.PURCHASER_PRIVATE_KEY as `0x${string}` | undefined;
 const signer = key ? viemSigner(key) : undefined;

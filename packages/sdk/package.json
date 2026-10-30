@@ -1,0 +1,18 @@
+{
+  "name": "@skein/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript client for Skein listing verdicts: verdict(), quote(), verify(), stream(), typed errors, retries and a spend cap. No runtime dependencies.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@skein/api": "workspace:*",
+    "@skein/telegraph": "workspace:*"
+  }
+}

@@ -114,6 +114,37 @@ client now aborts with its own `setTimeout`, cleared after each call.
   (standalone, `BUILD_STANDALONE=1`) stays for any container host.
 - **Default policy on the deployed service:** dex-list (`DEFAULT_POLICY`).
   cex-standard is refused until a miner supplies holder concentration (L2).
+- **Partner keys without database access:** Railway Postgres is reachable only
+  on Railway's private network, so the API seeds consumers at start from
+  `SEED_CONSUMERS` (`name|kind|sha256|capUsdc`). Only the key's hash is ever
+  in the environment, and a seeded consumer is inserted once.
+
+**D12. Skein Desk is a pure consumer.** Desk (`apps/desk`) talks to Skein only
+through `@skein/sdk`, as an outside team would, and keeps its own state (Netlify
+Blobs in production, a folder in dev). It never reads Skein's database.
+- **Serverless, so no long waits:** a new application submits its verdict at
+  once (`submit()`), waits up to 8 s for the seal (`wait()`), and otherwise
+  stays in Incoming. The board's polling and a scheduled function every minute
+  settle it. Nothing needs a person to move.
+- **Never pays twice:** on the partner-key rail, each application has one
+  idempotency key (`desk-<application id>`), so a retried or repeated attempt
+  returns the original verdict. On the Telegraph rail a paid ask cannot be
+  replayed, so an ask that does not come back in 3 minutes goes to an analyst
+  and is never retried.
+- **Rail today:** a Skein partner key, which costs nothing during the
+  hackathon, so the Desk's cost per decision reads $0.00 while the evidence
+  behind each decision is shown separately. The Telegraph rail (the Nov 14
+  milestone) is built and tested against the fake node, and is switched on
+  once Skein's miner is registered.
+- **The exchange is fictional** (Halyard Exchange), and the Desk says on every
+  page that the same team built it and that it is one consumer among several.
+
+**D13. SDK and MCP.** `@skein/sdk` has no runtime dependencies. Its Telegraph
+payer takes any client with an `ask()` (for example `TelegraphClient`), so
+viem is not forced on browser users. `@skein/mcp` uses the official MCP
+TypeScript SDK (1.32.1). It pays inside the server with a per-call cap
+(enforced by the SDK before paying) and a per-session cap. Both are tested
+against the real API in-process (`@skein/api/simulated`).
 
 ## What the live node said (2026-10-30)
 

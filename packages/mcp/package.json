@@ -1,0 +1,27 @@
+{
+  "name": "@skein/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Skein as an MCP tool for LLM agents (stdio): skein_verdict, skein_quote, skein_verify, with a per-call and per-session spend cap.",
+  "exports": {
+    ".": "./src/server.ts"
+  },
+  "bin": {
+    "skein-mcp": "./bin/skein-mcp.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "tsx bin/skein-mcp.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@skein/sdk": "workspace:*",
+    "@skein/telegraph": "workspace:*",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@skein/api": "workspace:*"
+  }
+}
