@@ -6,6 +6,7 @@ import { getPolicy, listPolicies } from "@skein/policies";
 import { CHECK_INTENTS, SEASON_START, SERVED_INTENTS } from "@skein/telegraph";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
+import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { ApiError, errorResponse } from "./errors";
@@ -93,6 +94,17 @@ export function createApp(service: VerdictService) {
   const limiter = new RateLimiter(30);
   const inflight = new Map<string, string>();
   const app = new Hono();
+
+  app.use(
+    "*",
+    cors({
+      origin: (origin) => (config.webOrigins.includes(origin) ? origin : null),
+      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowHeaders: ["authorization", "content-type", "idempotency-key"],
+      exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After"],
+      maxAge: 600,
+    }),
+  );
 
   app.onError((err, c) => {
     if (err instanceof ApiError) return errorResponse(c, err);
@@ -299,8 +311,8 @@ export function createApp(service: VerdictService) {
   app.get("/v1/status", async (c) => {
     const now = Date.now();
     return c.json({
-      network: config.network.caip2,
-      node: config.network.nodeUrl,
+      network: config.networkLabel ?? config.network.caip2,
+      node: config.networkLabel === "simulated" ? "local fake node" : config.network.nodeUrl,
       preSeason: now < SEASON_START && !config.allowPreSeason,
       payer: service.deps.payerAddress ?? null,
       catalogueFetchedAt: service.catalogue.fetchedAt,
@@ -320,7 +332,7 @@ export function createApp(service: VerdictService) {
     const [miners] = await db.select({ n: sql<string>`count(distinct ${schema.purchases.minerId})` }).from(schema.purchases);
     const recent = await db.select({ id: schema.verdicts.id, verdict: schema.verdicts.verdict, createdAt: schema.verdicts.createdAt }).from(schema.verdicts).orderBy(desc(schema.verdicts.createdAt)).limit(10);
     return c.json({
-      network: config.network.caip2,
+      network: config.networkLabel ?? config.network.caip2,
       verdicts: Object.fromEntries(byVerdict.map((r) => [r.verdict, r.n])),
       upstreamSpendUsdc: usdc(Number(spend?.s ?? 0)),
       receipts: spend?.receipts ?? 0,

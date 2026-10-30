@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* Design tokens, build spec section 11. Gold is reserved for the verdict and its cost. */
+@theme {
+  --color-bg: #07090b;
+  --color-surface: #0d1114;
+  --color-surface-2: #131a1f;
+  --color-line: #1e282f;
+  --color-text: #e6edf0;
+  --color-muted: #7c8b94;
+  --color-thread: #2ee6c8;
+  --color-knot: #f2b84b;
+  --color-approve: #3ddc84;
+  --color-reject: #ff5d5d;
+  --color-escalate: #f2b84b;
+  --color-abstain: #8a96a3;
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 2px;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+body {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 1px solid var(--color-thread);
+  outline-offset: 2px;
+}
+
+/* Signature card: 1px line border with 10px corner brackets in thread at 60%; solid on hover. */
+.corner-card {
+  position: relative;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  border-radius: 2px;
+}
+.corner-card::before,
+.corner-card::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: color-mix(in srgb, var(--color-thread) 60%, transparent);
+  border-style: solid;
+  pointer-events: none;
+  transition: border-color 150ms;
+}
+.corner-card::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+.corner-card::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+}
+.corner-card:hover::before,
+.corner-card:hover::after {
+  border-color: var(--color-thread);
+}
+
+/* Threads draw in as their answer lands. */
+/* --len is the path's own length, set inline (Chromium ignores pathLength for CSS dash values). */
+@keyframes thread-draw {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.thread-draw {
+  stroke-dashoffset: 0;
+  animation: thread-draw 700ms ease-out both;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fade-in {
+  animation: fade-in 500ms ease-out both;
+}
+@keyframes pulse-dim {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+.pending {
+  animation: pulse-dim 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-draw,
+  .fade-in,
+  .pending {
+    animation: none;
+  }
+}
