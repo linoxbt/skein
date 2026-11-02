@@ -29,9 +29,6 @@ export const IconReceipt = (p: P) => (
 export const IconReplay = (p: P) => (
   <svg {...base(p)}><path d="M4 12a8 8 0 1 0 3-6.2" /><path d="M4 3v5h5" /><path d="M10 9l5 3-5 3z" /></svg>
 );
-export const IconShield = (p: P) => (
-  <svg {...base(p)}><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>
-);
 export const IconTerminal = (p: P) => (
   <svg {...base(p)}><rect x="3" y="4" width="18" height="16" /><path d="M7 9l3 3-3 3M12 15h5" /></svg>
 );
@@ -43,9 +40,6 @@ export const IconPulse = (p: P) => (
 );
 export const IconLedger = (p: P) => (
   <svg {...base(p)}><rect x="4" y="3" width="16" height="18" /><path d="M8 7h8M8 11h8M8 15h5" /></svg>
-);
-export const IconPolicy = (p: P) => (
-  <svg {...base(p)}><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5" /><path d="M9 13l2 2 4-4" /></svg>
 );
 export const IconPlug = (p: P) => (
   <svg {...base(p)}><path d="M9 3v5M15 3v5" /><path d="M6 8h12v3a6 6 0 0 1-12 0z" /><path d="M12 17v4" /></svg>

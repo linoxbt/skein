@@ -215,6 +215,7 @@ export class VerdictService {
             priceUusdc: config.priceUusdc,
             ...(this.deps.resolver ? { resolver: this.deps.resolver } : {}),
             spend,
+            excludeMinerIds: config.selfRegistrationIds,
             onPurchase: (purchase) => savePurchase(this.db, req.id, purchase),
             deadlineMs: config.verdictDeadlineMs,
             now: this.now,

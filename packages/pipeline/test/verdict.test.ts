@@ -248,3 +248,13 @@ describe("runVerdict spend safety", () => {
     expect(run.ok && run.purchases.filter((p) => p.billing === "paid").every((p) => p.signalStatus === "verified")).toBe(true);
   });
 });
+
+describe("self exclusion", () => {
+  it("never buys from Skein's own registrations", async () => {
+    const { node, deps } = harness();
+    deps.excludeMinerIds = ["7373"];
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(node.charges.map((c) => c.minerId)).not.toContain("7373");
+    expect(run.ok && run.purchases.find((p) => p.check === "liquidity_depth")?.minerId).toBe("72006");
+  });
+});

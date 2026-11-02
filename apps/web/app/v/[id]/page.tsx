@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { Lead, Section } from "@/components/site/Section";
-import { Stripes } from "@/components/site/Stripes";
+import { Lead, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { StatTile } from "@/components/ui";
 import { GraphWithPanel, VerdictHeader, VerdictTabs } from "@/components/VerdictView";
 import { usd } from "@/lib/api";
@@ -11,21 +11,25 @@ import { useVerdict } from "@/lib/useVerdict";
 
 export default function VerdictPage() {
   const { id } = useParams<{ id: string }>();
-  const { v, bom, graph, error, running } = useVerdict(id);
+  const { v, bom, graph, error, running, notFound } = useVerdict(id);
   const [copied, setCopied] = useState(false);
 
-  if (error || running || !v || !graph) {
+  if (notFound || error || running || !v || !graph) {
     return (
       <section className="relative min-h-[70vh] overflow-hidden bg-bg">
         <Stripes seed={21} className="opacity-30" />
         <div className="relative mx-auto max-w-[1400px] px-5 pb-24 pt-40 md:px-10">
           <span className="tag tag-dark">Verdict</span>
           <h1 className="display mt-6 text-[48px] md:text-[96px]">
-            {error ? "Not found." : running ? "Still running." : "Loading…"}
+            {notFound ? "Not found." : error ? "Unavailable." : running ? "Still running." : "Loading…"}
           </h1>
-          {error ? <p className="mt-6 font-mono text-[13px] text-muted">{error}</p> : null}
+          {notFound ? <p className="mt-6 font-mono text-[13px] text-muted">No verdict has the id {id}.</p> : null}
+          {error ? <p className="mt-6 font-mono text-[13px] text-reject">{error}</p> : null}
           {running ? (
-            <Link href="/console" className="btn btn-primary mt-10">Watch it in the console</Link>
+            <>
+              <p className="mt-6 font-mono text-[13px] text-muted">This page refreshes itself when it is sealed.</p>
+              <Link href={`/console?id=${encodeURIComponent(id)}`} className="btn btn-primary mt-10">Watch it in the console</Link>
+            </>
           ) : null}
         </div>
       </section>

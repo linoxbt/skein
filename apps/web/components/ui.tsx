@@ -13,6 +13,14 @@ export const STATUS_COLOR: Record<string, string> = {
   PENDING: "var(--color-line)",
 };
 
+/** For verdict words on paper and mist (each at least 4.5:1 there). */
+export const VERDICT_COLOR_LIGHT: Record<Verdict, string> = {
+  APPROVE: "var(--color-approve-deep)",
+  REJECT: "var(--color-reject-deep)",
+  ESCALATE: "var(--color-knot-deep)",
+  ABSTAIN: "var(--color-abstain-deep)",
+};
+
 export const VERDICT_COLOR: Record<Verdict, string> = {
   APPROVE: "var(--color-approve)",
   REJECT: "var(--color-reject)",
@@ -24,7 +32,6 @@ export const VERDICT_COLOR: Record<Verdict, string> = {
 export function CornerCard({ children, className = "", as: As = "div" }: { children: ReactNode; className?: string; as?: "div" | "section" | "article" }) {
   return <As className={`border border-edge bg-panel p-5 ${className}`}>{children}</As>;
 }
-export const Panel = CornerCard;
 
 export function VerdictBadge({ verdict, size = "md" }: { verdict: Verdict; size?: "md" | "lg" }) {
   return (
@@ -46,20 +53,6 @@ export function StatusDot({ status }: { status: Status | "PENDING" | "SKIPPED" }
       className="inline-block h-2 w-2 shrink-0"
       style={hollow ? { border: `1px solid ${STATUS_COLOR[status]}` } : { background: STATUS_COLOR[status] }}
     />
-  );
-}
-
-export function NetworkPill({ network }: { network: string }) {
-  const simulated = network === "simulated";
-  const label = simulated ? "Simulated · not evidence" : network === "eip155:11155111" || network === "testnet" ? "Telegraph testnet" : network;
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-[12px]"
-      style={{ borderColor: simulated ? "var(--color-escalate)" : "var(--color-line)", color: simulated ? "var(--color-escalate)" : "var(--color-muted)" }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: simulated ? "var(--color-escalate)" : "var(--color-thread)" }} aria-hidden />
-      {label}
-    </span>
   );
 }
 
@@ -112,19 +105,7 @@ export function JsonPane({ value }: { value: unknown }) {
 }
 
 /** The mark: three threads wound into an S, tied off in one gold knot. */
-export function Mark({ size = 22 }: { size?: number }) {
-  const s = "M6 7c0-3 3-4 7-4s7 1.5 7 4.5S16 12 12.5 13 5 15.5 5 19s3.5 4.5 7.5 4.5c2.5 0 4.5-.6 5.5-1.6";
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden>
-      <g fill="none" stroke="var(--color-thread)" strokeLinecap="round" strokeWidth="1.6">
-        <path d={s} transform="translate(-1.6 0)" opacity="0.45" />
-        <path d={s} opacity="0.7" />
-        <path d={s} transform="translate(1.6 0)" />
-      </g>
-      <circle cx="20.5" cy="22.3" r="2.6" fill="var(--color-knot)" />
-    </svg>
-  );
-}
+export { Mark } from "@skein/ui";
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: readonly T[]; value: T; onChange: (t: T) => void }) {
   return (

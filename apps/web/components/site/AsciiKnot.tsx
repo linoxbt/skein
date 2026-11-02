@@ -30,7 +30,7 @@ export function AsciiKnot({ cols = 96, rows = 44 }: { cols?: number; rows?: numb
     lines.push({ text: line, lit });
   }
   return (
-    <pre className="select-none overflow-hidden text-center font-mono text-[7px] leading-[9px] text-[#3c6f66] sm:text-[9px] sm:leading-[12px] md:text-[11px] md:leading-[14px]" aria-hidden>
+    <pre className="select-none overflow-hidden text-center font-mono text-[7px] leading-[9px] text-[#4f8c80] sm:text-[9px] sm:leading-[12px] md:text-[11px] md:leading-[14px]" aria-hidden>
       {lines.map((l, i) => (
         <div key={i}>
           {l.lit.length === 0

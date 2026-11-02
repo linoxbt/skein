@@ -2,21 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { IconClose, IconMenu } from "./Icons";
-
-export function Mark({ size = 22 }: { size?: number }) {
-  const s = "M6 7c0-3 3-4 7-4s7 1.5 7 4.5S16 12 12.5 13 5 15.5 5 19s3.5 4.5 7.5 4.5c2.5 0 4.5-.6 5.5-1.6";
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden>
-      <g fill="none" stroke="var(--color-thread)" strokeLinecap="round" strokeWidth="1.6">
-        <path d={s} transform="translate(-1.6 0)" opacity="0.45" />
-        <path d={s} opacity="0.7" />
-        <path d={s} transform="translate(1.6 0)" />
-      </g>
-      <circle cx="20.5" cy="22.3" r="2.6" fill="var(--color-knot)" />
-    </svg>
-  );
-}
+import { IconClose, IconMenu, Mark, REPO_URL, Wordmark } from "@skein/ui";
 
 const LINKS: [string, string][] = [
   ["/", "Queue"],
@@ -85,16 +71,14 @@ export function Footer() {
             <ul className="space-y-3 text-[15px]">
               <li><a href="https://skein-web.netlify.app" className="hover:text-thread">The verdict service</a></li>
               <li><a href="https://skein-web.netlify.app/docs" className="hover:text-thread">Integrate</a></li>
-              <li><a href="https://github.com/linoxbt/skein/tree/main/apps/desk" className="hover:text-thread">Fork the Desk</a></li>
+              <li><a href={`${REPO_URL}/apps/desk`} className="hover:text-thread">Fork the Desk</a></li>
             </ul>
           </div>
           <p className="text-[14px] text-muted">
             Halyard Exchange is fictional. Skein Desk is the reference consumer of Skein, built by the same team, and one consumer among several.
           </p>
         </div>
-        <div className="mt-20 select-none font-brand text-[22vw] font-medium lowercase leading-[0.8] tracking-[-0.06em] text-panel-2 md:text-[16vw]" aria-hidden>
-          desk
-        </div>
+        <Wordmark word="desk" className="mt-20 block w-full max-w-[1100px]" />
         <div className="mt-8 flex flex-col justify-between gap-3 border-t border-edge pt-6 text-[13px] text-muted md:flex-row">
           <span>Risk evidence, not investment advice.</span>
           <span className="font-mono">Applications in. Decisions out.</span>

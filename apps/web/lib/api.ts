@@ -20,8 +20,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T;
 }
 
-export const getVerdict = (id: string) => call<VerdictObject | { id: string; status: "running" }>(`/v1/verdicts/${id}`);
-export const getBom = (id: string) => call<Bom>(`/v1/verdicts/${id}/bom`);
+export const getVerdict = (id: string) => call<VerdictObject | { id: string; status: "running" }>(`/v1/verdicts/${encodeURIComponent(id)}`);
+export const getBom = (id: string) => call<Bom>(`/v1/verdicts/${encodeURIComponent(id)}/bom`);
 export const getPolicy = (ref: string) => call<PolicyDoc>(`/v1/policies/${encodeURIComponent(ref)}`);
 export const listPolicies = () => call<PolicySummary[]>("/v1/policies");
 export const verify = (id: string) =>

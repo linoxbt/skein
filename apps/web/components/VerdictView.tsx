@@ -120,7 +120,7 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
                 {v.openRisks.join(" · ")}
               </div>
             ) : null}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[640px] text-left font-mono text-[13px]">
               <thead className="text-muted">
                 <tr><th className="py-1 font-normal">check</th><th className="font-normal">status</th><th className="font-normal">severity</th><th className="font-normal">value</th><th className="font-normal">confidence</th><th className="font-normal">source</th></tr>
@@ -142,7 +142,7 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
           </div>
         ) : null}
         {tab === "evidence" ? (
-          <div className="space-y-3 overflow-x-auto">
+          <div className="space-y-3 overflow-x-auto" tabIndex={0}>
             <div className="text-[12px] text-muted">
               BOM root <ReceiptChip hash={v.bom.root} href={`/verify?id=${v.id}`} /> · {v.bom.items} receipts
             </div>

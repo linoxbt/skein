@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Lead, PageHero, Section } from "@/components/site/Section";
-import { Stripes } from "@/components/site/Stripes";
+import { Lead, PageHero, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { StatTile } from "@/components/ui";
 import { getStatus, type Status } from "@/lib/api";
 
@@ -71,7 +71,7 @@ export default function StatusPage() {
                       <code className="block break-all font-mono text-[13px]">{i.intent ?? "no live intent"}</code>
                       <span className="font-mono text-[12px] text-ink-2">{i.activeMiners} active miner{i.activeMiners === 1 ? "" : "s"}</span>
                     </div>
-                    <span className={`inline-flex h-10 items-center gap-2 px-3 font-mono text-[12px] uppercase tracking-wider ${up ? "bg-thread-deep text-white" : "bg-mist text-reject"}`}>
+                    <span className={`inline-flex h-10 items-center gap-2 px-3 font-mono text-[12px] uppercase tracking-wider ${up ? "bg-thread-deep text-white" : "bg-mist text-reject-deep"}`}>
                       <span className={`h-2 w-2 ${up ? "bg-white" : "bg-reject"}`} aria-hidden />
                       {up ? "live" : "missing"}
                     </span>

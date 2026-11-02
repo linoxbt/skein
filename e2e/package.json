@@ -1,0 +1,17 @@
+{
+  "name": "@skein/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser tests of the web app against the simulated API: the console flow, verify, 375 px layout and axe accessibility checks.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "e2e": "tsx smoke.ts"
+  },
+  "devDependencies": {
+    "@hono/node-server": "2.1.5",
+    "@skein/api": "workspace:*",
+    "axe-core": "4.13.0",
+    "playwright": "1.63.0"
+  }
+}

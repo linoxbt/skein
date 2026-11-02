@@ -1,0 +1,15 @@
+{
+  "kind": "example",
+  "cases": [
+    {
+      "id": "example-weth-base",
+      "chainId": 8453,
+      "token": "0x4200000000000000000000000000000000000006",
+      "label": "good",
+      "labelSourceUrl": "https://docs.base.org/docs/base-contracts",
+      "asOfBlock": 1,
+      "split": "tune",
+      "notes": "Format example only. The labelled set (about 90 cases, each with a public source and a point-in-time block) is curated by hand, not generated."
+    }
+  ]
+}

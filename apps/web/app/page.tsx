@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { AsciiKnot } from "@/components/site/AsciiKnot";
-import { IconArrow, IconReceipt, IconReplay, IconSplit, IconStop, IconThreads } from "@/components/site/Icons";
+import { IconArrow, IconReceipt, IconReplay, IconSplit, IconStop, IconThreads } from "@skein/ui";
 import { IsoBuy, IsoDecide, IsoPlan, IsoSeal } from "@/components/site/Iso";
 import { Marquee } from "@/components/site/Marquee";
-import { Lead, Section } from "@/components/site/Section";
-import { Stripes } from "@/components/site/Stripes";
+import { Lead, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { ThreadBurst } from "@/components/site/ThreadBurst";
 import { LatestVerdict, LiveNumbers } from "@/components/landing/Live";
 
@@ -65,9 +65,9 @@ export default function Landing() {
         <p className="statement mb-12 text-center text-[24px] md:text-[30px]">Every input is bought from a ranked Telegraph miner</p>
         <Marquee
           items={INTENTS.map((i) => (
-            <span key={i} className="font-mono text-[18px] tracking-tight text-[#9aa3ab] md:text-[22px]">
+            <span key={i} className="font-mono text-[18px] tracking-tight text-abstain-deep md:text-[22px]">
               {i}
-              <span className="text-[#c7cdd2]">_GENERAL</span>
+              <span className="text-[#6b7680]">_GENERAL</span>
             </span>
           ))}
         />
@@ -78,7 +78,7 @@ export default function Landing() {
         <span className="tag">Listing, rebuilt for autonomous buyers</span>
         <p className="statement mt-8 text-[36px] md:text-[64px] lg:text-[76px]">
           A listing review takes weeks. An agent deciding whether to buy has seconds. Both need the same seven checks, and nobody trusts a black-box score.{" "}
-          <span className="text-[#9aa3ab]">Skein buys every check, shows every receipt, and refuses when the evidence is missing.</span>
+          <span className="text-abstain-deep">Skein buys every check, shows every receipt, and refuses when the evidence is missing.</span>
         </p>
       </Section>
 
@@ -137,7 +137,7 @@ export default function Landing() {
       {/* Live. */}
       <Section tone="dark" inner="py-24 md:py-36">
         <Lead tag="Live from the network" dark />
-        <h2 className="display mt-6 max-w-5xl text-[44px] md:text-[80px]">Nothing on this page is a mock-up.</h2>
+        <h2 className="display mt-6 max-w-5xl text-[44px] md:text-[80px]">These numbers are read live.</h2>
         <div className="mt-16">
           <LiveNumbers />
         </div>

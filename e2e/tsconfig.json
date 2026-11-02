@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "lib": ["dom", "ES2022"] },
+  "include": ["smoke.ts"]
+}

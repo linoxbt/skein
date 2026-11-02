@@ -42,19 +42,26 @@ export function LiveNumbers() {
 
 export function LatestVerdict() {
   const [id, setId] = useState<string | null | undefined>(undefined);
+  const [down, setDown] = useState(false);
   useEffect(() => {
     getLedger()
       .then((l) => setId(l.recent[0]?.id ?? null))
-      .catch(() => setId(null));
+      .catch(() => {
+        setDown(true);
+        setId(null);
+      });
   }, []);
-  const { v, graph } = useVerdict(id ?? undefined);
-  if (id === undefined) return <div className="h-40" />;
+  const { v, graph, error } = useVerdict(id ?? undefined);
+  if (id === undefined || (id && !v && !error)) return <div className="h-40" />;
   if (!id || !v || !graph) {
+    const [title, line] = down || error
+      ? ["The Skein API is not answering.", "The latest verdict will show here when it is back. Nothing on this page is made up to fill the gap."]
+      : ["No verdict has been served yet.", "The first one shows here, live, the moment it is sealed."];
     return (
       <div className="grid gap-8 border border-edge bg-panel p-8 md:grid-cols-[1fr_auto] md:items-center md:p-12">
         <div>
-          <div className="display text-[40px] md:text-[56px]">The first real verdict lands Nov 1.</div>
-          <p className="mt-4 max-w-xl text-muted">Paid Telegraph inputs open when the season does. Until then, every number on this page is read live, and nothing here is simulated.</p>
+          <div className="display text-[40px] md:text-[56px]">{title}</div>
+          <p className="mt-4 max-w-xl text-muted">{line}</p>
         </div>
         <Link href="/console" className="btn btn-primary">Open the console</Link>
       </div>

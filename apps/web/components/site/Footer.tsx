@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { REPO_URL, Wordmark } from "@skein/ui";
 
 const COLS: [string, [string, string][]][] = [
   ["Product/", [["How it works", "/how-it-works"], ["Console", "/console"], ["Verify", "/verify"], ["Policies", "/policies"]]],
   ["Network/", [["Status", "/status"], ["Ledger", "/ledger"], ["Telegraph", "https://docs.telegraphprotocol.com"]]],
-  ["Build/", [["Integrate", "/docs"], ["API reference", "/docs#endpoints"], ["Source", "https://github.com/linoxbt/skein"]]],
+  ["Build/", [["Integrate", "/docs"], ["API reference", "/docs#endpoints"], ["Source", REPO_URL]]],
   ["Hackathon/", [["Telegraph S2", "https://hackathon.telegraphprotocol.com"], ["Mission 01: Exchange", "https://hackathon.telegraphprotocol.com/missions/exchange"], ["Mission 14: DeFi", "https://hackathon.telegraphprotocol.com/missions/web3-defi"]]],
 ];
 
@@ -29,9 +30,7 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <div className="mt-24 select-none font-brand text-[22vw] font-medium lowercase leading-[0.8] tracking-[-0.06em] text-panel-2 md:text-[18vw]" aria-hidden>
-          skein
-        </div>
+        <Wordmark word="skein" className="mt-24 block w-full max-w-[1100px]" />
         <div className="mt-8 flex flex-col justify-between gap-3 border-t border-edge pt-6 text-[13px] text-muted md:flex-row">
           <span>Risk evidence, not investment advice. Payments and registration on the Telegraph testnet.</span>
           <span className="font-mono">One request. Every thread.</span>

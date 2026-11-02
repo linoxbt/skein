@@ -1,7 +1,6 @@
 {
   "name": "@skein/sdk",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "TypeScript client for Skein listing verdicts: verdict(), quote(), verify(), stream(), typed errors, retries and a spend cap. No runtime dependencies.",
   "exports": {
@@ -9,10 +8,32 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --hookTimeout=120000 --testTimeout=120000"
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
+    "build": "tsup"
   },
   "devDependencies": {
     "@skein/api": "workspace:*",
-    "@skein/telegraph": "workspace:*"
+    "@skein/telegraph": "workspace:*",
+    "tsup": "8.5.0",
+    "typescript": "5.9.3"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linoxbt/skein",
+    "directory": "packages/sdk"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    },
+    "types": "./dist/index.d.ts"
   }
 }

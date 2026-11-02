@@ -56,3 +56,27 @@ Metrics: precision and recall on REJECT; the false-APPROVE rate on bad tokens
 (the number that matters most); ESCALATE and ABSTAIN rates; cost per verdict;
 p50 and p95 latency; coverage. Results carry bootstrap confidence intervals and
 say plainly that 30 tokens is a small sample.
+
+## Harness
+
+```sh
+# Buy one live verdict per case (real Telegraph inputs; capped; asks for --live --yes)
+PURCHASER_PRIVATE_KEY=0x… pnpm --filter @skein/eval eval run eval/cases.json --split holdout \
+  --out eval/runs --live --yes --max-total-usdc 5
+
+# Score Skein and the baselines on the stored runs (Markdown, 95% bootstrap intervals)
+pnpm --filter @skein/eval eval report eval/cases.json eval/runs --split holdout
+```
+
+`cases.example.json` shows the format and is marked `"kind": "example"`: the
+report refuses to present example cases as results. The labelled set
+(`cases.json`, about 90 cases, each with a public source URL and an
+`asOfBlock`) is curated by hand; it is not generated.
+
+Baselines (single best input, weighted average, cheapest configuration) are
+recomputed from Skein's own paid findings, so they cost nothing extra and differ
+only in the rule. The direct-API baseline needs its own data source and is not
+computed yet.
+
+`verdicts/` holds simulated verdicts (clean, conflict, timeout). CI replays
+them with `pnpm repro eval/verdicts` on every push.

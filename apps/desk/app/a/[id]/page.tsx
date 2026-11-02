@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Lead, Section } from "@/components/Section";
-import { Stripes } from "@/components/Stripes";
+import { Lead, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { short, usd, VCOLOR } from "@/lib/client";
 import { CHAINS, columnOf, type Application } from "@/lib/types";
 
@@ -14,17 +14,26 @@ export default function ApplicationPage() {
   const { id } = useParams<{ id: string }>();
   const [a, setA] = useState<Application | null>(null);
   const [missing, setMissing] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let live = true;
     let t: ReturnType<typeof setTimeout>;
+    let errors = 0;
     const load = async () => {
-      const r = await fetch(`/api/applications/${id}`, { cache: "no-store" }).catch(() => null);
+      const r = await fetch(`/api/applications?id=${encodeURIComponent(id)}`, { cache: "no-store" }).catch(() => null);
       if (!live) return;
-      if (r?.status === 404) return setMissing(true);
+      if (r?.status === 404 || r?.status === 400) return setMissing(true);
       const j = r?.ok ? ((await r.json()) as Application) : null;
-      if (j) setA(j);
-      if (!j || j.status !== "decided") t = setTimeout(load, 2000);
+      if (j) {
+        errors = 0;
+        setA(j);
+        setFailed(false);
+      } else if (++errors >= 5) {
+        // Stop hammering a desk that is down; say so.
+        return setFailed(true);
+      }
+      if (!j || j.status !== "decided") t = setTimeout(load, Math.min(2000 * 2 ** errors, 30_000));
     };
     void load();
     return () => {
@@ -43,7 +52,8 @@ export default function ApplicationPage() {
             <span className="tag tag-dark">{a ? COLUMN_LABEL[columnOf(a)] : "Application"}</span>
             {a ? <span className="tag tag-dark">{a.source === "webhook" ? "via webhook" : "via form"}</span> : null}
           </div>
-          <h1 className="display mt-6 text-[48px] md:text-[96px]">{missing ? "Not found." : (a?.project ?? "Loading…")}</h1>
+          <h1 className="display mt-6 text-[48px] md:text-[96px]">{missing ? "Not found." : (a?.project ?? (failed ? "Unreachable." : "Loading…"))}</h1>
+          {failed ? <p className="mt-6 font-mono text-[13px] text-reject">The desk is not answering. Reload to try again.</p> : null}
           {a ? (
             <p className="mt-4 break-all font-mono text-[13px] text-muted">
               {CHAINS[a.subject.chainId]} · {a.subject.token} · received {new Date(a.receivedAt).toLocaleString()}
