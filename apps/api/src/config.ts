@@ -34,6 +34,8 @@ export interface ApiConfig {
   revokedKeyHashes: string[];
   /** SSE event rows older than this are pruned (they are not evidence). */
   eventRetentionDays: number;
+  /** Skein's own miner registration ids, never bought from. */
+  selfRegistrationIds: string[];
 }
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -63,5 +65,6 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     trustProxyHops: num(env.TRUST_PROXY_HOPS, 1),
     revokedKeyHashes: (env.REVOKED_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     eventRetentionDays: num(env.EVENT_RETENTION_DAYS, 7),
+    selfRegistrationIds: (env.SKEIN_SELF_REGISTRATION_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
   };
 }

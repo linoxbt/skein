@@ -15,3 +15,30 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      # The packages outside teams install must build.
+      - run: pnpm --filter @skein/sdk --filter @skein/mcp build
+      # Spec section 14: every stored verdict replays to the same hash with the engine that sealed it.
+      - run: pnpm repro eval/verdicts
+      # The property tests at the depth DECISIONS D8 claims.
+      - run: FC_RUNS=20000 pnpm --filter @skein/engine exec vitest run test/properties.test.ts --testTimeout=900000
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @skein/e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @skein/web build
+        env:
+          NEXT_PUBLIC_SKEIN_API: http://localhost:8787
+      - name: Start the web app
+        run: (cd apps/web && npx next start -p 3000 &) && npx wait-on@8.0.4 http://localhost:3000 --timeout 60000
+        env:
+          NEXT_PUBLIC_SKEIN_API: http://localhost:8787
+      # The console flow, verify, 375 px and axe (WCAG 2 A/AA), against the simulated API.
+      - run: pnpm --filter @skein/e2e e2e

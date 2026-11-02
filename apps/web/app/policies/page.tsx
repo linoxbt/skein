@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Lead, PageHero, Section } from "@/components/site/Section";
-import { Stripes } from "@/components/site/Stripes";
+import { Lead, PageHero, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { getPolicy, listPolicies } from "@/lib/api";
 import type { PolicyDoc, PolicySummary } from "@/lib/types";
 
@@ -71,7 +71,7 @@ export default function PoliciesPage() {
                   {(doc.policy.blockers ?? []).map((b, i) => (
                     <li key={i} className="flex items-center justify-between border-b border-rule py-4">
                       <span className="statement text-[24px]">{label(b.check)}</span>
-                      <span className="font-mono text-[13px] text-reject">{b.status}{b.minSeverity !== undefined ? ` · sev ≥ ${b.minSeverity}` : ""}</span>
+                      <span className="font-mono text-[13px] text-reject-deep">{b.status}{b.minSeverity !== undefined ? ` · sev ≥ ${b.minSeverity}` : ""}</span>
                     </li>
                   ))}
                 </ul>
@@ -84,7 +84,7 @@ export default function PoliciesPage() {
                         <td className="py-3 uppercase">{label(c)}</td>
                         <td className="text-ink-2">{t.field}</td>
                         <td>{t.fail > t.warn ? ">" : "<"} {fmt(t.warn)}</td>
-                        <td className="text-reject">{t.fail > t.warn ? ">" : "<"} {fmt(t.fail)}</td>
+                        <td className="text-reject-deep">{t.fail > t.warn ? ">" : "<"} {fmt(t.fail)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -132,7 +132,7 @@ export default function PoliciesPage() {
               <span>{doc.ref}.yaml</span>
               <span className="break-all">sha256 {doc.sha256}</span>
             </div>
-            <pre className="mt-4 max-h-[560px] overflow-auto border border-edge bg-panel p-6 font-mono text-[13px] leading-relaxed text-[#c9d1d6]">{doc.yaml}</pre>
+            <pre tabIndex={0} aria-label="Policy YAML" className="mt-4 max-h-[560px] overflow-auto border border-edge bg-panel p-6 font-mono text-[13px] leading-relaxed text-[#c9d1d6]">{doc.yaml}</pre>
           </Section>
         </>
       ) : null}

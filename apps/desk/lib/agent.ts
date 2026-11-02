@@ -1,5 +1,5 @@
 import { SkeinError, type Skein, type VerdictObject, type VerdictResult } from "@skein/sdk";
-import type { Store } from "./store";
+import { mutate, type Store } from "./store";
 import { CHAINS, EXCHANGE, RULE, type Action, type Application, type Decision } from "./types";
 
 /**
@@ -31,14 +31,17 @@ export interface ApplicationInput {
   deployer?: unknown;
   social?: unknown;
   repo?: unknown;
-  contact?: unknown;
 }
 
 const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
 
-export function parseApplication(input: ApplicationInput): Pick<Application, "project" | "subject" | "context" | "contact"> {
-  const project = str(input.project, 80);
+/** Project names show on a public board and head letters: plain words only, no links. */
+const PROJECT = /^[\p{L}\p{N}][\p{L}\p{N} .&'_-]{0,47}$/u;
+
+export function parseApplication(input: ApplicationInput): Pick<Application, "project" | "subject" | "context"> {
+  const project = str(input.project, 48);
   if (!project) throw new InputError("project name is required");
+  if (!PROJECT.test(project) || /https?:|www\.|\.(com|io|xyz|net|org)\b/i.test(project)) throw new InputError("project name: letters, digits, spaces and . & ' _ - only, no links");
   const chainId = Number(input.chainId);
   if (!(chainId in CHAINS)) throw new InputError(`chain must be one of ${Object.entries(CHAINS).map(([id, n]) => `${id} (${n})`).join(", ")}`);
   const token = str(input.token, 42);
@@ -49,12 +52,11 @@ export function parseApplication(input: ApplicationInput): Pick<Application, "pr
   if (social && !/^\w{1,30}$/.test(social)) throw new InputError("social must be an X handle");
   const repo = str(input.repo, 200);
   if (repo && !/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/.test(repo)) throw new InputError("repo must be a https://github.com/org/repo URL");
-  const contact = str(input.contact, 120);
+  // No contact details are collected: the Desk never needs them, and the board is public.
   return {
     project,
     subject: { chainId, token },
     context: { ...(deployer ? { deployer } : {}), ...(social ? { social } : {}), ...(repo ? { repo } : {}) },
-    ...(contact ? { contact } : {}),
   };
 }
 
@@ -66,7 +68,7 @@ function newId(now: Date) {
 export async function receive(deps: AgentDeps, input: ApplicationInput, source: Application["source"]): Promise<Application> {
   const now = deps.now?.() ?? new Date();
   const app: Application = { id: newId(now), receivedAt: now.toISOString(), source, status: "received", ...parseApplication(input) };
-  await deps.store.put(app);
+  if (!(await deps.store.create(app))) throw new Error("application id collision");
   return app;
 }
 
@@ -89,6 +91,7 @@ export function letterFor(app: Application, action: Action, v: VerdictObject | n
       ``,
       `${where} passed the automated listing review (${v!.policy.id}@${v!.policy.version}).`,
       v!.summary,
+      ...(v!.openRisks.length ? [``, `Not covered by the review, check before listing: ${v!.openRisks.join("; ")}`] : []),
       ``,
       `Next step: commercial terms with the listings team.`,
       `Evidence: ${link}`,
@@ -153,57 +156,95 @@ export function decide(app: Application, outcome: { verdict: VerdictResult } | {
   };
 }
 
-function refusalOf(e: unknown): { code: string; message: string } | null {
+/** The Desk itself is misconfigured (no or revoked key): nothing to decide, keep the application open. */
+const CONFIG_ERRORS = new Set(["UNAUTHORIZED", "PAYMENT_REQUIRED", "NO_PAYER"]);
+/** Transient: leave the application for the next tick. */
+const TRANSIENT = new Set(["NETWORK", "TIMEOUT", "RATE_LIMITED", "DAILY_CAP_REACHED", "LOST", "VERDICT_FAILED"]);
+
+function refusalOf(e: unknown): { code: string; message: string } | "config" | null {
   if (!(e instanceof SkeinError)) return null;
-  // Transient: leave the application for the next tick.
-  if (["NETWORK", "TIMEOUT", "RATE_LIMITED"].includes(e.code) || e.code.startsWith("HTTP_5")) return null;
+  if (CONFIG_ERRORS.has(e.code)) return "config";
+  if (TRANSIENT.has(e.code) || e.code.startsWith("HTTP_5")) return null;
   return { code: e.code, message: e.message };
 }
 
-async function settle(deps: AgentDeps, app: Application, outcome: Parameters<typeof decide>[1]): Promise<Application> {
-  const done: Application = { ...app, status: "decided", decision: decide(app, outcome, deps.webUrl, deps.now?.() ?? new Date()) };
-  await deps.store.put(done);
-  return done;
-}
+/** How long a lease is good for: longer than any one call's wait. */
+const LEASE_MS = 90_000;
 
 /**
  * Runs the agent on one application: buys the verdict (or picks up the one
- * already bought) and decides. Safe to call repeatedly: the partner-key rail
- * reuses one idempotency key per application, so a verdict is never bought twice.
+ * already bought) and decides. Safe to call from anywhere, concurrently:
+ *  - it first takes a lease with a compare-and-swap write, and only the lease
+ *    holder buys or decides;
+ *  - a Telegraph ask is only ever made under a lease that also marks the
+ *    application "buying", so it is asked at most once (it cannot be replayed:
+ *    a lost ask goes to an analyst after LOST_MS);
+ *  - the partner-key rail reuses one idempotency key per application;
+ *  - a decision is written once: a decided application is never rewritten.
  */
 export async function process(deps: AgentDeps, id: string): Promise<Application | null> {
-  let app = await deps.store.get(id);
-  if (!app || app.status === "decided" || !deps.skein) return app;
   const now = deps.now?.() ?? new Date();
-  const request = { subject: app.subject, context: app.context, idempotencyKey: `desk-${app.id}` };
+  const me = crypto.randomUUID();
+  const read = await deps.store.get(id);
+  if (!read || read.value.status === "decided" || !deps.skein) return read?.value ?? null;
+  const held = read.value.lease && Date.parse(read.value.lease.until) > now.getTime() && read.value.lease.by !== me;
+  if (held) return read.value;
 
+  let app: Application = { ...read.value, lease: { by: me, until: new Date(now.getTime() + LEASE_MS).toISOString() } };
+  const lostAsk = deps.rail === "telegraph" && read.value.status === "buying" && now.getTime() - Date.parse(read.value.startedAt ?? read.value.receivedAt) >= LOST_MS;
+  if (deps.rail === "telegraph" && read.value.status !== "buying") {
+    // The ask is about to be paid: mark it in the same write that takes the lease.
+    app = { ...app, status: "buying", rail: "telegraph", startedAt: now.toISOString() };
+  }
+  if (!(await deps.store.update(app, read.etag))) return (await deps.store.get(id))?.value ?? null;
+
+  const settle = async (outcome: Parameters<typeof decide>[1]): Promise<Application> => {
+    const cur = await deps.store.get(id);
+    if (!cur || cur.value.status === "decided" || cur.value.lease?.by !== me) return cur?.value ?? app;
+    const done: Application = { ...cur.value, status: "decided", lease: undefined, decision: decide(cur.value, outcome, deps.webUrl, deps.now?.() ?? new Date()) };
+    return (await deps.store.update(done, cur.etag)) ? done : ((await deps.store.get(id))?.value ?? done);
+  };
+  const release = async (patch: Partial<Application> = {}): Promise<Application> => {
+    const cur = await deps.store.get(id);
+    if (!cur || cur.value.lease?.by !== me) return cur?.value ?? app;
+    const next: Application = { ...cur.value, ...patch, lease: undefined };
+    await deps.store.update(next, cur.etag);
+    return next;
+  };
+
+  const request = { subject: app.subject, context: app.context, idempotencyKey: `desk-${app.id}` };
   try {
     if (deps.rail === "telegraph") {
-      if (app.status === "buying") {
-        // An ask from an earlier call: if it is long gone, hand it to an analyst rather than pay twice.
-        if (now.getTime() - Date.parse(app.startedAt ?? app.receivedAt) < LOST_MS) return app;
-        return settle(deps, app, { refusal: { code: "LOST_ASK", message: "The paid Telegraph ask did not come back in time; not retried, to avoid paying twice." } });
+      if (read.value.status === "buying") {
+        // An ask from an earlier call is in flight, or was lost: never ask again (it may have been paid).
+        return lostAsk
+          ? settle({ refusal: { code: "LOST_ASK", message: "The paid Telegraph ask did not come back in time; not retried, to avoid paying twice." } })
+          : release();
       }
-      app = { ...app, status: "buying", rail: "telegraph", startedAt: now.toISOString() };
-      await deps.store.put(app);
-      return settle(deps, app, { verdict: await deps.skein.verdict(request) });
+      return await settle({ verdict: await deps.skein.verdict(request) });
     }
 
     if (!app.verdictId) {
       const started = await deps.skein.submit(request);
-      if (!("status" in started)) return settle(deps, app, { verdict: started });
-      app = { ...app, status: "buying", rail: "apiKey", verdictId: started.id, startedAt: now.toISOString() };
-      await deps.store.put(app);
+      if (!("status" in started)) return await settle({ verdict: started });
+      const cur = await deps.store.get(id);
+      app = { ...cur!.value, status: "buying", rail: "apiKey", verdictId: started.id, startedAt: now.toISOString() };
+      if (!(await deps.store.update(app, cur!.etag))) return (await deps.store.get(id))?.value ?? app;
     }
-    return settle(deps, app, { verdict: await deps.skein.wait(app.verdictId!, { timeoutMs: deps.waitMs ?? 8_000 }) });
+    return await settle({ verdict: await deps.skein.wait(app.verdictId!, { timeoutMs: deps.waitMs ?? 8_000 }) });
   } catch (e) {
     const refusal = refusalOf(e);
-    if (refusal) return settle(deps, app, { refusal });
-    return app;
+    if (refusal === "config") {
+      // Shown on the board ("agent misconfigured"); the application waits for a working key.
+      await mutate(deps.store.kv, "agent/last_error", () => ({ at: now.toISOString(), code: (e as SkeinError).code })).catch(() => null);
+      return release();
+    }
+    if (refusal) return settle({ refusal });
+    return release();
   }
 }
 
-/** Settles everything still open, oldest first, within a time budget. Called by the scheduler and by the board. */
+/** Settles everything still open, oldest first, within a time budget. Called by the scheduler only. */
 export async function tick(deps: AgentDeps, budgetMs = 20_000): Promise<{ open: number; decided: number }> {
   const started = Date.now();
   const open = (await deps.store.list()).filter((a) => a.status !== "decided").reverse();

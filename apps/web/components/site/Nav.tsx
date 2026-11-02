@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getStatus } from "@/lib/api";
 import { Mark } from "../ui";
-import { IconBook, IconClose, IconLedger, IconMenu, IconPlus, IconPulse, IconTerminal } from "./Icons";
+import { IconBook, IconClose, IconLedger, IconMenu, IconPlus, IconPulse, IconTerminal } from "@skein/ui";
 
 type Item = { href: string; label: string; note: string };
 const NETWORK: Item[] = [
@@ -91,9 +91,11 @@ export function Nav() {
           </nav>
           <div className="ml-auto flex items-center gap-3">
             {label ? (
-              <span className="hidden items-center gap-2 font-mono text-[12px] text-muted sm:inline-flex" title="Network the API reports">
+              // Always visible (spec section 11): short below 640px, in full above.
+              <span className="inline-flex items-center gap-2 font-mono text-[12px] text-muted" title="Network the API reports">
                 <span className={`h-1.5 w-1.5 ${label === "Simulated" ? "bg-knot" : label === "Offline" ? "bg-reject" : "bg-thread"}`} aria-hidden />
-                {label === "Simulated" ? "Simulated · not evidence" : label === "Testnet" ? "Telegraph testnet" : label}
+                <span className="sm:hidden">{label === "Testnet" ? "Testnet" : label}</span>
+                <span className="hidden sm:inline">{label === "Simulated" ? "Simulated · not evidence" : label === "Testnet" ? "Telegraph testnet" : label}</span>
               </span>
             ) : null}
             <Link href="/console" className="btn btn-primary hidden !h-10 !px-5 !text-[15px] md:inline-flex">

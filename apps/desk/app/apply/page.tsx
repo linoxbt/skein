@@ -1,8 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Lead, PageHero, Section } from "@/components/Section";
-import { Stripes } from "@/components/Stripes";
+import { Lead, PageHero, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { CHAINS } from "@/lib/types";
 
 const EXAMPLES: [string, string, number, string][] = [
@@ -14,7 +14,7 @@ const EXAMPLES: [string, string, number, string][] = [
 
 export default function Apply() {
   const router = useRouter();
-  const [form, setForm] = useState({ project: "", chainId: "8453", token: "", deployer: "", social: "", repo: "", contact: "" });
+  const [form, setForm] = useState({ project: "", chainId: "8453", token: "", deployer: "", social: "", repo: "", website: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
@@ -51,7 +51,7 @@ export default function Apply() {
             <div className="grid gap-5 md:grid-cols-2">
               <label className="block md:col-span-2">
                 <span className="mb-2 block font-mono text-[12px] uppercase tracking-wider text-muted">Project</span>
-                <input className="field" required maxLength={80} placeholder="Project name" value={form.project} onChange={set("project")} />
+                <input className="field" required maxLength={48} placeholder="Project name" value={form.project} onChange={set("project")} />
               </label>
               <label className="block">
                 <span className="mb-2 block font-mono text-[12px] uppercase tracking-wider text-muted">Chain</span>
@@ -76,6 +76,8 @@ export default function Apply() {
                 <input className="field" placeholder="https://github.com/org/repo" value={form.repo} onChange={set("repo")} />
               </label>
             </div>
+            {/* Not for people: bots fill every field. */}
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-px w-px opacity-0" value={form.website} onChange={set("website")} />
             {error ? <p className="border border-reject/50 bg-reject/10 p-4 font-mono text-[13px] text-reject">{error}</p> : null}
             <button type="submit" disabled={busy} className="btn btn-primary w-full md:w-auto">{busy ? "The agent is deciding…" : "Submit application"}</button>
           </form>
@@ -95,7 +97,7 @@ export default function Apply() {
                 </li>
               ))}
             </ul>
-            <p className="mt-6 text-[14px] text-muted">Each application buys one real verdict. The form takes a limited number a day.</p>
+            <p className="mt-6 text-[14px] text-muted">Each application buys one real verdict. The form takes a few a day from one address, and a limited number in total. No contact details are collected.</p>
           </aside>
         </div>
       </Section>

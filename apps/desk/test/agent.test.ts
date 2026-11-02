@@ -2,7 +2,14 @@ import { simulatedApi } from "@skein/api/simulated";
 import { Skein, type TelegraphAsker } from "@skein/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
 import { decide, InputError, parseApplication, process, receive, tick, type AgentDeps } from "../lib/agent";
-import { memoryStore } from "../lib/store";
+import { memoryStore, type Store } from "../lib/store";
+import type { Application } from "../lib/types";
+
+/** Test helper: replace an application as stored (compare-and-swap on its current version). */
+async function overwrite(store: Store, a: Application) {
+  const cur = await store.get(a.id);
+  if (!cur || !(await store.update(a, cur.etag))) throw new Error("overwrite failed");
+}
 import { columnOf } from "../lib/types";
 
 let api: Awaited<ReturnType<typeof simulatedApi>>;
@@ -50,7 +57,7 @@ describe("the Desk agent", () => {
     const before = api.node.charges.length;
     const a = (await process(d, app.id))!;
     const after = api.node.charges.length;
-    await d.store.put({ ...a, status: "received", decision: undefined, verdictId: undefined } as never);
+    await overwrite(d.store, { ...a, status: "received", decision: undefined, verdictId: undefined });
     const b = (await process(d, app.id))!;
     expect(b.decision!.verdictId).toBe(a.decision!.verdictId);
     expect(api.node.charges.length).toBe(after);
@@ -66,7 +73,7 @@ describe("the Desk agent", () => {
     expect(columnOf(first)).toBe("incoming");
     const r = await tick({ ...d, waitMs: 60_000 }, 60_000);
     expect(r).toEqual({ open: 0, decided: 1 });
-    const done = (await d.store.get(app.id))!;
+    const done = (await d.store.get(app.id))!.value;
     // The sanctions miner hangs: a required check is missing, so ABSTAIN goes to an analyst.
     expect(done.decision).toMatchObject({ action: "analyst", verdict: "ABSTAIN" });
   }, 70_000);
@@ -74,7 +81,7 @@ describe("the Desk agent", () => {
   it("hands a refusal to an analyst without a verdict", async () => {
     const d = deps();
     const app = await receive(d, { project: "Bad chain id", chainId: 8453, token: tok() }, "form");
-    await d.store.put({ ...app, subject: { chainId: 999, token: app.subject.token } });
+    await overwrite(d.store, { ...app, subject: { chainId: 999, token: app.subject.token } });
     const out = (await process(d, app.id))!;
     expect(out.decision).toMatchObject({ action: "analyst", verdict: null, refusal: { code: "INVALID_SUBJECT" } });
     expect(out.decision!.letter).toMatch(/Nothing was decided automatically/);
@@ -95,14 +102,14 @@ describe("the Desk agent", () => {
           body: JSON.stringify({ subject: (req.params as { subject: unknown }).subject }),
         });
         const v = (await res.json()) as { id: string };
-        return { ok: true, response: { miner_id: "skein", result: { id: v.id } }, receipt: { receipt_hash: "0xfeed" }, amountUusdc: 150_000, durationMs: 5 };
+        return { ok: true, response: { miner_id: "skein", result: { id: v.id } }, receipt: { receipt_hash: `0x${"fe".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
       },
     };
     const skein = new Skein({ apiUrl: "http://skein.test", payer: { kind: "telegraph", client: asker }, fetch: (i, init) => Promise.resolve(api.app.fetch(new Request(String(i), init))) });
     const d = deps({ skein, rail: "telegraph" });
     const app = await receive(d, { project: "Via Telegraph", chainId: 8453, token: tok() }, "webhook");
     const out = (await process(d, app.id))!;
-    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, receiptHash: "0xfeed", action: "shortlist" });
+    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, receiptHash: `0x${"fe".repeat(32)}`, action: "shortlist" });
   });
 
   it("does not re-ask a lost Telegraph call", async () => {
@@ -112,7 +119,7 @@ describe("the Desk agent", () => {
     const t0 = Date.parse("2026-11-10T10:00:00Z");
     const d = deps({ skein, rail: "telegraph", now: () => new Date(t0) });
     const app = await receive(d, { project: "Lost", chainId: 8453, token: tok() }, "form");
-    await d.store.put({ ...app, status: "buying", rail: "telegraph", startedAt: new Date(t0).toISOString() });
+    await overwrite(d.store, { ...app, status: "buying", rail: "telegraph", startedAt: new Date(t0).toISOString() });
     expect((await process(d, app.id))!.status).toBe("buying");
     const later = (await process({ ...d, now: () => new Date(t0 + 4 * 60_000) }, app.id))!;
     expect(later.decision).toMatchObject({ action: "analyst", refusal: { code: "LOST_ASK" } });
@@ -141,5 +148,78 @@ describe("applications", () => {
     expect(d.letter).toMatch(/^Dear Rug team,/);
     expect(d.letter).toContain("sanctions: deployer is on a sanctions list");
     expect(d.letter).toContain("https://skein.test/v/vrd_x");
+  });
+});
+
+describe("concurrency (leases)", () => {
+  it("five agents on one Telegraph application ask exactly once", async () => {
+    let asks = 0;
+    const asker: TelegraphAsker = {
+      ask: async (req) => {
+        asks++;
+        await new Promise((r) => setTimeout(r, 30));
+        const res = await api.app.request("/v1/verdicts", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${api.key}`, "idempotency-key": crypto.randomUUID() },
+          body: JSON.stringify({ subject: (req.params as { subject: unknown }).subject }),
+        });
+        const v = (await res.json()) as { id: string };
+        return { ok: true, response: { miner_id: "skein", result: { id: v.id } }, receipt: { receipt_hash: `0x${"cd".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
+      },
+    };
+    const skein = new Skein({ apiUrl: "http://skein.test", payer: { kind: "telegraph", client: asker }, fetch: (i, init) => Promise.resolve(api.app.fetch(new Request(String(i), init))) });
+    const d = deps({ skein, rail: "telegraph" });
+    const app = await receive(d, { project: "Crowded", chainId: 8453, token: tok() }, "form");
+    await Promise.all(Array.from({ length: 5 }, () => process(d, app.id)));
+    expect(asks).toBe(1);
+    expect((await d.store.get(app.id))!.value.status).toBe("decided");
+  });
+
+  it("never rewrites a decision", async () => {
+    const d = deps();
+    const app = await receive(d, { project: "Once", chainId: 8453, token: tok() }, "form");
+    const first = (await process(d, app.id))!;
+    const again = await Promise.all(Array.from({ length: 3 }, () => process(d, app.id)));
+    for (const a of again) expect(a!.decision).toEqual(first.decision);
+  });
+
+  it("takes intake slots atomically", async () => {
+    const store = memoryStore();
+    const got = await Promise.all(Array.from({ length: 20 }, () => store.take("day/x", 7)));
+    expect(got.filter(Boolean)).toHaveLength(7);
+  });
+
+  it("keeps the board to one read of summaries, newest first, with no lease or letter", async () => {
+    const d = deps();
+    const a = await receive(d, { project: "First", chainId: 8453, token: tok() }, "form");
+    await process(d, a.id);
+    const b = await receive(d, { project: "Second", chainId: 8453, token: tok() }, "form");
+    const list = await d.store.list();
+    expect(list[0]!.id).toBe(b.id);
+    expect(list.find((x) => x.id === a.id)!.decision?.action).toBe("shortlist");
+    expect(JSON.stringify(list)).not.toMatch(/"lease"|"letter"/);
+  });
+});
+
+describe("the Telegraph rail, end to end", () => {
+  it("buys through a real Telegraph client and escrow signature, routed to Skein's miner endpoint", async () => {
+    const { TelegraphClient, TESTNET, viemSigner } = await import("@skein/telegraph");
+    const { FakeNode } = await import("@skein/telegraph/testing");
+    const mined = await simulatedApi({ fast: true, env: {}, config: { minerAuthKey: "mk" } });
+    const node = new FakeNode({
+      priceUusdc: 150_000,
+      respond: async (_minerId, body) => {
+        const res = await mined.app.request("/miner/verdict", { method: "POST", headers: { "content-type": "application/json", "x-skein-miner-key": "mk" }, body: JSON.stringify(body.params) });
+        return { kind: "answer", result: await res.json() };
+      },
+    });
+    const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(`0x${"66".repeat(32)}`), fetch: node.fetch, maxUusdcPerCall: 300_000, allowPreSeason: true });
+    const skein = new Skein({ apiUrl: "http://skein.test", payer: { kind: "telegraph", client, minerId: "skein" }, fetch: (i, init) => Promise.resolve(mined.app.fetch(new Request(String(i), init))) });
+    const d = deps({ skein, rail: "telegraph" });
+    const app = await receive(d, { project: "Real Rail", chainId: 8453, token: tok() }, "webhook");
+    const out = (await process(d, app.id))!;
+    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, action: "shortlist" });
+    expect(out.decision!.receiptHash).toBe(node.charges[0]!.receiptHash);
+    expect(node.charges).toHaveLength(1);
   });
 });

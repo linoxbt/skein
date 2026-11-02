@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { IconArrow, IconPlug, IconReplay, IconTerminal, IconThreads } from "@/components/site/Icons";
-import { Lead, PageHero, Section } from "@/components/site/Section";
-import { Stripes } from "@/components/site/Stripes";
+import { IconArrow, IconPlug, IconReplay, IconTerminal, IconThreads } from "@skein/ui";
+import { Lead, PageHero, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { API } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Integrate" };
@@ -72,18 +72,19 @@ await skein.verify(v.id); // recompute it`;
 const mcp = `{
   "mcpServers": {
     "skein": {
-      "command": "npx",
-      "args": ["tsx", "skein/packages/mcp/bin/skein-mcp.ts"],
+      "command": "node",
+      "args": ["/absolute/path/to/skein/packages/mcp/dist/skein-mcp.js"],
       "env": { "SKEIN_API_KEY": "sk_part_…" }
     }
   }
 }
+// build once: pnpm --filter @skein/mcp build
 // tools: skein_verdict · skein_quote · skein_verify`;
 
 const ask = `POST /engine/v1/ask
 {
   "intent": "FRAUD_RISK_TOKEN_LISTING",
-  "params": { "chainId": 8453, "token": "0x…" }
+  "params": { "token": "0x…", "chain": "base" }
 }
 → 402 challenge → sign → X-PAYMENT → verdict + receipt`;
 
@@ -98,7 +99,7 @@ function Code({ label, children }: { label: string; children: string }) {
           <span className="h-2 w-2 bg-thread" />
         </span>
       </figcaption>
-      <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-relaxed text-text">{children}</pre>
+      <pre tabIndex={0} className="overflow-x-auto p-5 font-mono text-[13px] leading-relaxed text-text">{children}</pre>
     </figure>
   );
 }
@@ -242,7 +243,7 @@ export default function DocsPage() {
             <div key={code} className="bg-mist p-6">
               <div className="flex items-baseline justify-between gap-4">
                 <code className="min-w-0 break-all font-mono text-[14px]">{code}</code>
-                <span className={`font-mono text-[13px] ${status >= 500 ? "text-reject" : "text-ink-2"}`}>{status}</span>
+                <span className={`font-mono text-[13px] ${status >= 500 ? "text-reject-deep" : "text-ink-2"}`}>{status}</span>
               </div>
               <p className="mt-3 text-[15px] text-ink-2">{line}</p>
             </div>

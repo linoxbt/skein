@@ -41,7 +41,7 @@ export function describeVerdict(v: VerdictResult, link: string): string {
   return lines.join("\n");
 }
 
-export function createSkeinMcp(opts: SkeinMcpOptions): { server: McpServer; spentUsdc: () => number } {
+export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "telegraph" }): { server: McpServer; spentUsdc: () => number } {
   const server = new McpServer({ name: "skein", version: "0.1.0" });
   const web = opts.webUrl.replace(/\/$/, "");
   let spent = 0;
@@ -58,14 +58,23 @@ export function createSkeinMcp(opts: SkeinMcpOptions): { server: McpServer; spen
       annotations: { readOnlyHint: false, openWorldHint: true, idempotentHint: false },
     },
     async (args) => {
+      const subject = { chainId: toChain(args.chainId), token: args.token };
+      // Reserve before paying, so concurrent calls cannot pass the session cap together.
+      // A Telegraph ask can cost more than the list price (floor x demand + fee), up to the per-call cap.
+      let reserved = 0;
       try {
-        const subject = { chainId: toChain(args.chainId), token: args.token };
         const q = await opts.skein.quote({ subject, ...(args.policy ? { policy: args.policy } : {}) });
-        if (spent + q.priceUsdc > opts.sessionCapUsdc) {
+        reserved = opts.rail === "telegraph" ? Math.max(q.priceUsdc, opts.maxUsdcPerCall) : q.priceUsdc;
+        if (spent + reserved > opts.sessionCapUsdc) {
+          reserved = 0;
           return { isError: true, content: text(`SESSION_CAP: this would take the session to ${(spent + q.priceUsdc).toFixed(2)} USDC, above its cap of ${opts.sessionCapUsdc} USDC; nothing was paid`) };
         }
-        const v = await opts.skein.verdict({ subject, ...(args.policy ? { policy: args.policy } : {}) });
-        if (!v.cached && !v.replayed) spent += v.payment.rail === "telegraph" ? v.payment.amountUsdc : q.priceUsdc;
+        spent += reserved;
+        const v = await opts.skein.verdict({ subject, quote: q, ...(args.policy ? { policy: args.policy } : {}) });
+        // Settle the reservation to what this call cost: nothing for a cache hit or a replay.
+        const cost = v.cached || v.replayed ? 0 : v.payment.rail === "telegraph" ? v.payment.amountUsdc : q.priceUsdc;
+        spent += cost - reserved;
+        reserved = 0;
         const link = `${web}/v/${v.id}`;
         return {
           content: text(describeVerdict(v, link)),
@@ -88,6 +97,9 @@ export function createSkeinMcp(opts: SkeinMcpOptions): { server: McpServer; spen
           },
         };
       } catch (e) {
+        // A failure keeps what was (or may have been) paid on the session's tab, and frees the rest.
+        const paid = e instanceof SkeinError && e.payment ? e.payment.amountUsdc : 0;
+        spent += paid - reserved;
         return fail(e);
       }
     },

@@ -39,7 +39,7 @@ token at 9,000 bps with a conflict came out as ESCALATE. The two rows are now
 swapped. The conflict is still listed in `decision.conflicts`.
 Test: "row 4 before row 5".
 
-**D5. Spot checks must not trigger paid refreshes.** *(API work, not built yet.)*
+**D5. Spot checks must not trigger paid refreshes.** *(Built: the Telegraph-channel cap and the background refresh, D14.)*
 Validators spot-check about every 20 seconds. If each spot check bought a fresh
 verdict (about $0.09), that would cost about $390 a day against a $10 daily cap.
 The rules for the API:
@@ -78,8 +78,22 @@ historical state is reported as current-state-only. See `eval/README.md`.
 - Verdict codes are ABSTAIN 0, APPROVE 1, ESCALATE 2, REJECT 3. Zero (the default
   value of an unset on-chain field) therefore never reads as APPROVE.
 - When a blocker decides the verdict, its confidence is the confidence of the
-  blocking finding. Together with D1, this makes "removing a required finding
-  never raises confidence" hold in every case (property test, 20,000 runs).
+  blocking finding. Together with D1, this makes "removing a required check's
+  evidence never raises confidence" hold in every case. CI runs the property
+  tests at 20,000 runs (`FC_RUNS=20000`); a plain `pnpm test` runs 200.
+- The two monotonicity properties, as engine 0.2.0 states them (D14):
+  - "Adding a PASS never raises risk" holds exactly for a PASS that answers an
+    unanswered check (from any provider) or joins the deciding provider of an
+    answered one. A *corroborating* PASS from another provider family can
+    re-balance the independence groups and so move risk either way; that case
+    is a consequence of independence weighting and is not claimed.
+  - "Removing a finding never raises confidence" holds for a required check's
+    whole evidence and for an agreeing duplicate. Removing a *dissenting*
+    answer lifts a disagreement penalty by design, so it can raise confidence.
+- `min_coverage` (row 3) cannot fire under any shipped policy: D1 already
+  abstains on any missing required check, and the optional weights are too
+  small to pull coverage below the minimum. The row stays as a guard for
+  policies with heavier optional checks.
 
 **D9. Adapter versions are never deleted.**
 A stored verdict replays with the adapter version that made it. Changing an
@@ -100,9 +114,11 @@ client now aborts with its own `setTimeout`, cleared after each call.
   roles exist), so moving means changing `DATABASE_URL`, plus `DATABASE_CA_CERT`
   for Supabase's TLS root.
 - **Background runs:** verdicts run in-process in the API, with SSE from a
-  per-run buffer, instead of a separate pg-boss worker. At one replica this is
-  simpler and loses nothing. The worker split comes when there is a second
-  replica.
+  per-run buffer, instead of a separate pg-boss worker. The audit (D14) showed
+  the first version could lose receipts on a redeploy; since then each purchase
+  is written as it is paid, a run's status lives in `verdict_runs`, SIGTERM
+  drains running verdicts, and a sweeper marks runs that never finished as
+  lost. The worker split comes when there is a second replica.
 - **Partner keys:** stored as SHA-256 of a 256-bit random key, not argon2. Argon2
   protects low-entropy passwords; a random key needs no slow hash.
 - **Web hosting:** Netlify (`skein-web.netlify.app`), not Vercel. Neither
@@ -122,29 +138,85 @@ client now aborts with its own `setTimeout`, cleared after each call.
 **D12. Skein Desk is a pure consumer.** Desk (`apps/desk`) talks to Skein only
 through `@skein/sdk`, as an outside team would, and keeps its own state (Netlify
 Blobs in production, a folder in dev). It never reads Skein's database.
-- **Serverless, so no long waits:** a new application submits its verdict at
-  once (`submit()`), waits up to 8 s for the seal (`wait()`), and otherwise
-  stays in Incoming. The board's polling and a scheduled function every minute
-  settle it. Nothing needs a person to move.
-- **Never pays twice:** on the partner-key rail, each application has one
-  idempotency key (`desk-<application id>`), so a retried or repeated attempt
-  returns the original verdict. On the Telegraph rail a paid ask cannot be
-  replayed, so an ask that does not come back in 3 minutes goes to an analyst
-  and is never retried.
-- **Rail today:** a Skein partner key, which costs nothing during the
-  hackathon, so the Desk's cost per decision reads $0.00 while the evidence
-  behind each decision is shown separately. The Telegraph rail (the Nov 14
-  milestone) is built and tested against the fake node, and is switched on
-  once Skein's miner is registered.
+- **One agent per application:** every write is compare-and-swap (Blobs
+  `onlyIfNew` / `onlyIfMatch`). An agent first takes a lease; only the lease
+  holder buys or decides, and a decision is written once and never rewritten.
+- **Never pays twice:** on the partner-key rail each application has one
+  idempotency key (`desk-<application id>`). On the Telegraph rail the lease
+  write also marks the application "buying", so the ask is made once; an ask
+  that does not come back in 3 minutes goes to an analyst and is never retried.
+- **Reads are reads:** the board and the application page only read. The agent
+  runs on intake (waiting up to 8 s for the verdict) and on the scheduled tick
+  every minute; nothing needs a person to move.
+- **Intake limits, atomic:** per visitor address (Netlify's client-IP header)
+  and per day, as counters written by compare-and-swap; a honeypot field stops
+  naive bots. No contact details are collected.
+- **Rails:** `DESK_PAYER=apiKey` (a partner key, free during the hackathon) or
+  `DESK_PAYER=telegraph` (a burner with escrow funds; tested end to end against
+  the fake node and Skein's own miner endpoint). The board's headline cost is
+  the list price per verdict; what the Desk actually paid is shown beside it.
 - **The exchange is fictional** (Halyard Exchange), and the Desk says on every
   page that the same team built it and that it is one consumer among several.
 
-**D13. SDK and MCP.** `@skein/sdk` has no runtime dependencies. Its Telegraph
+**D13. SDK and MCP.** `@skein/sdk` has no runtime dependencies and builds to
+`dist` with tsup (`publishConfig` points the published package there; the
+monorepo uses the TypeScript source). Every request has its own timeout and
+retries stop at a 10 s budget, so a daily-cap 429 throws at once. A paid
+Telegraph ask that yields no verdict throws with the payment attached. Its Telegraph
 payer takes any client with an `ask()` (for example `TelegraphClient`), so
 viem is not forced on browser users. `@skein/mcp` uses the official MCP
 TypeScript SDK (1.32.1). It pays inside the server with a per-call cap
-(enforced by the SDK before paying) and a per-session cap. Both are tested
-against the real API in-process (`@skein/api/simulated`).
+(enforced by the SDK before paying) and a per-session cap reserved before each
+call, so concurrent calls cannot pass it together. The published binary bundles
+the workspace packages it needs. Both are tested against the real API in-process
+(`@skein/api/simulated`).
+
+**D14. The audit of 2026-11-02, and what changed.** An independent review found
+the money path unsafe; these are the decisions behind the fixes.
+- **No retry after X-PAYMENT.** A paid call that times out, drops, 5xxs or
+  returns an unreadable 200 may have been billed; it is reported at the signed
+  amount with billing "unknown", counted against every cap, and never retried.
+  Only failures before payment and an explicit 402 refusal are retried.
+- **Sign only what was checked.** The escrow template is parsed strictly (the
+  header, then exactly the eight documented lines, each once; the four signer
+  fields as bare placeholders) and its Pay To, Network, Amount and Resource
+  must equal the configuration and the challenge's own JSON (`amount`,
+  `resource`, and any declared `asset`). A pinned ask must be for that miner's
+  resource. Checked against a captured live 402 (L14).
+- **Spend is held before it is spent.** `spend_holds`, under a Postgres
+  advisory lock, holds each payment's allotment against the global, per-key and
+  Telegraph-channel day caps; it settles to what was spent. Each purchase's
+  allotment is its share of the verdict's cap, so no 402 can push a verdict past
+  it.
+- **Evidence is written as it is paid**, under a `verdict_runs` row created
+  before anything is bought; the same row is the atomic idempotency claim.
+- **Engine 0.2.0**, with 0.1.0 frozen under `src/frozen/` for replay: a
+  domain-separated Merkle tree over 32-byte receipts; the policy file's sha256 in
+  the verdict hash; an order-independent choice of each check's deciding answer
+  (the strengthened property tests found the old hash depended on input order);
+  best-answer confidence; blockers need `minConfidence` (0.5 by default); only
+  answers are graded by thresholds. Policies are checked against the lock at
+  load.
+- **Adapters answer about the right thing:** the audit adapter needs the token
+  it was asked about and the deciding flags; liquidity refuses another pool's
+  reserve; sanctions caps the confidence of a name screen run on an address
+  (`address_matching_unverified`), so a "match" escalates instead of rejecting.
+- **No routed fallback:** a check with no live allowlisted miner is
+  UNAVAILABLE (L4). Skein's own registrations (`SKEIN_SELF_REGISTRATION_IDS`)
+  are never bought from.
+- **Cache:** keyed on the request's normalised context too, and never serves
+  ABSTAIN (usually a transient failure).
+- **Pricing:** ABSTAIN is charged at upstream cost; the verdict's `cost` says
+  which rule applied. Telegraph-channel verdicts record revenue owed. Charging
+  partners on the direct API (x402 in) is not built: partner keys are free
+  during the hackathon.
+- **Kept as is, deliberately:** verdicts are public by id, and /v1/ledger lists
+  the latest ten, because anyone must be able to verify any verdict. Row Level
+  Security is enabled with no policies: it shuts out Supabase's browser roles
+  where they exist and does nothing for the table owner the API connects as;
+  the append-only and TRUNCATE triggers are what protect the evidence.
+
+
 
 ## What the live node said (2026-10-30)
 
@@ -241,3 +313,26 @@ answer.
 built from the intent's own on-chain layout, so the intent proposal defines what
 a contract receives. Each endpoint now has to declare `intents` (required) and
 `params`, and the draft YAML does both.
+
+
+## What the live node said (2026-11-02)
+
+**L14. A real 402, captured.** An unpaid ask to `/engine/v1/ask/7302` (free)
+returned the escrow template the client expects, with two details the fake node
+had wrong: the `Resource:` line names the miner (`/v1/ask/7302`), and the
+`PAYMENT-REQUIRED` header's entries carry `amount` (and, for the x402 "exact"
+entry, the USDC `asset`). Saved as `packages/telegraph/test/fixtures/live-402-7302.json`;
+the client is tested against it and the fake node now matches it.
+
+**L15. Intents.** On the Diamond, `isCanonicalIntent` is false for
+`FRAUD_RISK_TOKEN_LISTING` (plan A) and true for `FRAUD_RISK_GENERAL` (plan B).
+`/miner/verdict` accepts plan B's request shape (subject as an address string)
+and answers `risk_level` beside the verdict.
+
+**L16. The dispatcher forwards a miner's declared params as a flat JSON body**
+(`/miner-dispatcher/openapi.json`), so `/miner/verdict` receives
+`{ token, chain, policy }` as declared in the YAML.
+
+**L17. The YAML validator URL the spec names answers 404.** `miner/validate.sh`
+now fails loudly and takes `VALIDATOR_URL`; until the current endpoint is
+known, validate in the integrate.telegraphprotocol.com web app.

@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { Lead, PageHero, Section } from "@/components/Section";
-import { Stripes } from "@/components/Stripes";
+import { Lead, PageHero, REPO_URL, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { ago, short, useApplications, usd, VCOLOR_LIGHT } from "@/lib/client";
-import { CHAINS, columnOf, type Application, type Column } from "@/lib/types";
+import type { Summary } from "@/lib/store";
+import { CHAINS, columnOf, type Column } from "@/lib/types";
 
 const COLUMNS: [Column, string, string][] = [
   ["incoming", "Incoming", "The agent is buying a verdict"],
@@ -12,7 +13,7 @@ const COLUMNS: [Column, string, string][] = [
   ["declined", "Declined", "REJECT → a letter goes out"],
 ];
 
-function Card({ a }: { a: Application }) {
+function Card({ a }: { a: Summary }) {
   const d = a.decision;
   return (
     <Link href={`/a/${a.id}`} className="group block bg-paper p-4 transition-colors hover:bg-[#fbfcfc]">
@@ -44,8 +45,11 @@ export default function Queue() {
   const { state, error } = useApplications();
   const apps = state?.applications ?? [];
   const decided = apps.filter((a) => a.decision);
+  // Cost figures are per real verdict: a refusal bought nothing and would flatter the average.
+  const withVerdict = decided.filter((a) => a.decision?.verdict);
   const paid = decided.reduce((s, a) => s + (a.decision?.paidUsdc ?? 0), 0);
-  const upstream = decided.reduce((s, a) => s + (a.decision?.upstreamUsdc ?? 0), 0);
+  const listPrice = withVerdict.reduce((s, a) => s + (a.decision?.listPriceUsdc ?? 0), 0);
+  const upstream = withVerdict.reduce((s, a) => s + (a.decision?.upstreamUsdc ?? 0), 0);
   const secs = decided.map((a) => a.decision!.seconds).sort((x, y) => x - y);
   const median = secs.length ? secs[Math.floor(secs.length / 2)]! : null;
   const by = (c: Column) => apps.filter((a) => columnOf(a) === c);
@@ -72,7 +76,7 @@ export default function Queue() {
             [
               ["applications", state ? String(apps.length) : "—", false],
               ["decided by the agent", state ? String(decided.length) : "—", false],
-              ["paid per decision", decided.length ? usd(paid / decided.length) : "—", true],
+              ["price per decision", withVerdict.length ? usd(listPrice / withVerdict.length) : "—", true],
               ["median time to decide", median !== null ? `${median}s` : "—", false],
             ] as [string, string, boolean][]
           ).map(([label, value, gold]) => (
@@ -87,7 +91,9 @@ export default function Queue() {
             ? "The desk is unreachable."
             : state?.agent === "offline"
               ? "Agent offline: no Skein key is configured, so applications wait in Incoming."
-              : `Agent online · paying with a Skein partner key (free during the hackathon) · evidence behind each decision: ${decided.length ? usd(upstream / decided.length) : "—"} of paid Telegraph inputs`}
+              : state?.agent === "misconfigured"
+                ? `Agent misconfigured (${state.lastError?.code}): applications wait in Incoming until its key works.`
+                : `Agent online · paying ${state?.rail === "telegraph" ? "through Telegraph escrow" : "with a Skein partner key (free during the hackathon)"} · the Desk has paid ${usd(paid)} in total · evidence behind each verdict: ${withVerdict.length ? usd(upstream / withVerdict.length) : "—"} of paid Telegraph inputs`}
         </p>
       </Section>
 
@@ -147,7 +153,7 @@ export default function Queue() {
             <p className="mt-6 max-w-xl text-[18px] text-muted">
               Skein Desk is open source and talks to Skein only through <code className="font-mono">@skein/sdk</code>. Swap the house rule, keep the receipts.
             </p>
-            <a href="https://github.com/linoxbt/skein/tree/main/apps/desk" className="btn btn-light mt-10">Read the source</a>
+            <a href={`${REPO_URL}/apps/desk`} className="btn btn-light mt-10">Read the source</a>
           </div>
           <figure className="min-w-0 border border-edge bg-panel">
             <figcaption className="border-b border-edge px-4 py-3 font-mono text-[12px] text-muted">agent.ts · the decision</figcaption>

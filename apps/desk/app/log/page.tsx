@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { Lead, PageHero, Section } from "@/components/Section";
-import { Stripes } from "@/components/Stripes";
+import { Lead, PageHero, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 import { short, useApplications, usd, VCOLOR_LIGHT } from "@/lib/client";
 import { CHAINS } from "@/lib/types";
 

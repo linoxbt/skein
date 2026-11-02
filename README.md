@@ -9,21 +9,17 @@ and code review), fuses them with deterministic rules, and returns APPROVE,
 REJECT, ESCALATE or ABSTAIN. Each verdict comes with reasons, the risks still
 open, confidence, cost and a verifiable bill of materials.
 
-> Status: week 0 of the build (Oct 29–31). Built and tested so far:
-> - the decision engine and policies
-> - the escrow-paying Telegraph client
-> - the purchaser pipeline, the `pnpm verdict` / `pnpm repro` CLI, and the
->   Postgres store
+> **Status (Nov 2, season open).** Built and tested: the decision engine and
+> policies, the escrow-paying Telegraph client, the purchasing pipeline and
+> CLI, the Postgres store, the HTTP API and miner endpoint (Railway), the web app
+> and Skein Desk (Netlify), `@skein/sdk`, `@skein/mcp`, miner tooling, the
+> benchmark harness and browser tests. An independent audit on Nov 2 and its
+> fixes are recorded in docs/DECISIONS.md (D14).
 >
-> - the HTTP API (deploys to Railway from `railway.json`)
-> - the web app: a landing page plus independent pages for how it works, the console
->   (live Exploded View), verdicts, verify, policies, ledger, status and integrate
->
-> - `@skein/sdk` and `@skein/mcp`, the integration kit
-> - Skein Desk, the reference consumer: a listing queue decided by an agent
->
-> No paid call has been made;
-> the client refuses to pay before the season opens on Nov 1 (UTC).
+> **Not done yet:** no paid upstream call has been made (the purchaser key and
+> escrow deposit are pending), the miner is not registered, the labelled
+> evaluation set is not curated, and x402 payment on the direct API is not
+> built. See docs/REVIEWER_GUIDE.md for what to try.
 
 ## Layout
 
@@ -39,6 +35,7 @@ packages/
   sdk/        @skein/sdk: verdict(), quote(), verify(), stream(), submit()/wait(), typed
               errors, retries, spend cap; pays with a partner key or through Telegraph
   mcp/        @skein/mcp: stdio MCP server with skein_verdict, skein_quote, skein_verify
+  ui/         shared design tokens and components (web and Desk)
 apps/
   api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
               /v1/status, /v1/ledger, /v1/policies, /miner/verdict; Dockerfile
@@ -46,9 +43,12 @@ apps/
               ledger, status, integrate; Dockerfile (standalone) or Netlify
   desk/       Skein Desk: a fictional exchange's listing queue; an agent buys a verdict
               per application and shortlists, declines or routes it to an analyst
-miner/        draft skein-miner.yaml, validate.sh, intent proposal
-eval/         labelled-set protocol (point-in-time)
-docs/         DECISIONS.md: deviations from the build spec and live-network findings
+miner/        skein-miner.yaml, validate.sh, tools.ts (escrow status/deposit, intent check,
+              registration), intent proposal
+eval/         benchmark harness (run, report, baselines, bootstrap) and replayable verdicts
+e2e/          browser tests: console flow, verify, 375 px, axe WCAG 2 AA
+scripts/      netlify-bundle.mjs: the self-contained upload each Netlify deploy is built from
+docs/         DECISIONS.md, REVIEWER_GUIDE.md, ARCHITECTURE.md, DISCLOSURES.md, MAINNET.md
 ```
 
 ## Run
@@ -76,9 +76,16 @@ SKEIN_API_URL=http://localhost:8787 DESK_SKEIN_KEY=sk_dev_local_simulated \
 # MCP server for Claude Desktop, Cursor and others (stdio):
 SKEIN_API_KEY=sk_part_… npx tsx packages/mcp/bin/skein-mcp.ts
 
-# API (needs Postgres). Migrations run on start.
+# API (needs Postgres). Migrations run on start (under an advisory lock).
 DATABASE_URL=postgres://… pnpm --filter @skein/api start
 DATABASE_URL=postgres://… pnpm --filter @skein/api partner:add "Team name" 2   # prints a key once
+# Production's database is private: provision partner keys by hash instead, in the API's
+# environment (SEED_CONSUMERS="name|kind|sha256|capUsdc,…", reconciled on every start),
+# and revoke with REVOKED_KEY_HASHES.
+
+# Browser tests and the benchmark
+pnpm --filter @skein/e2e e2e                          # needs the web app on :3000 (see .github/workflows/ci.yml)
+pnpm --filter @skein/eval eval report eval/cases.example.json eval/runs
 
 # Live, from Nov 1: a burner key with test USDC deposited in escrow.
 PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --social <handle>
@@ -94,10 +101,15 @@ PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --soc
 | Postgres | Railway | private network only |
 
 The API redeploys on every push to the branch. The web app and the Desk are
-manual uploads for now: copy the app without `node_modules`, `.next` and
-`test/`, then run Netlify's deploy command from that copy. For the Desk,
-copy `packages/sdk` into `vendor/sdk` and point `@skein/sdk` at
-`file:./vendor/sdk`, since Netlify builds it outside the workspace. Connecting the repo to
+uploaded to Netlify, which builds them outside the workspace with npm; every
+upload is made by the same script, so a deployed site is always a commit:
+
+```sh
+node scripts/netlify-bundle.mjs apps/desk /tmp/desk-upload   # vendors @skein/* sources as file: deps
+```
+
+then run Netlify's deploy command from that folder. Connecting the repo to
+Netlify (base directory `apps/web` or `apps/desk`) would make it redeploy on push. Connecting the repo to
 Netlify (Project configuration → Build & deploy, base directory `apps/web`)
 makes it redeploy on push.
 

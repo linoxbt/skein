@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExampleGraph } from "@/components/landing/Example";
-import { Lead, PageHero, Section } from "@/components/site/Section";
-import { Stripes } from "@/components/site/Stripes";
+import { Lead, PageHero, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
 
 export const metadata: Metadata = { title: "How it works" };
 
@@ -17,7 +17,7 @@ const TABLE: [string, string, string, string][] = [
   ["08", "Anything else", "The review band: a person should look.", "ESCALATE"],
 ];
 
-const COLOR: Record<string, string> = { REJECT: "var(--color-reject)", ABSTAIN: "var(--color-abstain)", ESCALATE: "var(--color-knot-deep)", APPROVE: "var(--color-thread-deep)" };
+const COLOR: Record<string, string> = { REJECT: "var(--color-reject-deep)", ABSTAIN: "var(--color-abstain-deep)", ESCALATE: "var(--color-knot-deep)", APPROVE: "var(--color-approve-deep)" };
 
 export default function HowItWorks() {
   return (

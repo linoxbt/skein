@@ -28,6 +28,10 @@ export interface SkeinOptions {
   maxUsdcPerCall?: number;
   /** Retries for network errors, 429 and retryable 5xx. Default 2. */
   retries?: number;
+  /** The most the SDK sleeps between retries of one call, in total; a longer Retry-After throws instead. Default 10 s. */
+  maxRetryWaitMs?: number;
+  /** Each HTTP request (submit, quote, get, verify) gives up after this. Default 15 s. */
+  requestTimeoutMs?: number;
   /** How long verdict() waits for a result. Default 120 s. */
   timeoutMs?: number;
   fetch?: typeof fetch;
@@ -43,6 +47,8 @@ export interface VerdictRequest {
   /** Called with each live event (API key path). */
   onEvent?: (e: VerdictEvent) => void;
   signal?: AbortSignal;
+  /** A quote you already fetched for this request, so verdict() does not fetch another. */
+  quote?: Quote;
 }
 
 export type Payment =
@@ -58,6 +64,11 @@ export class SkeinError extends Error {
     message: string,
     readonly status = 0,
     readonly details?: unknown,
+    /**
+     * Set when money moved (or may have) before the failure: a Telegraph ask
+     * that was paid but produced no verdict. Count it against your caps.
+     */
+    readonly payment?: { amountUsdc: number; billing: "paid" | "unknown"; receiptHash?: string | null },
   ) {
     super(message);
     this.name = "SkeinError";
@@ -94,29 +105,60 @@ export class Skein {
     this.fetch = opts.fetch ?? ((...a) => globalThis.fetch(...a));
     this.retries = opts.retries ?? 2;
     this.timeoutMs = opts.timeoutMs ?? 120_000;
+    this.maxRetryWaitMs = opts.maxRetryWaitMs ?? 10_000;
+    this.requestTimeoutMs = opts.requestTimeoutMs ?? 15_000;
   }
 
-  /** A raw call with typed errors and retries. POSTs are retried only with an idempotency key. */
+  private readonly maxRetryWaitMs: number;
+  private readonly requestTimeoutMs: number;
+
+  /** One HTTP request with its own deadline, still cancellable by the caller's signal. */
+  private async request(url: string, init: RequestInit): Promise<{ res: Response; json: unknown }> {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(new DOMException("request timed out", "TimeoutError")), this.requestTimeoutMs);
+    const onAbort = () => ctl.abort(init.signal?.reason);
+    init.signal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      const res = await this.fetch(url, { ...init, signal: ctl.signal });
+      const json = await res.json().catch(() => null);
+      return { res, json };
+    } finally {
+      clearTimeout(timer);
+      init.signal?.removeEventListener("abort", onAbort);
+    }
+  }
+
+  /**
+   * A raw call with typed errors and retries. POSTs are retried only with an
+   * idempotency key. Retries sleep at most maxRetryWaitMs in total: a
+   * Retry-After past that (a daily cap until midnight) throws at once.
+   */
   private async call<T>(path: string, init: RequestInit = {}, retryable = (init.method ?? "GET") === "GET"): Promise<{ status: number; body: T }> {
+    let waited = 0;
     for (let attempt = 0; ; attempt++) {
       let res: Response;
+      let json: (T & { error?: { code: string; message: string; details?: unknown } }) | null;
       try {
-        res = await this.fetch(`${this.base}${path}`, init);
+        ({ res, json } = (await this.request(`${this.base}${path}`, init)) as { res: Response; json: typeof json });
       } catch (e) {
         if (init.signal?.aborted) throw e;
-        if (retryable && attempt < this.retries) {
-          await sleep(500 * 2 ** attempt, init.signal ?? undefined);
+        const backoff = 500 * 2 ** attempt;
+        if (retryable && attempt < this.retries && waited + backoff <= this.maxRetryWaitMs) {
+          waited += backoff;
+          await sleep(backoff, init.signal ?? undefined);
           continue;
         }
-        throw new SkeinError("NETWORK", `could not reach Skein: ${(e as Error).message}`);
+        const timedOut = (e as Error).name === "TimeoutError";
+        throw new SkeinError(timedOut ? "TIMEOUT" : "NETWORK", timedOut ? `no answer from Skein in ${this.requestTimeoutMs} ms` : `could not reach Skein: ${(e as Error).message}`);
       }
-      const json = (await res.json().catch(() => null)) as (T & { error?: { code: string; message: string; details?: unknown } }) | null;
       if (res.ok) return { status: res.status, body: json as T };
       const err = json?.error ?? { code: `HTTP_${res.status}`, message: res.statusText || `HTTP ${res.status}` };
-      const again = retryable && attempt < this.retries && (res.status === 429 || (res.status >= 500 && !FINAL.has(err.code)));
-      if (!again) throw new SkeinError(err.code, err.message, res.status, err.details);
       const after = Number(res.headers.get("retry-after"));
-      await sleep(Number.isFinite(after) && after > 0 ? Math.min(after, 30) * 1000 : 500 * 2 ** attempt, init.signal ?? undefined);
+      const wait = Number.isFinite(after) && after > 0 ? after * 1000 : 500 * 2 ** attempt;
+      const again = retryable && attempt < this.retries && (res.status === 429 || (res.status >= 500 && !FINAL.has(err.code))) && waited + wait <= this.maxRetryWaitMs;
+      if (!again) throw new SkeinError(err.code, err.message, res.status, err.details);
+      waited += wait;
+      await sleep(wait, init.signal ?? undefined);
     }
   }
 
@@ -172,7 +214,7 @@ export class Skein {
     const payer = this.opts.payer;
     if (!payer) throw new SkeinError("NO_PAYER", "verdict() needs a payer: { kind: 'apiKey', key } or { kind: 'telegraph', client }");
     if (this.opts.maxUsdcPerCall !== undefined) {
-      const q = await this.quote({ subject: req.subject, ...(req.policy ? { policy: req.policy } : {}) });
+      const q = req.quote ?? (await this.quote({ subject: req.subject, ...(req.policy ? { policy: req.policy } : {}) }));
       if (!q.ok && q.refusal) throw new SkeinError(q.refusal.code, q.refusal.detail, q.refusal.code === "BUDGET_TOO_LOW" ? 422 : 503, q.refusal);
       if (q.priceUsdc > this.opts.maxUsdcPerCall) throw new SpendCapError(q.priceUsdc, this.opts.maxUsdcPerCall);
     }
@@ -248,22 +290,42 @@ export class Skein {
       ...(req.context ? { context: req.context } : {}),
     };
     const out = await payer.client.ask({ intent: payer.intent ?? SKEIN_INTENT, params }, { ...(payer.minerId ? { minerId: payer.minerId } : {}), timeoutMs: this.timeoutMs });
-    if (!out.ok) throw new SkeinError(`TELEGRAPH_${out.kind.toUpperCase()}`, out.error, out.httpStatus ?? 0);
-    // The miner's JSON, either as the result itself or wrapped once by the node.
-    const raw = (out.response.result ?? {}) as { id?: string; result?: { id?: string } };
-    const result = { id: raw.id ?? raw.result?.id };
-    if (!result.id) throw new SkeinError("TELEGRAPH_BAD_ANSWER", "the miner answered without a verdict id", 502, out.response);
-    const v = await this.get(result.id);
-    if ("status" in v && v.status === "running") throw new SkeinError("TELEGRAPH_BAD_ANSWER", "the miner answered before the verdict was sealed", 502, { id: result.id });
-    return {
-      ...(v as VerdictObject),
-      payment: {
-        rail: "telegraph",
-        minerId: out.response.miner_id,
-        amountUsdc: out.amountUusdc / 1e6,
-        receiptHash: out.receipt?.receipt_hash ?? null,
-        signalHash: out.response.signal_hash ?? null,
-      },
+    if (!out.ok) {
+      const paidUusdc = (out as { paidUusdc?: number }).paidUusdc ?? 0;
+      throw new SkeinError(
+        `TELEGRAPH_${out.kind.toUpperCase()}`,
+        out.error,
+        out.httpStatus ?? 0,
+        undefined,
+        paidUusdc > 0 ? { amountUsdc: paidUusdc / 1e6, billing: "unknown" } : undefined,
+      );
+    }
+    const payment: Payment = {
+      rail: "telegraph",
+      minerId: out.response.miner_id,
+      amountUsdc: out.amountUusdc / 1e6,
+      receiptHash: out.receipt?.receipt_hash ?? null,
+      signalHash: out.response.signal_hash ?? null,
     };
+    const paid = { amountUsdc: payment.amountUsdc, billing: "paid" as const, receiptHash: payment.receiptHash };
+    // The miner's JSON, either as the result itself or wrapped once by the node.
+    const raw = (out.response.result ?? {}) as { id?: string; pending_id?: string; verdict?: string; reasons?: unknown; result?: { id?: string; pending_id?: string } };
+    const id = raw.id ?? raw.result?.id;
+    const pending = raw.pending_id ?? raw.result?.pending_id;
+    if (!id && pending) {
+      // The miner answered before its verdict was sealed (its deadline); the verdict is still being made.
+      const v = await this.wait(pending, req.signal ? { signal: req.signal } : {});
+      return { ...v, payment };
+    }
+    if (!id) {
+      // Paid, but the miner abstained without a verdict (out of budget, upstream down): say what was paid.
+      throw new SkeinError("TELEGRAPH_NO_VERDICT", `the miner answered ${raw.verdict ?? "without a verdict"}, with no verdict id`, 502, raw, paid);
+    }
+    const v = await this.get(id);
+    if ("status" in v && v.status === "running") {
+      const sealed = await this.wait(id, req.signal ? { signal: req.signal } : {});
+      return { ...sealed, payment };
+    }
+    return { ...(v as VerdictObject), payment };
   }
 }

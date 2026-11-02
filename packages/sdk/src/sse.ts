@@ -25,7 +25,8 @@ export async function* parseSse(body: ReadableStream<Uint8Array>, signal?: Abort
       if (done) break;
       buf += decoder.decode(value, { stream: true });
       let nl: number;
-      while ((nl = buf.search(/\r\n|\r|\n/)) >= 0) {
+      // A lone "\r" at the end may be the first half of a "\r\n" split across chunks: wait for the next one.
+      while ((nl = buf.search(/\r\n|\r(?!$)|\n/)) >= 0) {
         const line = buf.slice(0, nl);
         buf = buf.slice(nl + (buf.startsWith("\r\n", nl) ? 2 : 1));
         if (line === "") {
@@ -43,9 +44,11 @@ export async function* parseSse(body: ReadableStream<Uint8Array>, signal?: Abort
         else if (field === "id") id = value;
       }
     }
-    if (data.length) yield { event, data: data.join("\n"), ...(id !== undefined ? { id } : {}) };
+    // A stream that ends mid-event drops it (WHATWG: an event is dispatched only by its blank line).
   } finally {
     signal?.removeEventListener("abort", onAbort);
+    // Stopping early (a terminal event, a break) must release the connection, not just the lock.
+    await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
 }

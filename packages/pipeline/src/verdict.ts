@@ -80,6 +80,8 @@ export interface VerdictDeps {
    */
   pinned?: boolean;
   allowRouted?: readonly Check[];
+  /** Skein's own miner registration ids: never bought from (spec section 9). */
+  excludeMinerIds?: readonly string[];
   /** Daily spend reservation, held before each payment. */
   spend?: SpendGate;
   /** Persists each purchase the moment it is settled, before the verdict is sealed. */
@@ -161,7 +163,8 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
   const buyOne = async (pp: (typeof p.purchases)[number]): Promise<void> => {
     const built = buildRequest(pp.check, pp.intent, subject, ctx);
     if (!built.ok) return skip(pp.check, built.note);
-    const cands = pinned ? candidates(deps.catalogue, pp.check, pp.intent) : [];
+    const self = new Set(deps.excludeMinerIds ?? []);
+    const cands = pinned ? candidates(deps.catalogue, pp.check, pp.intent).filter((c) => !self.has(c.minerId)) : [];
     const routed = !pinned || (cands.length === 0 && routedOk.has(pp.check));
     if (cands.length === 0 && !routed) return skip(pp.check, "no_allowlisted_miner");
 

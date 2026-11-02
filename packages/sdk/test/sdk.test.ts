@@ -155,3 +155,58 @@ describe("submit() and wait()", () => {
     await skein().wait(started.id, { timeoutMs: 60_000 });
   }, 70_000);
 });
+
+describe("transport", () => {
+  it("handles a CRLF split across chunks, and drops an unterminated final event", async () => {
+    const enc = new TextEncoder();
+    const chunks = ["event: a\r", "\ndata: 1\r", "\n\r", "\ndata: partial"];
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        for (const ch of chunks) c.enqueue(enc.encode(ch));
+        c.close();
+      },
+    });
+    const out = [];
+    for await (const e of parseSse(body)) out.push(e);
+    expect(out).toEqual([{ event: "a", data: "1" }]);
+  });
+
+  it("gives up on a hung request after requestTimeoutMs", async () => {
+    const hang: typeof fetch = (_i, init) => new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)));
+    const s = new Skein({ apiUrl: "http://x", fetch: hang, requestTimeoutMs: 30, retries: 0 });
+    await expect(s.quote({ subject: { chainId: 8453, token: TOKEN } })).rejects.toMatchObject({ code: "TIMEOUT" });
+  });
+
+  it("throws at once on a Retry-After longer than its retry budget (a daily cap)", async () => {
+    let calls = 0;
+    const capped: typeof fetch = async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: { code: "RATE_LIMITED", message: "daily cap" } }), { status: 429, headers: { "retry-after": "40000" } });
+    };
+    const s = new Skein({ apiUrl: "http://x", fetch: capped });
+    await expect(s.quote({ subject: { chainId: 8453, token: TOKEN } })).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(calls).toBe(1);
+  });
+});
+
+describe("Telegraph payer edge cases", () => {
+  it("says what was paid when the miner answers without a verdict", async () => {
+    const asker = { ask: async () => ({ ok: true as const, response: { miner_id: "skein", result: { verdict: "ABSTAIN", reasons: [{ code: "BUDGET_TOO_LOW" }] } }, receipt: { receipt_hash: `0x${"ab".repeat(32)}` }, amountUusdc: 150_000, durationMs: 1 }) };
+    const err = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
+    expect(err).toMatchObject({ code: "TELEGRAPH_NO_VERDICT", payment: { amountUsdc: 0.15, billing: "paid" } });
+  });
+
+  it("reports a paid ask that failed as billing unknown", async () => {
+    const asker = { ask: async () => ({ ok: false as const, kind: "timeout", error: "x", paidUusdc: 150_000, billing: "unknown" }) };
+    const err = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
+    expect(err).toMatchObject({ code: "TELEGRAPH_TIMEOUT", payment: { amountUsdc: 0.15, billing: "unknown" } });
+  });
+
+  it("waits for a verdict the miner was still making at its deadline", async () => {
+    const started = (await skein().submit({ subject: { chainId: 8453, token: tok() } })) as { id: string };
+    const asker = { ask: async () => ({ ok: true as const, response: { miner_id: "skein", result: { verdict: "ABSTAIN", pending_id: started.id } }, receipt: null, amountUusdc: 150_000, durationMs: 1 }) };
+    const v = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } });
+    expect(v.id).toBe(started.id);
+    expect(v.payment).toMatchObject({ rail: "telegraph", amountUsdc: 0.15 });
+  });
+});

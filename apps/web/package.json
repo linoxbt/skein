@@ -14,7 +14,8 @@
   "dependencies": {
     "next": "15.5.28",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "@skein/ui": "workspace:*"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "5.16.2",

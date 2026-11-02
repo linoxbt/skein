@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { IconArrow } from "@/components/site/Icons";
-import { Lead, PageHero, Section } from "@/components/site/Section";
-import { Stripes } from "@/components/site/Stripes";
-import { StatTile, VERDICT_COLOR } from "@/components/ui";
+import { IconArrow } from "@skein/ui";
+import { Lead, PageHero, Section } from "@skein/ui";
+import { Stripes } from "@skein/ui";
+import { StatTile, VERDICT_COLOR, VERDICT_COLOR_LIGHT } from "@/components/ui";
 import { getLedger, getStatus, type Ledger, type Status } from "@/lib/api";
 import type { Verdict } from "@/lib/types";
 
@@ -81,7 +81,7 @@ export default function LedgerPage() {
             const n = l?.verdicts[v] ?? 0;
             return (
               <li key={v} className="bg-paper p-6">
-                <div className="flex items-center gap-3 font-mono text-[13px] uppercase tracking-wider">
+                <div className="flex items-center gap-3 font-mono text-[13px] uppercase tracking-wider" style={{ color: VERDICT_COLOR_LIGHT[v] }}>
                   <span className="h-3 w-3" style={{ background: VERDICT_COLOR[v] }} aria-hidden />
                   {v}
                 </div>
@@ -104,7 +104,7 @@ export default function LedgerPage() {
             {l.recent.map((r, i) => (
               <li key={r.id}>
                 <Link href={`/v/${r.id}`} className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 py-5 md:grid-cols-[160px_1fr_220px_auto] md:gap-8">
-                  <span className="font-mono text-[13px] uppercase tracking-wider" style={{ color: VERDICT_COLOR[r.verdict as Verdict] }}>
+                  <span className="font-mono text-[13px] uppercase tracking-wider" style={{ color: VERDICT_COLOR_LIGHT[r.verdict as Verdict] }}>
                     {r.verdict}
                   </span>
                   <span className="min-w-0 truncate font-mono text-[14px] md:text-[16px]">{r.id}</span>

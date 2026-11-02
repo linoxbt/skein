@@ -9,7 +9,8 @@
 //   SKEIN_PAYER_KEY           a burner private key that pays through Telegraph escrow
 //   SKEIN_MINER_ID            pin the Skein miner (otherwise routed by intent)
 //   SKEIN_MAX_USDC_PER_CALL   default 0.30
-//   SKEIN_DAILY_CAP_USDC      per-session cap, default 2
+//   SKEIN_SESSION_CAP_USDC    what one server process may spend in total, default 2
+//                             (SKEIN_DAILY_CAP_USDC is read as an alias)
 //
 // stdout carries the protocol; everything else goes to stderr.
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -19,7 +20,7 @@ import { createSkeinMcp } from "../src/server";
 
 const env = process.env;
 const maxUsdcPerCall = Number(env.SKEIN_MAX_USDC_PER_CALL ?? 0.3);
-const sessionCapUsdc = Number(env.SKEIN_DAILY_CAP_USDC ?? 2);
+const sessionCapUsdc = Number(env.SKEIN_SESSION_CAP_USDC ?? env.SKEIN_DAILY_CAP_USDC ?? 2);
 
 let payer: Payer | undefined;
 if (env.SKEIN_PAYER_KEY) {
@@ -35,6 +36,6 @@ if (env.SKEIN_PAYER_KEY) {
 if (!payer) console.error("skein-mcp: no SKEIN_API_KEY or SKEIN_PAYER_KEY; skein_quote and skein_verify work, skein_verdict will refuse.");
 
 const skein = new Skein({ apiUrl: env.SKEIN_API_URL ?? "https://api-production-9396.up.railway.app", ...(payer ? { payer } : {}), maxUsdcPerCall });
-const { server } = createSkeinMcp({ skein, webUrl: env.SKEIN_WEB_URL ?? "https://skein-web.netlify.app", sessionCapUsdc, maxUsdcPerCall });
+const { server } = createSkeinMcp({ skein, webUrl: env.SKEIN_WEB_URL ?? "https://skein-web.netlify.app", sessionCapUsdc, maxUsdcPerCall, ...(payer ? { rail: payer.kind } : {}) });
 await server.connect(new StdioServerTransport());
 console.error(`skein-mcp ready · ${payer?.kind ?? "no payer"} · cap ${maxUsdcPerCall} USDC/call, ${sessionCapUsdc} USDC/session`);

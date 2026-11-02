@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { PageHero, Section } from "@/components/site/Section";
+import { PageHero, Section } from "@skein/ui";
 import { VerdictBadge } from "@/components/ui";
 import { GraphWithPanel } from "@/components/VerdictView";
-import { API, CHAINS, createVerdict, getPolicy, listPolicies, short, SkeinError } from "@/lib/api";
-import { EMPTY, liveReduce, type GraphState, type LiveEvent } from "@/lib/graph";
+import { API, CHAINS, createVerdict, getBom, getPolicy, getVerdict, listPolicies, short, SkeinError } from "@/lib/api";
+import { EMPTY, graphFromVerdict, liveReduce, type GraphState, type LiveEvent } from "@/lib/graph";
 import type { PolicyDoc, PolicySummary } from "@/lib/types";
 
 interface LogLine {
@@ -26,6 +27,8 @@ function ConsoleInner() {
   const [phase, setPhase] = useState<"idle" | "running" | "done" | "refused" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const params = useSearchParams();
 
   useEffect(() => {
     listPolicies().then(setPolicies).catch(() => {});
@@ -35,19 +38,75 @@ function ConsoleInner() {
     } catch {
       // storage unavailable: the key just isn't remembered
     }
-    return () => esRef.current?.close();
+    return () => {
+      esRef.current?.close();
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
   }, []);
 
   const push = (text: string, tone?: LogLine["tone"]) =>
     setLog((l) => [...l, { t: new Date().toISOString().slice(11, 19), text, ...(tone ? { tone } : {}) }]);
 
+  /** A sealed verdict (cached, replayed, or found by polling): its whole graph at once. */
+  const showSealed = useCallback(async (id: string) => {
+    const v = await getVerdict(id);
+    if ("status" in v) return false;
+    const [bom, policy] = await Promise.all([getBom(id).catch(() => null), getPolicy(`${v.policy.id}@${v.policy.version}`).catch(() => null)]);
+    setGraph(graphFromVerdict(v, bom, policy));
+    setVerdictId(v.id);
+    setPhase("done");
+    return true;
+  }, []);
+
+  /** The stream dropped for good: poll the verdict until it is sealed (or fails). */
+  const poll = useCallback(
+    (id: string, tries = 0) => {
+      if (pollRef.current) clearTimeout(pollRef.current);
+      pollRef.current = setTimeout(async () => {
+        try {
+          if (await showSealed(id)) return push("sealed (read after the live stream dropped)", "muted");
+          if (tries < 60) poll(id, tries + 1);
+          else setPhase("error"), setError("still running after 3 minutes; open the verdict page later");
+        } catch (e) {
+          setPhase(e instanceof SkeinError && e.body.code === "BUDGET_TOO_LOW" ? "refused" : "error");
+          setError(e instanceof SkeinError ? `${e.body.code}: ${e.body.message}` : String(e));
+        }
+      }, 3000);
+    },
+    [showSealed],
+  );
+
   const watch = useCallback((id: string, policy: PolicyDoc | null) => {
     esRef.current?.close();
-    const es = new EventSource(`${API}/v1/verdicts/${id}/events`);
+    const es = new EventSource(`${API}/v1/verdicts/${encodeURIComponent(id)}/events`);
     esRef.current = es;
+    // Event ids are the run's sequence numbers: a reconnect (which resends Last-Event-ID) can never apply an event twice.
+    const seen = new Set<string>();
+    let drops = 0;
     const on = (type: LiveEvent["type"]) =>
       es.addEventListener(type, (m) => {
-        const e = { type, payload: JSON.parse((m as MessageEvent).data) } as LiveEvent;
+        const msg = m as MessageEvent;
+        if (typeof msg.data !== "string") {
+          // A connection error, not the server's "error" event: EventSource retries by itself, a few times.
+          if (++drops >= 3) {
+            es.close();
+            push("live stream lost; checking the verdict instead", "muted");
+            poll(id);
+          }
+          return;
+        }
+        drops = 0;
+        if (msg.lastEventId) {
+          if (seen.has(msg.lastEventId)) return;
+          seen.add(msg.lastEventId);
+        }
+        let payload: unknown;
+        try {
+          payload = JSON.parse(msg.data);
+        } catch {
+          return;
+        }
+        const e = { type, payload } as LiveEvent;
         setGraph((g) => liveReduce(g, e, policy));
         if (e.type === "plan") push(`plan: ${e.payload.purchases?.length ?? 0} checks to buy${e.payload.dropped?.length ? `, ${e.payload.dropped.length} not bought` : ""}`, "muted");
         if (e.type === "purchase")
@@ -75,6 +134,29 @@ function ConsoleInner() {
         }
       });
     (["plan", "purchase", "finding", "decision", "done", "refused", "error"] as const).forEach(on);
+  }, [poll]);
+
+  // /console?id=vrd_…: attach to a verdict that is already running (or show it sealed).
+  useEffect(() => {
+    const id = params.get("id");
+    if (!id || !/^vrd_[a-z0-9]+$/.test(id)) return;
+    setVerdictId(id);
+    setPhase("running");
+    push(`following ${id}`, "muted");
+    void (async () => {
+      try {
+        const v = await getVerdict(id);
+        if (!("status" in v)) {
+          await showSealed(id);
+          return;
+        }
+        watch(id, null);
+      } catch (e) {
+        setPhase("error");
+        setError(e instanceof SkeinError ? `${e.body.code}: ${e.body.message}` : String(e));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function run(ev: React.FormEvent) {
@@ -102,10 +184,9 @@ function ConsoleInner() {
         mode: "async",
       });
       if ("verdict" in res) {
-        // Served from cache or replayed: no live run to watch.
+        // Served from cache or replayed: no live run to watch, so show the sealed verdict whole.
         push(`served from cache: ${res.verdict}`, "muted");
-        setVerdictId(res.id);
-        setPhase("done");
+        await showSealed(res.id);
         return;
       }
       setVerdictId(res.id);
@@ -216,7 +297,7 @@ function ConsoleInner() {
             <span>live log</span>
             <span>{verdictId ?? "idle"}</span>
           </div>
-          <ol className="max-h-80 space-y-1 overflow-auto p-5 font-mono text-[13px]" aria-live="polite">
+          <ol tabIndex={0} aria-label="Live log" className="max-h-80 space-y-1 overflow-auto p-5 font-mono text-[13px]" aria-live="polite">
             {log.map((l, i) => (
               <li key={i} className={l.tone === "gold" ? "text-knot" : l.tone === "bad" ? "text-reject" : l.tone === "muted" ? "text-muted" : ""}>
                 <span className="text-muted">{l.t}</span> {l.text}

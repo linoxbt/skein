@@ -44,8 +44,9 @@ export interface Application {
   project: string;
   subject: Subject;
   context: { deployer?: string; social?: string; repo?: string };
-  contact?: string;
   status: "received" | "buying" | "decided";
+  /** Who is working on it, until when: only the lease holder may buy or decide. */
+  lease?: { by: string; until: string };
   rail?: "apiKey" | "telegraph";
   verdictId?: string;
   startedAt?: string;
@@ -53,7 +54,7 @@ export interface Application {
 }
 
 export type Column = "incoming" | "shortlist" | "analyst" | "declined";
-export function columnOf(a: Application): Column {
+export function columnOf(a: { status: Application["status"]; decision?: { action: Action } }): Column {
   if (a.status !== "decided" || !a.decision) return "incoming";
   return a.decision.action === "shortlist" ? "shortlist" : a.decision.action === "decline" ? "declined" : "analyst";
 }

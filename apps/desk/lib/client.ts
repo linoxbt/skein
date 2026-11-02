@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Verdict } from "@skein/sdk";
-import type { Application } from "./types";
+import type { Summary } from "./store";
 
 export const VCOLOR: Record<Verdict, string> = {
   APPROVE: "var(--color-approve)",
@@ -10,10 +10,10 @@ export const VCOLOR: Record<Verdict, string> = {
   ABSTAIN: "var(--color-abstain)",
 };
 export const VCOLOR_LIGHT: Record<Verdict, string> = {
-  APPROVE: "#138a4b",
-  REJECT: "#c93030",
+  APPROVE: "var(--color-approve-deep)",
+  REJECT: "var(--color-reject-deep)",
   ESCALATE: "var(--color-knot-deep)",
-  ABSTAIN: "#5b6670",
+  ABSTAIN: "var(--color-abstain-deep)",
 };
 
 export const short = (h: string, n = 6) => `${h.slice(0, n + 2)}…${h.slice(-4)}`;
@@ -25,7 +25,7 @@ export const ago = (iso: string) => {
 
 /** The queue, polled. Each poll also nudges the agent to settle open applications. */
 export function useApplications(intervalMs = 3000) {
-  const [state, setState] = useState<{ agent: "online" | "offline"; applications: Application[] } | null>(null);
+  const [state, setState] = useState<{ agent: "online" | "offline" | "misconfigured"; rail: "apiKey" | "telegraph"; lastError?: { at: string; code: string }; applications: Summary[] } | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
     let live = true;

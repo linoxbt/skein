@@ -16,7 +16,9 @@
     "@skein/sdk": "workspace:*",
     "next": "15.5.28",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "@skein/telegraph": "workspace:*",
+    "@skein/ui": "workspace:*"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "5.16.2",
@@ -26,6 +28,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "tailwindcss": "4.3.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@skein/telegraph": "workspace:*"
   }
 }

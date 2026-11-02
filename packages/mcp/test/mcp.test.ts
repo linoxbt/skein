@@ -78,3 +78,13 @@ describe("skein mcp", () => {
     expect(bad.isError).toBe(true);
   });
 });
+
+describe("skein mcp session cap under concurrency", () => {
+  it("reserves before paying: concurrent calls cannot pass the cap together", async () => {
+    const { client, mcp } = await connect(0.5);
+    const outs = (await Promise.all(Array.from({ length: 4 }, () => client.callTool({ name: "skein_verdict", arguments: { chainId: 8453, token: tok() } })))) as Result[];
+    expect(outs.filter((o) => !o.isError)).toHaveLength(2);
+    expect(outs.filter((o) => o.isError && o.content[0]!.text.startsWith("SESSION_CAP"))).toHaveLength(2);
+    expect(mcp.spentUsdc()).toBeCloseTo(0.5);
+  });
+});

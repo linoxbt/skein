@@ -1,7 +1,6 @@
 {
   "name": "@skein/mcp",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Skein as an MCP tool for LLM agents (stdio): skein_verdict, skein_quote, skein_verify, with a per-call and per-session spend cap.",
   "exports": {
@@ -13,15 +12,41 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
-    "start": "tsx bin/skein-mcp.ts"
+    "start": "tsx bin/skein-mcp.ts",
+    "build": "tsup"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
-    "@skein/sdk": "workspace:*",
-    "@skein/telegraph": "workspace:*",
-    "zod": "3.25.76"
+    "viem": "2.57.5",
+    "zod": "3.25.76",
+    "@noble/hashes": "2.4.0"
   },
   "devDependencies": {
-    "@skein/api": "workspace:*"
+    "@skein/api": "workspace:*",
+    "tsup": "8.5.0",
+    "typescript": "5.9.3",
+    "@skein/sdk": "workspace:*",
+    "@skein/telegraph": "workspace:*"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linoxbt/skein",
+    "directory": "packages/mcp"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "bin": {
+      "skein-mcp": "./dist/skein-mcp.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/server.d.ts",
+        "import": "./dist/server.js"
+      }
+    }
   }
 }

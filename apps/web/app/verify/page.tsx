@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { IconCheck, IconCross } from "@/components/site/Icons";
-import { Lead, PageHero, Section } from "@/components/site/Section";
+import { IconCheck, IconCross } from "@skein/ui";
+import { Lead, PageHero, Section } from "@skein/ui";
 import { SkeinError, verify } from "@/lib/api";
 
 type Report = Awaited<ReturnType<typeof verify>>;
@@ -72,7 +72,7 @@ function VerifyInner() {
         <>
           <Section tone="paper" inner="py-16 md:py-24">
             <Lead tag={report.ok ? "Verified" : "Mismatch"} />
-            <h2 className="display mt-4 text-[48px] md:text-[96px]" style={{ color: report.ok ? "var(--color-thread-deep)" : "var(--color-reject)" }}>
+            <h2 className="display mt-4 text-[48px] md:text-[96px]" style={{ color: report.ok ? "var(--color-thread-deep)" : "var(--color-reject-deep)" }}>
               {report.ok ? "Every step matches." : "Something changed."}
             </h2>
             <ol className="mt-12">
@@ -107,7 +107,7 @@ function VerifyInner() {
                   <div className="font-mono text-[12px] uppercase tracking-wider text-ink-2">{label}</div>
                   <dl className="mt-4 space-y-3 font-mono text-[13px]">
                     <div><dt className="text-ink-2">stored</dt><dd className="break-all">{a}</dd></div>
-                    <div><dt className="text-ink-2">recomputed</dt><dd className="break-all" style={{ color: a === b ? "var(--color-thread-deep)" : "var(--color-reject)" }}>{b}</dd></div>
+                    <div><dt className="text-ink-2">recomputed</dt><dd className="break-all" style={{ color: a === b ? "var(--color-thread-deep)" : "var(--color-reject-deep)" }}>{b}</dd></div>
                   </dl>
                 </div>
               ))}
@@ -115,7 +115,7 @@ function VerifyInner() {
             <p className="mt-6 font-mono text-[12px] text-ink-2">
               {report.receipts.length} receipts · <Link href={`/v/${report.id}`} className="underline">open the verdict</Link> · next: re-derive each signal hash against the Telegraph node.
             </p>
-            {report.problems.length ? <ul className="mt-4 font-mono text-[13px] text-reject">{report.problems.map((p) => <li key={p}>{p}</li>)}</ul> : null}
+            {report.problems.length ? <ul className="mt-4 font-mono text-[13px] text-reject-deep">{report.problems.map((p) => <li key={p}>{p}</li>)}</ul> : null}
           </Section>
         </>
       ) : !error ? (
