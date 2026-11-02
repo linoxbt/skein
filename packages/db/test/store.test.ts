@@ -9,7 +9,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, describe, expect, it } from "vitest";
-import { loadStoredVerdict, MIGRATIONS_DIR, saveVerdictRun, schema, type Db } from "../src";
+import { claimRun, finishRun, getRun, loadStoredVerdict, MIGRATIONS_DIR, saveVerdictRun, schema, spendGate, spentToday, sweepLostRuns, type Db } from "../src";
 
 const SEASON = Date.parse("2026-11-03T10:00:00Z");
 const subject = { chainId: 8453, token: "0x4200000000000000000000000000000000000006" };
@@ -108,7 +108,68 @@ describe("verdict store", () => {
     const res = await pg.query<{ relname: string; relrowsecurity: boolean }>(
       "select relname, relrowsecurity from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r'",
     );
-    expect(res.rows.length).toBe(12);
+    expect(res.rows.length).toBe(14);
     expect(res.rows.filter((r) => !r.relrowsecurity)).toEqual([]);
+  });
+});
+
+describe("runs and spend", () => {
+  const run = (id: string, over: Partial<Parameters<typeof claimRun>[1]> = {}) => ({
+    id, channel: "api" as const, subjectChainId: 8453, subjectToken: subject.token, policyId: "dex-list", policyVersion: "0.1.0", contextHash: "c", ...over,
+  });
+
+  it("claims an idempotency key atomically: concurrent claims get one winner and the same run back", async () => {
+    const [consumer] = await db.insert(schema.consumers).values({ name: "c", kind: "team", apiKeyHash: "h-claim" }).returning();
+    const claims = await Promise.all(
+      Array.from({ length: 6 }, (_, i) => claimRun(db, run(`run_claim_${i}`, { consumerId: consumer!.id, idempotencyKey: "k", requestHash: "rh" }))),
+    );
+    expect(claims.filter((c) => c.claimed)).toHaveLength(1);
+    const winner = claims.findIndex((c) => c.claimed);
+    for (const c of claims) if (!c.claimed) expect(c.existing.id).toBe(`run_claim_${winner}`);
+  });
+
+  it("holds spend atomically: concurrent reservations never pass the cap together", async () => {
+    const now = () => new Date("2026-11-05T12:00:00Z");
+    const gates = Array.from({ length: 10 }, (_, i) => spendGate(db, { runId: `r${i}`, channel: "api", caps: { dailyUusdc: 50_000 }, now }));
+    const holds = await Promise.all(gates.map((g) => g.reserve(10_000)));
+    expect(holds.filter(Boolean)).toHaveLength(5);
+    expect(await spentToday(db, now())).toBe(50_000);
+    // Settling at less frees the difference for the next caller.
+    await holds.find(Boolean)!.settle(2_000);
+    expect(await spentToday(db, now())).toBe(42_000);
+    expect(await gates[0]!.reserve(8_000)).not.toBeNull();
+    expect(await gates[0]!.reserve(1)).toBeNull();
+  });
+
+  it("caps a consumer and a channel separately from the global cap", async () => {
+    const now = () => new Date("2026-11-06T12:00:00Z");
+    const [c] = await db.insert(schema.consumers).values({ name: "capped", kind: "team", apiKeyHash: "h-cap" }).returning();
+    const mine = spendGate(db, { runId: "x", channel: "api", consumerId: c!.id, caps: { dailyUusdc: 1_000_000, consumerDailyUusdc: 15_000 }, now });
+    expect(await mine.reserve(10_000)).not.toBeNull();
+    expect(await mine.reserve(10_000)).toBeNull();
+    const tg = spendGate(db, { runId: "y", channel: "telegraph", caps: { dailyUusdc: 1_000_000, channelDailyUusdc: 5_000 }, now });
+    expect(await tg.reserve(6_000)).toBeNull();
+    expect(await tg.reserve(5_000)).not.toBeNull();
+  });
+
+  it("a settled hold and the spend ledger cannot be rewritten, and evidence cannot be truncated", async () => {
+    const g = spendGate(db, { runId: "z", channel: "api", caps: { dailyUusdc: 1e9 }, now: () => new Date("2026-11-07T00:00:00Z") });
+    const h = await g.reserve(1_000);
+    await h!.settle(1_000);
+    await refused(h!.settle(0), /settled hold is final/);
+    await db.insert(schema.spendLedger).values({ kind: "purchase", amountUusdc: 1 });
+    await refused(db.delete(schema.spendLedger), /append-only/);
+    await refused(db.execute(sql`truncate purchases cascade`), /TRUNCATE refused/);
+  });
+
+  it("finds runs that never finished and marks them lost", async () => {
+    await claimRun(db, run("run_orphan", { startedAt: new Date("2026-11-01T00:00:00Z") }));
+    await claimRun(db, run("run_fresh"));
+    expect(await sweepLostRuns(db, new Date(Date.now() - 60_000))).toBeGreaterThanOrEqual(1);
+    expect((await getRun(db, "run_orphan"))?.status).toBe("lost");
+    expect((await getRun(db, "run_fresh"))?.status).toBe("running");
+    await finishRun(db, "run_fresh", { status: "done", verdictId: "v" });
+    await finishRun(db, "run_fresh", { status: "failed" }); // a finished run stays finished
+    expect((await getRun(db, "run_fresh"))?.status).toBe("done");
   });
 });

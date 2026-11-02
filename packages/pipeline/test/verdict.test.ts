@@ -4,7 +4,7 @@ import { getPolicy } from "@skein/policies";
 import { TelegraphClient, TESTNET, viemSigner } from "@skein/telegraph";
 import { FakeNode, type Behaviour } from "@skein/telegraph/testing";
 import { describe, expect, it } from "vitest";
-import { catalogueFromSnapshot, runVerdict, type PipelineEvent, type PoolResolver } from "../src";
+import { catalogueFromSnapshot, runVerdict, type PipelineEvent, type PoolResolver, type VerdictDeps } from "../src";
 
 const KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const SEASON = Date.parse("2026-11-03T10:00:00Z");
@@ -30,7 +30,7 @@ function harness(over: Record<string, Behaviour> = {}) {
   });
   const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(KEY), fetch: node.fetch, maxUusdcPerCall: 50_000, now: () => SEASON });
   const events: PipelineEvent[] = [];
-  const deps = { client, catalogue, priceUusdc: 250_000, resolver: pool, onEvent: (e: PipelineEvent) => events.push(e), now: () => new Date(SEASON) };
+  const deps: VerdictDeps & { client: TelegraphClient } = { client, catalogue, priceUusdc: 250_000, resolver: pool, onEvent: (e: PipelineEvent) => void events.push(e), now: () => new Date(SEASON) };
   return { node, deps, events };
 }
 
@@ -72,7 +72,7 @@ describe("runVerdict, end to end against a fake node", () => {
     expect(run.ok && run.verdict.decision.reasons[0]!.code).toBe("MARKET_INTEGRITY_CONFLICT");
   });
 
-  it("the refusal: sanctions times out -> ABSTAIN naming it, billed only for what answered", async () => {
+  it("the refusal: sanctions times out -> ABSTAIN naming it; the possibly-billed call is counted, never retried", async () => {
     const { node, deps } = harness({ "78021": { kind: "hang" } });
     const policy = dex();
     policy.budget.per_check_timeout_ms.sanctions = 40;
@@ -82,7 +82,9 @@ describe("runVerdict, end to end against a fake node", () => {
     expect(run.verdict.decision.verdict).toBe("ABSTAIN");
     expect(run.verdict.decision.reasons[0]).toMatchObject({ code: "MISSING_REQUIRED_CHECK", check: "sanctions" });
     const s = run.purchases.find((p) => p.check === "sanctions")!;
-    expect(s).toMatchObject({ amountUusdc: 0, attempts: 2 });
+    // X-PAYMENT was sent, so the node may bill it: recorded at the signed amount, not retried.
+    expect(s).toMatchObject({ amountUusdc: 10_000, attempts: 1, billing: "unknown" });
+    expect(s.receiptHash).toBeUndefined();
     expect(s.error).toMatch(/^timeout/);
     expect(node.charges).toHaveLength(5);
     expect(run.verdict.bom.items).toBe(5);
@@ -119,7 +121,7 @@ describe("runVerdict, end to end against a fake node", () => {
     const ask = deps.client.ask.bind(deps.client);
     deps.client.ask = async (req, opts) =>
       opts.minerId === "7373"
-        ? { ok: false, kind: "incompatible", error: "no_compatible_miner", httpStatus: 503, durationMs: 1, attempts: 1 }
+        ? { ok: false, kind: "incompatible", error: "no_compatible_miner", httpStatus: 503, durationMs: 1, attempts: 1, paidUusdc: 0, billing: "none" }
         : ask(req, opts);
     const run = await runVerdict({ policy: dex(), subject, context }, deps);
     const liq = run.ok ? run.purchases.find((p) => p.check === "liquidity_depth")! : null;
@@ -147,5 +149,102 @@ describe("runVerdict, end to end against a fake node", () => {
     const run = await runVerdict({ policy: dex(), subject, context, budgetUusdc: 30_000 }, deps);
     expect(!run.ok && run.plan.refusal.code).toBe("BUDGET_TOO_LOW");
     expect(node.charges).toHaveLength(0);
+  });
+});
+
+describe("runVerdict spend safety", () => {
+  it("never lets the 402s spend past the verdict's cap: each ask is capped at its allotment", async () => {
+    const { deps } = harness();
+    const caps: number[] = [];
+    const ask = deps.client.ask.bind(deps.client);
+    deps.client.ask = async (req, opts) => {
+      caps.push(opts.maxUusdc ?? Infinity);
+      return ask(req, opts);
+    };
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(run.ok).toBe(true);
+    if (!run.ok) return;
+    expect(caps.every((c) => Number.isFinite(c))).toBe(true);
+    expect(caps.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(run.plan.capUusdc);
+  });
+
+  it("holds daily spend before each payment and settles what was spent", async () => {
+    const { deps } = harness();
+    let held = 0;
+    let settled = 0;
+    deps.spend = {
+      async reserve(u) {
+        held += u;
+        return { settle: async (spent) => void (settled += spent) };
+      },
+    };
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(run.ok && run.purchases.reduce((a, p) => a + p.amountUusdc, 0)).toBe(settled);
+    expect(settled).toBeLessThanOrEqual(held);
+  });
+
+  it("refuses to buy a check once the daily reservation is refused", async () => {
+    const { node, deps } = harness();
+    deps.spend = { reserve: async () => null };
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(node.charges).toHaveLength(0);
+    expect(run.ok && run.verdict.findings.find((f) => f.check === "sanctions")?.notes).toEqual(["daily_cap_reached"]);
+  });
+
+  it("persists each purchase before the verdict is sealed", async () => {
+    const { deps } = harness();
+    const written: string[] = [];
+    let sealedBefore = false;
+    deps.onPurchase = async (p) => void written.push(p.check);
+    deps.onEvent = (e) => {
+      if (e.type === "decision") sealedBefore = written.length > 0;
+    };
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(written.sort()).toEqual(run.ok ? run.purchases.map((p) => p.check).sort() : []);
+    expect(sealedBefore).toBe(true);
+  });
+
+  it("an exception during one purchase does not lose the others", async () => {
+    const { node, deps } = harness();
+    const ask = deps.client.ask.bind(deps.client);
+    deps.client.ask = async (req, opts) => {
+      if (opts.minerId === "7302") throw new Error("signer exploded");
+      return ask(req, opts);
+    };
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(run.ok).toBe(true);
+    if (!run.ok) return;
+    expect(run.purchases.find((p) => p.check === "holder_count")?.error).toMatch(/exception: signer exploded/);
+    expect(run.purchases.filter((p) => p.billing === "paid")).toHaveLength(node.charges.length);
+  });
+
+  it("does not route a check with no live allowlisted miner", async () => {
+    const { node, deps } = harness();
+    const run = await runVerdict({ policy: dex(), subject, context: { ...context, repoUrl: "https://github.com/a/b" } }, deps);
+    // code_review has no allowlist: it is UNAVAILABLE, not bought from whoever /ask routes to.
+    expect(run.ok && run.verdict.findings.find((f) => f.check === "code_review")).toBeFalsy();
+    expect(node.charges.every((c) => c.minerId !== "")).toBe(true);
+  });
+
+  it("a receipt that does not check out is paid for but not evidence", async () => {
+    const { deps } = harness();
+    const ask = deps.client.ask.bind(deps.client);
+    deps.client.ask = async (req, opts) => {
+      const out = await ask(req, opts);
+      return opts.minerId === "7302" && out.ok ? { ...out, receiptProblems: ["receipt payer 0xbb, expected 0xaa"] } : out;
+    };
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    if (!run.ok) throw new Error("plan refused");
+    const hc = run.purchases.find((p) => p.check === "holder_count")!;
+    expect(hc).toMatchObject({ billing: "paid", amountUusdc: 10_000 });
+    expect(hc.receiptHash).toBeUndefined();
+    expect(run.verdict.findings.find((f) => f.check === "holder_count")?.status).toBe("ERROR");
+    expect(run.stored.receipts).not.toContain(undefined);
+  });
+
+  it("checks each paid answer's signal on the node", async () => {
+    const { deps } = harness();
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(run.ok && run.purchases.filter((p) => p.billing === "paid").every((p) => p.signalStatus === "verified")).toBe(true);
   });
 });

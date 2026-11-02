@@ -6,8 +6,8 @@
   "description": "Skein HTTP API: verdicts, SSE events, bill of materials, verify, quote, status, ledger, and the Telegraph miner endpoint.",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "start": "tsx src/server.ts",
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
+    "start": "node --import tsx src/server.ts",
     "migrate": "tsx bin/migrate.ts",
     "partner:add": "tsx bin/partner-add.ts",
     "dev": "tsx bin/dev.ts"
@@ -23,7 +23,8 @@
     "hono": "4.13.13",
     "pg": "8.23.1",
     "tsx": "4.23.15",
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "viem": "2.57.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",

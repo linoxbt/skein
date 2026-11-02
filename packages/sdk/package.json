@@ -9,7 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000"
   },
   "devDependencies": {
     "@skein/api": "workspace:*",

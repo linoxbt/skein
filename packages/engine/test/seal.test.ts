@@ -32,8 +32,16 @@ describe("merkle root", () => {
   it("is the zero hash for no receipts", () => {
     expect(merkleRoot([])).toBe(ZERO_HASH);
   });
-  it("is the leaf hash for one receipt", () => {
-    expect(merkleRoot([r(1)])).toBe(`0x${bytesToHex(keccak_256(hexToBytes(r(1).slice(2))))}`);
+  it("is the 0x00-prefixed leaf hash for one receipt", () => {
+    expect(merkleRoot([r(1)])).toBe(`0x${bytesToHex(keccak_256(hexToBytes(`00${r(1).slice(2)}`)))}`);
+  });
+  it("cannot be forged with a second preimage: leaves and nodes are domain-separated", () => {
+    const leaf = (x: string) => keccak_256(hexToBytes(`00${x.slice(2)}`));
+    const [a, b] = [leaf(r(1)), leaf(r(2))];
+    const [lo, hi] = bytesToHex(a) < bytesToHex(b) ? [a, b] : [b, a];
+    // Under 0.1.0, a 64-byte "receipt" lo‖hi had the same root as {r1, r2}; now it is refused outright.
+    expect(() => merkleRoot([`0x${bytesToHex(lo)}${bytesToHex(hi)}`])).toThrow(/32-byte/);
+    expect(() => merkleRoot(["not-a-hash"])).toThrow(/32-byte/);
   });
   it("ignores order, duplicates and hex case", () => {
     const a = merkleRoot([r(1), r(2), r(3)]);
@@ -106,5 +114,44 @@ describe("reproduce", () => {
     expect(report.ok).toBe(false);
     expect(report.problems).toContain("findings re-derived from raw answers differ from the stored findings");
     expect(report.problems).toContain("verdict hash mismatch");
+  });
+});
+
+describe("replay across engine versions", () => {
+  it("replays a verdict with the engine that sealed it, including the frozen 0.1.0", async () => {
+    const { evaluate: evaluate010 } = await import("../src/frozen/v0_1_0/seal");
+    const policy = cex();
+    const findings = cleanCex();
+    const old = evaluate010(policy, subject, findings);
+    expect(old.engineVersion).toBe("0.1.0");
+    const stored: StoredVerdict = { engineVersion: "0.1.0", policy: old.policy, subject, findings: old.findings, verdictHash: old.verdictHash, bomRoot: old.bom.root };
+    expect(reproduce(stored, policy)).toMatchObject({ ok: true, verdictHash: old.verdictHash });
+    // The current engine seals the same findings differently (new Merkle tree, policy hash).
+    expect(evaluate(policy, subject, findings).verdictHash).not.toBe(old.verdictHash);
+    expect(reproduce({ ...stored, engineVersion: "9.9.9" }, policy).problems[0]).toMatch(/no engine 9\.9\.9/);
+  });
+
+  it("catches a served decision that disagrees with its own hash", () => {
+    const policy = cex();
+    const sealed = evaluate(policy, subject, cleanCex(), undefined, { policySha256: "ab".repeat(32) });
+    const stored: StoredVerdict = {
+      engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings, verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root,
+      decision: { verdict: "APPROVE", riskBps: sealed.decision.riskBps, confidenceBps: sealed.decision.confidenceBps },
+    };
+    expect(reproduce(stored, policy, { policySha256: "ab".repeat(32) }).ok).toBe(sealed.decision.verdict === "APPROVE");
+    const tampered = reproduce({ ...stored, decision: { ...stored.decision!, verdict: "REJECT" } }, policy);
+    expect(tampered.problems.join(" ")).toMatch(/served verdict REJECT/);
+    expect(reproduce(stored, policy, { policySha256: "cd".repeat(32) }).problems.join(" ")).toMatch(/policy file differs/);
+  });
+
+  it("requires the BOM's receipts to be exactly the purchases' receipts", () => {
+    const policy = cex();
+    const findings = cleanCex();
+    const receipts = findings.map((x) => x.evidence?.receiptHash).filter((x): x is string => !!x);
+    const sealed = evaluate(policy, subject, findings, receipts);
+    const purchases = findings.map((x) => ({ check: x.check, adapterVersion: "0.1.0", rawResult: null, sourceGroup: x.sourceGroup, receiptHash: x.evidence?.receiptHash }));
+    const base: StoredVerdict = { engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings, verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root, receipts };
+    const extra = reproduce({ ...base, purchases: purchases.slice(1), receipts }, policy);
+    expect(extra.problems.join(" ")).toMatch(/belong to no purchase/);
   });
 });

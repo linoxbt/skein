@@ -1,11 +1,11 @@
 // Records the SHA-256 of newly published policies. Published entries are never
 // rewritten: a change to a policy is a new version.
 import { writeFileSync } from "node:fs";
-import { LOCK_FILE, listPolicies, readLock } from "./index";
+import { LOCK_FILE, listAllPolicyFiles, readLock } from "./index";
 
 const lock = readLock();
 let added = 0;
-for (const p of listPolicies()) {
+for (const p of listAllPolicyFiles()) {
   const known = lock[p.ref];
   if (known && known !== p.sha256) {
     console.error(`${p.ref} changed after publication; publish a new version instead`);

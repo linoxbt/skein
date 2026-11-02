@@ -170,9 +170,31 @@ describe("POST /miner/verdict (the Telegraph dispatcher)", () => {
     expect(v.bom.root).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
-  it("never re-buys a nested request that came back from Skein's own purchase", async () => {
-    const res = await minerPost({ token: TOKEN, chain: "base", policy: "dex-list" }, { "x-skein-depth": "1" });
-    expect(res.status).toBe(409);
-    expect(node.charges).toHaveLength(0);
+  it("never buys an intent in its own family, so a request can never route back to Skein", async () => {
+    const res = await minerPost({ token: TOKEN, chain: "base", policy: "dex-list" });
+    expect(res.status).toBe(200);
+    const asked = node.charges.map((c) => c.minerId);
+    expect(asked.length).toBeGreaterThan(0);
+    // Every purchase is an allowlisted check miner; none is in the FRAUD_RISK family Skein serves.
+    const purchases = await j(app.request(`/v1/verdicts/${(await j(minerPost({ token: TOKEN, chain: "base" }))).id}/bom`));
+    expect(purchases.lines.every((l: { intent: string }) => !l.intent.startsWith("FRAUD_RISK"))).toBe(true);
+  });
+
+  it("accepts a numeric chain id, a params wrapper and Plan B's subject string, and answers bom_root and reasons", async () => {
+    for (const body of [{ token: TOKEN, chain: 8453 }, { params: { token: TOKEN, chain: "base" } }, { subject: TOKEN, chain: "8453" }]) {
+      const res = await minerPost(body);
+      expect(res.status, JSON.stringify(body)).toBe(200);
+      const out = await j(res);
+      expect(out).toMatchObject({ verdict: "APPROVE", risk_level: "low" });
+      expect(out.bom_root).toMatch(/^0x[0-9a-f]{64}$/);
+      expect(Array.isArray(out.reasons)).toBe(true);
+    }
+  });
+
+  it("runs one verdict for concurrent dispatcher calls about the same token", async () => {
+    const token = "0x0000000000000000000000000000000000c0ffe0";
+    const outs = await Promise.all(Array.from({ length: 5 }, () => j(minerPost({ token, chain: "base" }))));
+    expect(new Set(outs.map((o) => o.id)).size).toBe(1);
+    expect(node.charges.length).toBeLessThanOrEqual(6);
   });
 });

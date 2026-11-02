@@ -1,5 +1,5 @@
 import { schema, type Db } from "@skein/db";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 
 export interface SeedConsumer {
   name: string;
@@ -25,14 +25,45 @@ export function parseSeedConsumers(raw: string | undefined): SeedConsumer[] {
   });
 }
 
-/** Inserts each seeded consumer whose key hash is not already present. Returns the names inserted. */
-export async function seedConsumers(db: Db, seeds: SeedConsumer[]): Promise<string[]> {
+/**
+ * Reconciles seeded consumers with SEED_CONSUMERS on every start: a new entry
+ * is inserted, an existing one gets the env's name and cap (and is un-revoked),
+ * and a seeded consumer whose hash left the env is revoked. Only rows created
+ * by seeding are ever revoked here; with no SEED_CONSUMERS set, nothing is.
+ * Returns what changed.
+ */
+export async function seedConsumers(db: Db, seeds: SeedConsumer[], now = new Date()): Promise<{ added: string[]; updated: string[]; revoked: number }> {
   const added: string[] = [];
+  const updated: string[] = [];
   for (const s of seeds) {
-    const [have] = await db.select({ id: schema.consumers.id }).from(schema.consumers).where(eq(schema.consumers.apiKeyHash, s.apiKeyHash));
-    if (have) continue;
-    await db.insert(schema.consumers).values(s);
-    added.push(s.name);
+    const [have] = await db.select().from(schema.consumers).where(eq(schema.consumers.apiKeyHash, s.apiKeyHash));
+    if (!have) {
+      await db.insert(schema.consumers).values({ ...s, seeded: true }).onConflictDoNothing({ target: schema.consumers.apiKeyHash });
+      added.push(s.name);
+    } else if (have.name !== s.name || have.dailyCapUusdc !== s.dailyCapUusdc || have.kind !== s.kind || have.revokedAt) {
+      await db.update(schema.consumers).set({ name: s.name, kind: s.kind, dailyCapUusdc: s.dailyCapUusdc, revokedAt: null, seeded: true }).where(eq(schema.consumers.id, have.id));
+      updated.push(s.name);
+    }
   }
-  return added;
+  let revoked = 0;
+  if (seeds.length > 0) {
+    const gone = await db
+      .update(schema.consumers)
+      .set({ revokedAt: now })
+      .where(and(eq(schema.consumers.seeded, true), isNull(schema.consumers.revokedAt), notInArray(schema.consumers.apiKeyHash, seeds.map((s) => s.apiKeyHash))))
+      .returning({ id: schema.consumers.id });
+    revoked = gone.length;
+  }
+  return { added, updated, revoked };
+}
+
+/** Revokes partner keys by hash (REVOKED_KEY_HASHES), seeded or not. */
+export async function revokeKeys(db: Db, hashes: string[], now = new Date()): Promise<number> {
+  if (hashes.length === 0) return 0;
+  const rows = await db
+    .update(schema.consumers)
+    .set({ revokedAt: now })
+    .where(and(inArray(schema.consumers.apiKeyHash, hashes), isNull(schema.consumers.revokedAt)))
+    .returning({ id: schema.consumers.id });
+  return rows.length;
 }

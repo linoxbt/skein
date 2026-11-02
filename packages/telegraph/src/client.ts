@@ -3,7 +3,8 @@ import { SEASON_START, type NetworkConfig } from "./config";
 import {
   ChallengeMismatchError,
   decodeReceipt,
-  findEscrowAccept,
+  readChallenge,
+  receiptProblems,
   signEscrowPayment,
   type MessageSigner,
   type Receipt,
@@ -32,9 +33,36 @@ export interface AskResponse {
 /** incompatible: the node refused the request before payment (no_compatible_miner, invalid_params); try another miner. */
 export type AskFailureKind = "timeout" | "network" | "refused" | "client_error" | "server_error" | "incompatible" | "mismatch" | "preseason";
 
+/**
+ * paidUusdc: what was signed and sent with X-PAYMENT on the failing attempt.
+ * After a paid POST fails (timeout, dropped connection, 5xx, unreadable 200)
+ * the node may still have billed it, so the amount is reported with
+ * billing "unknown" and the call is never retried.
+ */
 export type AskOutcome =
-  | { ok: true; response: AskResponse; receipt: Receipt | null; httpStatus: number; amountUusdc: number; durationMs: number; attempts: number }
-  | { ok: false; kind: AskFailureKind; httpStatus?: number; error: string; durationMs: number; attempts: number };
+  | {
+      ok: true;
+      response: AskResponse;
+      receipt: Receipt | null;
+      /** Why the receipt is not evidence of this purchase; empty when it checks out. */
+      receiptProblems: string[];
+      httpStatus: number;
+      amountUusdc: number;
+      durationMs: number;
+      attempts: number;
+    }
+  | {
+      ok: false;
+      kind: AskFailureKind;
+      httpStatus?: number;
+      error: string;
+      durationMs: number;
+      attempts: number;
+      paidUusdc: number;
+      billing: "none" | "unknown";
+    };
+
+export type SignalStatus = "verified" | "missing" | "mismatch" | "unchecked";
 
 export interface MinerRecord {
   id: string;
@@ -87,9 +115,30 @@ export class TelegraphClient {
   }
 
   private async getJson<T>(path: string): Promise<T> {
-    const res = await this.fetch(this.url(path), { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) throw new Error(`GET ${path}: HTTP ${res.status}`);
-    return (await res.json()) as T;
+    const r = await this.send(path, { method: "GET" }, 15_000);
+    if (typeof r === "string") throw new Error(`GET ${path}: ${r}`);
+    if (r.status < 200 || r.status >= 300) throw new Error(`GET ${path}: HTTP ${r.status}`);
+    return JSON.parse(r.text) as T;
+  }
+
+  /**
+   * One request with a referenced timer (unlike AbortSignal.timeout(), it keeps
+   * a worker or CLI alive while an upstream call hangs) that also covers
+   * reading the body, so a slow body cannot hang a verdict.
+   */
+  private async send(path: string, init: RequestInit, timeoutMs: number): Promise<{ status: number; headers: Headers; text: string } | "timeout" | "network"> {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(new DOMException("upstream timed out", "TimeoutError")), timeoutMs);
+    try {
+      const res = await this.fetch(this.url(path), { ...init, signal: ctl.signal });
+      const text = (await res.text()).slice(0, 1_000_000);
+      return { status: res.status, headers: res.headers, text };
+    } catch (e) {
+      const err = e as Error;
+      return err.name === "TimeoutError" || err.name === "AbortError" ? "timeout" : "network";
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   listMiners(q: { intent?: string; status?: string; limit?: number } = {}): Promise<MinerRecord[]> {
@@ -113,77 +162,92 @@ export class TelegraphClient {
   }
 
   /**
-   * Buys one answer on the escrow rail. A failed attempt is retried once
-   * (timeout, network, 5xx, or a 402 refusal) with a fresh challenge and a
-   * fresh nonce; a 4xx is never retried. Failed calls are not billed.
+   * Looks a paid answer's signal_hash up on the node, the network's own record
+   * of it. "verified": the node has the signal (and, when it says which miner,
+   * that miner is the one paid); "missing": the node has no such signal;
+   * "mismatch": it does, from another miner; "unchecked": the node did not answer.
    */
-  async ask(req: AskRequest, opts: { minerId?: string; timeoutMs: number }): Promise<AskOutcome> {
+  async verifySignal(signalHash: string | undefined, expect: { minerId?: string } = {}): Promise<SignalStatus> {
+    if (!signalHash || !/^0x[0-9a-fA-F]{64}$/.test(signalHash)) return "missing";
+    const r = await this.send(`/engine/v1/signal/${encodeURIComponent(signalHash)}`, { method: "GET" }, 10_000);
+    if (typeof r === "string" || r.status >= 500) return "unchecked";
+    if (r.status === 404) return "missing";
+    if (r.status < 200 || r.status >= 300) return "unchecked";
+    const body = parseJson(r.text) as { miner_id?: unknown; minerId?: unknown } | null;
+    const miner = body?.miner_id ?? body?.minerId;
+    if (expect.minerId && miner !== undefined && miner !== null && String(miner) !== expect.minerId) return "mismatch";
+    return "verified";
+  }
+
+  /**
+   * Buys one answer on the escrow rail. Failures before payment (no answer to
+   * the unpaid probe, a 5xx) and an explicit 402 refusal of the payment are
+   * retried once with a fresh challenge and nonce: nothing was billed. A
+   * failure after X-PAYMENT was sent is never retried, because the node may
+   * have billed it; it comes back with paidUusdc set and billing "unknown".
+   * maxUusdc lowers the client-wide cap for this one call.
+   */
+  async ask(req: AskRequest, opts: { minerId?: string; timeoutMs: number; maxUusdc?: number }): Promise<AskOutcome> {
     const started = this.now();
     let last: AskOutcome | null = null;
     for (let attempt = 1; attempt <= 2; attempt++) {
       const out = await this.attempt(req, opts, started, attempt);
-      if (out.ok || !RETRYABLE.has(out.kind)) return out;
+      if (out.ok || out.billing === "unknown" || !RETRYABLE.has(out.kind)) return out;
       last = out;
     }
     return last!;
   }
 
-  private async attempt(req: AskRequest, opts: { minerId?: string; timeoutMs: number }, started: number, attempts: number): Promise<AskOutcome> {
+  private async attempt(req: AskRequest, opts: { minerId?: string; timeoutMs: number; maxUusdc?: number }, started: number, attempts: number): Promise<AskOutcome> {
     const path = opts.minerId ? `/engine/v1/ask/${encodeURIComponent(opts.minerId)}` : "/engine/v1/ask";
     const body = JSON.stringify(req);
-    const fail = (kind: AskFailureKind, error: string, httpStatus?: number): AskOutcome => ({
-      ok: false, kind, error, durationMs: this.now() - started, attempts, ...(httpStatus !== undefined ? { httpStatus } : {}),
+    const fail = (kind: AskFailureKind, error: string, httpStatus?: number, paidUusdc = 0): AskOutcome => ({
+      ok: false, kind, error, durationMs: this.now() - started, attempts, paidUusdc, billing: paidUusdc > 0 ? "unknown" : "none",
+      ...(httpStatus !== undefined ? { httpStatus } : {}),
     });
-    const post = async (headers: Record<string, string>) => {
-      // A referenced timer, unlike AbortSignal.timeout(), keeps a worker or
-      // CLI process alive while an upstream call hangs.
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(new DOMException("upstream timed out", "TimeoutError")), opts.timeoutMs);
-      try {
-        return await this.fetch(this.url(path), {
-          method: "POST",
-          headers: { "content-type": "application/json", ...headers },
-          body,
-          signal: ctl.signal,
-        });
-      } catch (e) {
-        const err = e as Error;
-        return err.name === "TimeoutError" || err.name === "AbortError" ? ("timeout" as const) : ("network" as const);
-      } finally {
-        clearTimeout(timer);
-      }
-    };
+    const post = (headers: Record<string, string>) =>
+      this.send(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body }, opts.timeoutMs);
 
     const challenge = await post({});
     if (typeof challenge === "string") return fail(challenge, `unpaid request: ${challenge}`);
     if (challenge.status !== 402) {
-      const msg = await safeText(challenge);
+      const msg = challenge.text.slice(0, 2000);
       let err: string | undefined;
       try {
         err = (JSON.parse(msg) as { error?: string }).error;
       } catch {
         // not JSON: classify by status alone
       }
+      // A 2xx to an unpaid ask is an answer nobody paid for: not evidence; try another miner.
       const kind: AskFailureKind =
-        err === "no_compatible_miner" || err === "invalid_params" || err === "no_input_schema" || err === "intent_required"
+        challenge.status < 300 || err === "no_compatible_miner" || err === "invalid_params" || err === "no_input_schema" || err === "intent_required"
           ? "incompatible"
           : challenge.status >= 500 ? "server_error" : "client_error";
       return fail(kind, `expected 402, got ${challenge.status}: ${msg}`, challenge.status);
     }
-    const accept = findEscrowAccept(challenge.headers.get("payment-required"), await safeJson(challenge));
-    if (!accept) return fail("mismatch", "the node offered no escrow scheme", 402);
+    const parsed = readChallenge(challenge.headers.get("payment-required"), parseJson(challenge.text));
+    if (!parsed) return fail("mismatch", "the node offered no escrow scheme", 402);
 
     if (!this.opts.allowPreSeason && this.now() < SEASON_START) {
       return fail("preseason", "paid calls are refused before the season opens (Nov 1 UTC)");
     }
     if (!this.opts.signer) return fail("mismatch", "no signer configured");
 
+    const maxUusdc = Math.min(this.opts.maxUusdcPerCall, opts.maxUusdc ?? Infinity);
     let signed;
     try {
       signed = await signEscrowPayment({
-        accept,
+        accept: parsed.escrow,
+        assets: parsed.assets,
         signer: this.opts.signer,
-        expected: { caip2: this.opts.network.caip2, diamond: this.opts.network.diamond, maxUusdc: this.opts.maxUusdcPerCall },
+        expected: {
+          caip2: this.opts.network.caip2,
+          diamond: this.opts.network.diamond,
+          usdc: this.opts.network.usdc,
+          maxUusdc,
+          // A pinned ask must be for that miner's resource, not another's.
+          ...(opts.minerId ? { resource: `/v1/ask/${opts.minerId}` } : {}),
+        },
         nowSec: Math.floor(this.now() / 1000),
         nonce: this.nonce(),
       });
@@ -193,41 +257,40 @@ export class TelegraphClient {
     }
 
     const paid = await post({ "X-PAYMENT": signed.header });
-    if (typeof paid === "string") return fail(paid, `paid request: ${paid}`);
+    const sent = signed.amountUusdc;
+    if (typeof paid === "string") return fail(paid, `paid request: ${paid}`, undefined, sent);
     if (paid.status === 402) {
-      const reason = ((await safeJson(paid)) as { reason?: string; error?: string } | null);
+      // An explicit refusal of the payment (nonce, window, amount, balance): not billed.
+      const reason = parseJson(paid.text) as { reason?: string; error?: string } | null;
       return fail("refused", `payment refused: ${reason?.reason ?? reason?.error ?? "no reason given"}`, 402);
     }
-    if (!paid.ok) {
-      const msg = await safeText(paid);
-      return fail(paid.status >= 500 ? "server_error" : "client_error", `HTTP ${paid.status}: ${msg}`, paid.status);
+    if (paid.status < 200 || paid.status >= 300) {
+      return fail(paid.status >= 500 ? "server_error" : "client_error", `HTTP ${paid.status}: ${paid.text.slice(0, 2000)}`, paid.status, sent);
     }
-    const response = (await safeJson(paid)) as AskResponse | null;
-    if (!response) return fail("server_error", "200 with a body that is not JSON", paid.status);
+    const response = parseJson(paid.text) as AskResponse | null;
+    if (!response || typeof response !== "object") return fail("server_error", "200 with a body that is not JSON", paid.status, sent);
+    const receipt = decodeReceipt(paid.headers.get("x-payment-response"));
+    const problems = receiptProblems(receipt, { payer: signed.authorization.from, amountUusdc: sent, ...(opts.minerId ? { minerId: opts.minerId } : {}) });
+    if (opts.minerId && response.miner_id !== undefined && String(response.miner_id) !== opts.minerId) {
+      problems.push(`answered by miner ${response.miner_id}, pinned ${opts.minerId}`);
+    }
     return {
       ok: true,
       response,
-      receipt: decodeReceipt(paid.headers.get("x-payment-response") ?? paid.headers.get("x-telegraph-receipt")),
+      receipt,
+      receiptProblems: problems,
       httpStatus: paid.status,
-      amountUusdc: signed.amountUusdc,
+      amountUusdc: sent,
       durationMs: this.now() - started,
       attempts,
     };
   }
 }
 
-async function safeJson(res: Response): Promise<unknown> {
+function parseJson(text: string): unknown {
   try {
-    return await res.clone().json();
+    return JSON.parse(text);
   } catch {
     return null;
-  }
-}
-
-async function safeText(res: Response): Promise<string> {
-  try {
-    return (await res.text()).slice(0, 2000);
-  } catch {
-    return "";
   }
 }

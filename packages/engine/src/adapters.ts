@@ -21,6 +21,10 @@ export interface AdapterContext {
   httpStatus?: number;
   /** Set when the purchase failed (timeout, 5xx, refused 402). */
   error?: string;
+  /** What was asked about, so an adapter can refuse an answer about something else. */
+  subject?: { chainId: number; token: string };
+  /** The pool asked about, for liquidity checks. */
+  pool?: string;
 }
 
 export interface Adapter {
@@ -223,7 +227,36 @@ export const codeReview = enumAdapter("code_review", "CODE_REVIEW_GENERAL", "ver
  * LIQUIDITY_DEPTH_VERIFY: total pool reserve in USD (not 2% depth).
  * reserve_in_usd is GeckoTerminal's own field, for the native-form miner.
  */
-export const liquidityDepth = metricAdapter("liquidity_depth", "LIQUIDITY_DEPTH_VERIFY_GENERAL", ["liquidity_usd", "reserve_in_usd"], 0, 1e12, "USD", "0.2.0");
+const liquidityDepthV2 = metricAdapter("liquidity_depth", "LIQUIDITY_DEPTH_VERIFY_GENERAL", ["liquidity_usd", "reserve_in_usd"], 0, 1e12, "USD", "0.2.0");
+
+/** The pool an answer says it measured: a bare address, or GeckoTerminal's "<network>_<address>" id. */
+function answeredPool(raw: unknown): string | undefined {
+  for (const name of ["pool_address", "pool", "address", "id"]) {
+    const v = pick(raw, name);
+    if (typeof v !== "string" || v.length > MAX_STRING) continue;
+    const m = /(0x[0-9a-fA-F]{40})$/.exec(v.trim());
+    if (m) return m[1]!.toLowerCase();
+  }
+  return undefined;
+}
+
+/**
+ * 0.3.0: an answer that names a pool must name the pool that was asked
+ * about. A fallback miner's default pool on another chain is not this token's
+ * liquidity.
+ */
+export const liquidityDepth: Adapter = {
+  ...liquidityDepthV2,
+  version: "0.3.0",
+  adapt(raw, ctx) {
+    const named = isObject(raw) ? answeredPool(raw) : undefined;
+    if (named && ctx.pool && named !== ctx.pool.toLowerCase() && !ctx.error) {
+      return unknown({ check: "liquidity_depth", version: "0.3.0", ctx }, "answer_for_other_pool");
+    }
+    const f = liquidityDepthV2.adapt(raw, ctx);
+    return { ...f, adapterVersion: "0.3.0" };
+  },
+};
 
 /** TOKEN_HOLDER_COUNT: distinct holder addresses. */
 export const holderCount = metricAdapter("holder_count", "TOKEN_HOLDER_COUNT_GENERAL", ["holders_count"], 0, 1e10, "addresses");
@@ -267,7 +300,33 @@ function sanctionsAdapter(version: string, fields: readonly string[]): Adapter {
   };
 }
 
-export const sanctions = sanctionsAdapter("0.2.0", ["matched", "on_list"]);
+const sanctionsV2 = sanctionsAdapter("0.2.0", ["matched", "on_list"]);
+
+/** Confidence ceiling for a name-screening answer about a wallet address. */
+const ADDRESS_SCREEN_MAX_CONFIDENCE = 0.3;
+
+/**
+ * 0.3.0: the sanctions intent screens names; Skein asks it about an address.
+ * Until address matching is proven against recorded answers, its answer is
+ * evidence of low confidence either way: a "clear" is not a clearance, and a
+ * "match" escalates to an analyst instead of rejecting on its own (blockers
+ * need minConfidence).
+ */
+export const sanctions: Adapter = {
+  ...sanctionsV2,
+  version: "0.3.0",
+  adapt(raw, ctx) {
+    const f = sanctionsV2.adapt(raw, ctx);
+    const answered = f.status === "PASS" || f.status === "WARN" || f.status === "FAIL";
+    if (!answered) return { ...f, adapterVersion: "0.3.0" };
+    return {
+      ...f,
+      adapterVersion: "0.3.0",
+      confidence: Math.min(f.confidence, ADDRESS_SCREEN_MAX_CONFIDENCE),
+      notes: [...f.notes, "address_matching_unverified"].sort(),
+    };
+  },
+};
 
 /**
  * SMART_CONTRACT_AUDIT has no response format on the network, so this adapter
@@ -306,7 +365,7 @@ function unwrapAddressMap(raw: unknown): unknown {
   return raw;
 }
 
-export const contractAudit: Adapter = {
+const contractAuditV1: Adapter = {
   check: "contract_audit",
   version: "0.1.0",
   intent: "SMART_CONTRACT_AUDIT_GENERAL",
@@ -349,8 +408,50 @@ export const contractAudit: Adapter = {
   },
 };
 
+/** GoPlus keys its answer by token address; take the entry for the token asked about. */
+function entryForToken(raw: unknown, token: string): unknown | "other_token" {
+  const r = pick(raw, "result");
+  if (!isObject(r)) return raw;
+  const keys = Object.keys(r).filter((k) => /^0x[0-9a-fA-F]{40}$/.test(k));
+  if (keys.length === 0) return raw;
+  const hit = keys.find((k) => k.toLowerCase() === token.toLowerCase());
+  return hit ? r[hit] : "other_token";
+}
+
+/**
+ * 0.2.0: the answer must be about the token asked about, and must carry the
+ * flags that decide a token's safety (is_honeypot and a tax) before it can
+ * PASS. One benign flag on its own is not an audit.
+ */
+export const contractAudit: Adapter = {
+  check: "contract_audit",
+  version: "0.2.0",
+  intent: "SMART_CONTRACT_AUDIT_GENERAL",
+  defaultConfidence: 0.7,
+  adapt(raw, ctx) {
+    const b = { check: "contract_audit" as const, version: "0.2.0", ctx };
+    const early = guard(b, raw);
+    if (early) return early;
+    if (!ctx.subject) return unknown(b, "no_subject");
+    const body = entryForToken(raw, ctx.subject.token);
+    if (body === "other_token") return unknown(b, "answer_for_other_token");
+    const addr = pick(body, "token_address") ?? pick(body, "contract_address");
+    if (typeof addr === "string" && /^0x[0-9a-fA-F]{40}$/.test(addr) && addr.toLowerCase() !== ctx.subject.token.toLowerCase()) {
+      return unknown(b, "answer_for_other_token");
+    }
+    const hasHoneypot = flag(body, "is_honeypot") !== undefined;
+    const hasTax = ["buy_tax", "sell_tax"].some((t) => typeof pickNumber(body, t, 0, 1) === "number");
+    if (!hasHoneypot || !hasTax) return unknown(b, "insufficient_flags");
+    const f = contractAuditV1.adapt({ result: body }, ctx);
+    return { ...f, adapterVersion: "0.2.0" };
+  },
+};
+
 /** Superseded versions stay registered so verdicts stored with them still replay. */
 const SUPERSEDED: readonly Adapter[] = [
+  contractAuditV1,
+  sanctionsV2,
+  liquidityDepthV2,
   sanctionsAdapter("0.1.0", ["matched"]),
   metricAdapter("liquidity_depth", "LIQUIDITY_DEPTH_VERIFY_GENERAL", ["liquidity_usd"], 0, 1e12, "USD", "0.1.0"),
 ];

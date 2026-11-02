@@ -29,9 +29,11 @@ export interface Charge {
   nonce: string;
 }
 
-const RESOURCE = "/v1/ask";
 
-function template(amount: number): string {
+/** The live node's template (captured 2026-11-02, test/fixtures/live-402-7302.json): the resource names the miner. */
+const resourceFor = (minerId: string) => (minerId ? `/v1/ask/${minerId}` : "/v1/ask");
+
+function template(amount: number, resource: string): string {
   return [
     "Telegraph Escrow Payment",
     "",
@@ -39,7 +41,7 @@ function template(amount: number): string {
     `Pay To: ${TESTNET.diamond.toLowerCase()}`,
     `Network: ${TESTNET.caip2}`,
     `Amount: ${amount} uUSDC`,
-    `Resource: ${RESOURCE}`,
+    `Resource: ${resource}`,
     "Nonce: {nonce}",
     "Valid After: {validAfter}",
     "Valid Before: {validBefore}",
@@ -49,6 +51,8 @@ function template(amount: number): string {
 export class FakeNode {
   readonly charges: Charge[] = [];
   readonly refusals: string[] = [];
+  /** Signals the node has recorded, by hash (served at /engine/v1/signal/{hash}). */
+  readonly signals = new Map<string, { miner_id: string; intent: unknown }>();
   private readonly usedNonces = new Set<string>();
   private calls = new Map<string, number>();
   private readonly price: number;
@@ -57,15 +61,17 @@ export class FakeNode {
     this.price = opts.priceUusdc ?? 10_000;
   }
 
-  private challenge() {
+  private challenge(minerId: string) {
+    const resource = resourceFor(minerId);
     const accept = {
       scheme: "escrow",
       network: TESTNET.caip2,
       price: `$${(this.price / 1e6).toFixed(2)}`,
-      payTo: TESTNET.diamond,
-      extra: { resource: RESOURCE, signWith: "personal_sign (EIP-191)", message: template(this.price) },
+      payTo: TESTNET.diamond.toLowerCase(),
+      extra: { resource, signWith: "personal_sign (EIP-191)", message: template(this.price, resource) },
     };
-    const full = { x402Version: 2, error: "Payment required", accepts: [accept] };
+    const exact = { scheme: "exact", network: TESTNET.caip2, amount: String(this.price), asset: TESTNET.usdc, payTo: TESTNET.diamond, maxTimeoutSeconds: 60 };
+    const full = { x402Version: 2, error: "Payment required", accepts: [exact, { ...accept, amount: String(this.price) }] };
     return new Response(JSON.stringify({ error: "payment required", accepts: [accept] }), {
       status: 402,
       headers: { "content-type": "application/json", "payment-required": Buffer.from(JSON.stringify(full)).toString("base64") },
@@ -79,12 +85,19 @@ export class FakeNode {
 
   readonly fetch: typeof fetch = async (input, init) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+    const sig = url.pathname.match(/^\/engine\/v1\/signal\/([^/]+)$/);
+    if (sig && (init?.method ?? "GET") === "GET") {
+      const rec = this.signals.get(decodeURIComponent(sig[1]!));
+      return rec
+        ? new Response(JSON.stringify({ signal_hash: sig[1], ...rec }), { status: 200, headers: { "content-type": "application/json" } })
+        : new Response(JSON.stringify({ error: "signal not found" }), { status: 404, headers: { "content-type": "application/json" } });
+    }
     const m = url.pathname.match(/^\/engine\/v1\/ask(?:\/([^/]+))?$/);
     if (!m || init?.method !== "POST") return new Response("not found", { status: 404 });
     const minerId = m[1] ?? "";
     const headers = new Headers(init.headers);
     const payment = headers.get("x-payment");
-    if (!payment) return this.challenge();
+    if (!payment) return this.challenge(minerId);
 
     let env: { scheme: string; network: string; payload: { signature: `0x${string}`; authorization: Authorization } };
     try {
@@ -99,7 +112,7 @@ export class FakeNode {
     if (Number(a.value) !== this.price) return this.refuse(`costs ${this.price} uUSDC, authorization offers ${a.value}`);
     if (Number(a.validBefore) - Number(a.validAfter) > MAX_WINDOW_SEC) return this.refuse("valid for too long; the maximum is 2m0s");
     if (now < Number(a.validAfter) || now > Number(a.validBefore)) return this.refuse("expired or not valid yet");
-    const message = fillTemplate(template(this.price), a);
+    const message = fillTemplate(template(this.price, resourceFor(minerId)), a);
     const valid = await verifyMessage({ address: a.from as `0x${string}`, message, signature: env.payload.signature });
     if (!valid || a.from !== a.from.toLowerCase()) return this.refuse(`signature is from someone else, not authorization.from ${a.from}`);
     if (this.usedNonces.has(`${a.from}:${a.nonce}`)) return this.refuse("nonce has already been used");
@@ -120,13 +133,18 @@ export class FakeNode {
     if (b.delayMs) await new Promise((r) => setTimeout(r, b.delayMs));
     const receiptHash = keccak256(toHex(`${a.from}:${a.nonce}`));
     this.charges.push({ minerId, payer: a.from, amountUusdc: this.price, receiptHash, nonce: a.nonce });
+    // Like the real node, a call the client stopped waiting for is still billed;
+    // like real fetch, the client sees its abort, not the answer.
+    if (init.signal?.aborted) throw init.signal.reason;
     const receipt = {
       receipt_hash: receiptHash, rail: "escrow", payer: a.from, miner: minerId || "routed",
       intent: body.intent, amount_uusdc: String(this.price), epoch_id: 314, settlement: "epoch", chain: "telegraph", timestamp: now,
     };
+    const signalHash = keccak256(toHex(`${JSON.stringify(b.result)}:${a.nonce}`));
+    this.signals.set(signalHash, { miner_id: minerId || "routed", intent: body.intent });
     const response = {
       miner_id: minerId || "routed", miner_name: `miner-${minerId}`, result: b.result, result_shape: b.resultShape ?? "intent",
-      intent: body.intent, cost_usd: this.price / 1e6, duration_ms: 5, signal_hash: keccak256(toHex(JSON.stringify(b.result))),
+      intent: body.intent, cost_usd: this.price / 1e6, duration_ms: 5, signal_hash: signalHash,
     };
     return new Response(JSON.stringify(response), {
       status: b.status ?? 200,

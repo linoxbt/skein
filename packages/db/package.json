@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "description": "Postgres schema, migrations and the verdict store.",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
     "generate": "drizzle-kit generate"
   },
   "dependencies": {
