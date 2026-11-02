@@ -336,3 +336,11 @@ and answers `risk_level` beside the verdict.
 **L17. The YAML validator URL the spec names answers 404.** `miner/validate.sh`
 now fails loudly and takes `VALIDATOR_URL`; until the current endpoint is
 known, validate in the integrate.telegraphprotocol.com web app.
+
+**L18. Netlify Blobs: a get of a missing key never answers.** On Netlify's
+runtime, `get` and `getWithMetadata` for a key that does not exist hang until
+the function times out (30 s, a 502), in both consistency modes, while `list`,
+writes and reads of existing keys answer in under half a second
+(`@netlify/blobs` 11.1.4, measured 2026-11-02). That was the Desk's 502 in the
+audit. The Desk's store now checks existence with a prefix `list` first, and
+every Blobs call has an 8 s timeout so a hang surfaces as an error.
