@@ -12,7 +12,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
     "start": "tsx bin/skein-mcp.ts"
   },
   "dependencies": {

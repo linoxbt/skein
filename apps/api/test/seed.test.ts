@@ -4,7 +4,7 @@ import { MIGRATIONS_DIR, schema, type Db } from "@skein/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { describe, expect, it } from "vitest";
-import { parseSeedConsumers, seedConsumers } from "../src/seed";
+import { parseSeedConsumers, revokeKeys, seedConsumers } from "../src/seed";
 
 const h = (k: string) => createHash("sha256").update(k).digest("hex");
 
@@ -24,10 +24,17 @@ describe("SEED_CONSUMERS", () => {
     await migrate(drizzle(pg), { migrationsFolder: MIGRATIONS_DIR });
     const db = drizzle(pg, { schema }) as unknown as Db;
     const seeds = parseSeedConsumers(`Skein Desk|agent|${h("desk")}|5`);
-    expect(await seedConsumers(db, seeds)).toEqual(["Skein Desk"]);
-    expect(await seedConsumers(db, seeds)).toEqual([]);
+    expect(await seedConsumers(db, seeds)).toEqual({ added: ["Skein Desk"], updated: [], revoked: 0 });
+    expect(await seedConsumers(db, seeds)).toEqual({ added: [], updated: [], revoked: 0 });
     const rows = await db.select().from(schema.consumers);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ name: "Skein Desk", kind: "agent", dailyCapUusdc: 5_000_000 });
+    expect(rows[0]).toMatchObject({ name: "Skein Desk", kind: "agent", dailyCapUusdc: 5_000_000, seeded: true, revokedAt: null });
+
+    // A changed cap is applied; a key that leaves the env is revoked; REVOKED_KEY_HASHES revokes any key.
+    expect(await seedConsumers(db, parseSeedConsumers(`Skein Desk|agent|${h("desk")}|1,Other|team|${h("other")}|2`))).toEqual({ added: ["Other"], updated: ["Skein Desk"], revoked: 0 });
+    expect((await seedConsumers(db, parseSeedConsumers(`Other|team|${h("other")}|2`))).revoked).toBe(1);
+    expect(await revokeKeys(db, [h("other")])).toBe(1);
+    const after = await db.select().from(schema.consumers);
+    expect(after.every((r) => r.revokedAt !== null)).toBe(true);
   }, 30_000);
 });

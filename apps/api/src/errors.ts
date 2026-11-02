@@ -16,7 +16,13 @@ export type ErrorCode =
   | "UPSTREAM_UNAVAILABLE"
   | "MARGIN_GUARD"
   | "SELF_ROUTING"
-  | "TIMEOUT";
+  | "TIMEOUT"
+  | "PURCHASE_CEILING"
+  | "INVALID_INPUT"
+  | "VERDICT_FAILED"
+  | "LOST"
+  | "PAYLOAD_TOO_LARGE"
+  | "INTERNAL";
 
 /** Every error body is { error: { code, message, details } }. */
 export class ApiError extends Error {

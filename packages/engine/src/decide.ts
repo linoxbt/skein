@@ -43,7 +43,7 @@ function blockerHits(policy: Policy, states: readonly CheckState[]): BlockerHit[
   for (const b of policy.blockers) {
     const s = states.find((x) => x.check === b.check);
     const hits = (s?.findings ?? []).filter(
-      (f) => ANSWERED.has(f.status) && f.status === b.status && f.severity >= (b.minSeverity ?? 0),
+      (f) => ANSWERED.has(f.status) && f.status === b.status && f.severity >= (b.minSeverity ?? 0) && f.confidence >= b.minConfidence,
     );
     if (hits.length > 0) {
       const sev = b.minSeverity !== undefined ? ` (severity >= ${b.minSeverity})` : "";

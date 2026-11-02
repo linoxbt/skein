@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPolicy, listPolicies, readLock } from "../src/index";
+import { getPolicy, listAllPolicyFiles, listPolicies, readLock } from "../src/index";
 
 describe("policies", () => {
   it("every policy file parses and is named after its id@version", () => {
@@ -15,8 +15,12 @@ describe("policies", () => {
   });
 
   it("no locked policy has been deleted", () => {
-    const refs = new Set(listPolicies().map((p) => p.ref));
+    const refs = new Set(listAllPolicyFiles().map((p) => p.ref));
     for (const ref of Object.keys(readLock())) expect(refs.has(ref), ref).toBe(true);
+  });
+
+  it("every policy file is published (in the lock), so none is silently ignored", () => {
+    expect(listAllPolicyFiles().map((p) => p.ref)).toEqual(listPolicies().map((p) => p.ref));
   });
 
   it("resolves a bare id to its highest version", () => {

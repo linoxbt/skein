@@ -30,9 +30,10 @@ export async function verdictObject(db: Db, id: string) {
       ...(f.evidence ? { evidence: f.evidence } : {}),
       notes: f.notes,
     })),
-    cost: { upstreamUsdc: usdc(v.upstreamUusdc), priceUsdc: usdc(v.priceUusdc), currency: "USDC" },
+    // pricingRule says which rule set the price: standard, or abstain_upstream_only (ABSTAIN costs what it bought).
+    cost: { upstreamUsdc: usdc(v.upstreamUusdc), priceUsdc: usdc(v.priceUusdc), pricingRule: v.pricingRule, currency: "USDC" },
     bom: { root: v.bomRoot, items: v.bomItems },
-    policy: { id: v.policyId, version: v.policyVersion },
+    policy: { id: v.policyId, version: v.policyVersion, ...(v.policySha256 ? { sha256: v.policySha256 } : {}) },
     engineVersion: v.engineVersion,
     verdictHash: v.verdictHash,
     channel: v.channel,
@@ -75,7 +76,10 @@ export async function bomObject(db: Db, id: string) {
       sourceGroup: p.sourceGroup,
       adapterVersion: p.adapterVersion,
       error: p.error,
-      billed: !!p.receiptHash,
+      billing: p.billing,
+      signalStatus: p.signalStatus,
+      // Evidence: paid with a receipt that checks out against the signed payment.
+      billed: p.billing === "paid" && !!p.receiptHash,
       createdAt: p.createdAt.toISOString(),
     })),
   };

@@ -23,22 +23,26 @@ const finding = (check: Check) =>
     evidence: fc.record({ receiptHash: fc.string({ unit: fc.constantFrom(..."0123456789abcdef"), minLength: 64, maxLength: 64 }).map((h) => `0x${h}`) }),
   }) as fc.Arbitrary<Finding>;
 
-/** One finding for each of a random subset of checks. */
+/** Up to three findings for each of a random subset of checks, from a small shared pool of provider groups. */
 const findings = fc
   .subarray(CHECKS)
-  .chain((checks) => fc.tuple(...checks.map(finding)))
-  .map((xs) => xs as Finding[]);
+  .chain((checks) => fc.tuple(...checks.map((c) => fc.array(finding(c), { minLength: 1, maxLength: 3 }))))
+  .map((xs) => xs.flat() as Finding[]);
 
-describe("engine properties", () => {
+const answered = (s: FindingStatus) => s === "PASS" || s === "WARN" || s === "FAIL";
+
+describe("engine properties (spec section 14)", () => {
   it("the order of findings never changes the verdict or its hash", () => {
     fc.assert(
-      fc.property(findings, fc.integer(), (fs, seed) => {
-        const shuffled = [...fs].sort((a, b) => ((a.check.length * 31 + seed) % 7) - ((b.check.length * 31 + seed) % 7));
-        const x = evaluate(policy, subject, fs);
-        const y = evaluate(policy, subject, shuffled.reverse());
-        expect(y.verdictHash).toBe(x.verdictHash);
-        expect(y.decision).toEqual(x.decision);
-      }),
+      fc.property(
+        findings.chain((fs) => fc.tuple(fc.constant(fs), fc.shuffledSubarray(fs, { minLength: fs.length, maxLength: fs.length }))),
+        ([fs, shuffled]) => {
+          const x = evaluate(policy, subject, fs);
+          const y = evaluate(policy, subject, shuffled);
+          expect(y.verdictHash).toBe(x.verdictHash);
+          expect(y.decision).toEqual(x.decision);
+        },
+      ),
     );
   });
 
@@ -50,34 +54,63 @@ describe("engine properties", () => {
     );
   });
 
-  it("adding an independent PASS for an unanswered check never raises risk", () => {
+  // Spec: "adding a PASS never raises risk". Exact for a PASS that joins the
+  // check's deciding provider group, or answers an unanswered check from any
+  // group. A corroborating PASS from another family can re-balance the
+  // independence groups (docs/DECISIONS.md, D8), so that case is not claimed.
+  it("adding a PASS never raises risk: to an unanswered check, from any provider group", () => {
     fc.assert(
-      fc.property(findings, fc.constantFrom(...CHECKS), (fs, check) => {
-        const others = fs.filter((x) => x.check !== check);
+      fc.property(findings, fc.constantFrom(...CHECKS), fc.constantFrom("g1", "g2", "g3", "g4", "fresh"), fc.double({ min: 0, max: 1, noNaN: true }), (fs, check, sourceGroup, confidence) => {
+        const others = fs.filter((x) => x.check !== check || !answered(x.status));
+        if (decide(policy, others).states.find((s) => s.check === check)?.answered) return;
         const before = decide(policy, others).decision.riskBps;
-        const pass: Finding = { check, status: "PASS", severity: 0, confidence: 1, sourceGroup: "independent", notes: [] };
+        const pass: Finding = { check, status: "PASS", severity: 0, confidence, sourceGroup, notes: [] };
         expect(decide(policy, [...others, pass]).decision.riskBps).toBeLessThanOrEqual(before);
       }),
     );
   });
 
-  it("adding a PASS when every source is distinct never raises risk", () => {
+  it("adding a PASS never raises risk: to an answered check, from its deciding provider group", () => {
     fc.assert(
-      fc.property(findings, fc.constantFrom(...CHECKS), (fs, check) => {
-        const distinct = fs.filter((x) => x.check !== check).map((x) => ({ ...x, sourceGroup: `own-${x.check}` }));
-        const before = decide(policy, distinct).decision.riskBps;
-        const pass: Finding = { check, status: "PASS", severity: 0, confidence: 1, sourceGroup: `own-${check}`, notes: [] };
-        expect(decide(policy, [...distinct, pass]).decision.riskBps).toBeLessThanOrEqual(before);
+      fc.property(findings, fc.nat(), fc.double({ min: 0, max: 1, noNaN: true }), (fs, at, confidence) => {
+        const { states, decision } = decide(policy, fs);
+        const answeredStates = states.filter((s) => s.answered);
+        if (answeredStates.length === 0) return;
+        const st = answeredStates[at % answeredStates.length]!;
+        const pass: Finding = { check: st.check, status: "PASS", severity: 0, confidence, sourceGroup: st.sourceGroup!, notes: [] };
+        expect(decide(policy, [...fs, pass]).decision.riskBps).toBeLessThanOrEqual(decision.riskBps);
       }),
     );
   });
 
-  it("removing a required finding never raises confidence", () => {
+  it("removing a required check's evidence never raises confidence", () => {
     fc.assert(
       fc.property(findings, fc.constantFrom(...policy.required), (fs, check) => {
         const before = decide(policy, fs).decision.confidenceBps;
         const after = decide(policy, fs.filter((x) => x.check !== check)).decision.confidenceBps;
         expect(after).toBeLessThanOrEqual(before);
+      }),
+    );
+  });
+
+  // The reviewer's case: dropping a low-confidence duplicate used to raise
+  // confidence (it was a mean). A check's confidence is now its best answer's.
+  // Dropping a *dissenting* answer lifts a disagreement penalty by design, so
+  // only agreeing duplicates are claimed here.
+  it("removing an agreeing duplicate answer never raises confidence", () => {
+    fc.assert(
+      fc.property(findings, fc.nat(), (fs, at) => {
+        const { states, decision } = decide(policy, fs);
+        const candidates = fs.filter((x) => {
+          const st = states.find((s) => s.check === x.check);
+          if (!st || !answered(x.status) || x.status !== st.status) return false;
+          const same = fs.filter((y) => y.check === x.check && y.status === st.status);
+          // Keep the deciding group and the best confidence in place: the drop is a pure duplicate.
+          return same.length > 1 && x.sourceGroup !== st.sourceGroup && x.confidence < st.confidence;
+        });
+        if (candidates.length === 0) return;
+        const drop = candidates[at % candidates.length]!;
+        expect(decide(policy, fs.filter((x) => x !== drop)).decision.confidenceBps).toBeLessThanOrEqual(decision.confidenceBps);
       }),
     );
   });

@@ -18,8 +18,11 @@ export function dexScreenerResolver(fetchImpl: typeof fetch = fetch): PoolResolv
     async resolve(chainId, token) {
       const chain = DEXSCREENER_CHAIN[SUPPORTED_CHAINS[chainId] ?? ""];
       if (!chain) return null;
+      // A referenced timer, not AbortSignal.timeout() (docs/DECISIONS.md, D10).
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 5000);
       try {
-        const res = await fetchImpl(`https://api.dexscreener.com/latest/dex/tokens/${token}`, { signal: AbortSignal.timeout(5000) });
+        const res = await fetchImpl(`https://api.dexscreener.com/latest/dex/tokens/${token}`, { signal: ctl.signal });
         if (!res.ok) return null;
         const body = (await res.json()) as { pairs?: { chainId?: string; pairAddress?: string; liquidity?: { usd?: number } }[] };
         const pairs = (body.pairs ?? []).filter(
@@ -29,6 +32,8 @@ export function dexScreenerResolver(fetchImpl: typeof fetch = fetch): PoolResolv
         return pairs[0]?.pairAddress?.toLowerCase() ?? null;
       } catch {
         return null;
+      } finally {
+        clearTimeout(timer);
       }
     },
   };

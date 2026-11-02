@@ -29,6 +29,10 @@ export const consumers = pgTable(
     apiKeyHash: text("api_key_hash"),
     plan: text("plan").notNull().default("partner"),
     dailyCapUusdc: bigint("daily_cap_uusdc", { mode: "number" }).notNull().default(2_000_000),
+    /** Set to revoke the key; a revoked key is refused like an unknown one. */
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Provisioned from SEED_CONSUMERS (reconciled on every start). */
+    seeded: boolean("seeded").notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("consumers_api_key_hash").on(t.apiKeyHash)],
@@ -46,6 +50,60 @@ export const policies = pgTable(
   (t) => [primaryKey({ columns: [t.id, t.version] })],
 );
 
+/**
+ * One row per verdict request, written before anything is bought. Mutable
+ * (unlike the evidence tables): it carries the idempotency claim and the
+ * run's status, so a restart can find runs that never finished.
+ */
+export const verdictRuns = pgTable(
+  "verdict_runs",
+  {
+    id: text("id").primaryKey(),
+    consumerId: uuid("consumer_id").references(() => consumers.id),
+    idempotencyKey: text("idempotency_key"),
+    requestHash: text("request_hash"),
+    channel: text("channel", { enum: ["telegraph", "api", "job", "cli"] }).notNull(),
+    subjectChainId: integer("subject_chain_id").notNull(),
+    subjectToken: text("subject_token").notNull(),
+    policyId: text("policy_id").notNull(),
+    policyVersion: text("policy_version").notNull(),
+    contextHash: text("context_hash").notNull(),
+    status: text("status", { enum: ["running", "done", "refused", "failed", "lost"] }).notNull(),
+    /** The verdict served: this run's own, or a cached one. */
+    verdictId: text("verdict_id"),
+    /** Refusal or failure, as served to the caller (no internals). */
+    outcome: jsonb("outcome"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("verdict_runs_consumer_idempotency").on(t.consumerId, t.idempotencyKey),
+    index("verdict_runs_status").on(t.status, t.startedAt),
+  ],
+);
+
+/**
+ * Daily spend, held before each upstream payment and settled with what was
+ * actually spent (or possibly billed). Every cap sums this table under an
+ * advisory lock, so concurrent verdicts cannot pass a cap together, and spend
+ * from a run that crashed stays counted at its reservation.
+ */
+export const spendHolds = pgTable(
+  "spend_holds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: text("day").notNull(),
+    runId: text("run_id").notNull(),
+    channel: text("channel").notNull(),
+    consumerId: uuid("consumer_id"),
+    reservedUusdc: bigint("reserved_uusdc", { mode: "number" }).notNull(),
+    spentUusdc: bigint("spent_uusdc", { mode: "number" }),
+    createdAt: createdAt(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (t) => [index("spend_holds_day").on(t.day, t.channel, t.consumerId)],
+);
+
 export const verdicts = pgTable(
   "verdicts",
   {
@@ -54,6 +112,8 @@ export const verdicts = pgTable(
     subjectToken: text("subject_token").notNull(),
     policyId: text("policy_id").notNull(),
     policyVersion: text("policy_version").notNull(),
+    /** SHA-256 of the policy file, sealed into the verdict hash (engine 0.2.0 on). */
+    policySha256: text("policy_sha256"),
     engineVersion: text("engine_version").notNull(),
     verdict: text("verdict", { enum: ["APPROVE", "REJECT", "ESCALATE", "ABSTAIN"] }).notNull(),
     verdictCode: smallint("verdict_code").notNull(),
@@ -68,7 +128,11 @@ export const verdicts = pgTable(
     bomRoot: text("bom_root").notNull(),
     bomItems: integer("bom_items").notNull(),
     priceUusdc: bigint("price_uusdc", { mode: "number" }).notNull(),
+    /** Which pricing rule set priceUusdc: standard, or abstain_upstream_only. */
+    pricingRule: text("pricing_rule").notNull().default("standard"),
     upstreamUusdc: bigint("upstream_uusdc", { mode: "number" }).notNull(),
+    /** Hash of the normalised request context; the cache only serves a verdict made for the same context. */
+    contextHash: text("context_hash"),
     channel: text("channel", { enum: ["telegraph", "api", "job", "cli"] }).notNull(),
     network: text("network").notNull(),
     consumerId: uuid("consumer_id").references(() => consumers.id),
@@ -81,6 +145,7 @@ export const verdicts = pgTable(
   (t) => [
     uniqueIndex("verdicts_consumer_idempotency").on(t.consumerId, t.idempotencyKey),
     index("verdicts_subject").on(t.subjectChainId, t.subjectToken, t.policyId, t.createdAt),
+    index("verdicts_channel_created").on(t.channel, t.createdAt),
     check("verdicts_bps", sql`${t.riskBps} between 0 and 10000 and ${t.confidenceBps} between 0 and 10000 and ${t.coverageBps} between 0 and 10000`),
   ],
 );
@@ -90,7 +155,8 @@ export const purchases = pgTable(
   "purchases",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    verdictId: text("verdict_id").notNull().references(() => verdicts.id),
+    /** The run that paid for it; written the moment it is paid, before any verdict exists. */
+    verdictId: text("verdict_id").notNull().references(() => verdictRuns.id),
     check: text("check").notNull(),
     intent: text("intent").notNull(),
     minerId: text("miner_id"),
@@ -111,11 +177,18 @@ export const purchases = pgTable(
     error: text("error"),
     sourceGroup: text("source_group").notNull(),
     adapterVersion: text("adapter_version").notNull(),
+    /** paid (valid receipt), unknown (X-PAYMENT sent, outcome unknown) or none. */
+    billing: text("billing").notNull().default("paid"),
+    /** The node's record of the answer: verified, missing, mismatch or unchecked. */
+    signalStatus: text("signal_status"),
+    /** The pool asked about (liquidity), so replay can check the answer named it. */
+    pool: text("pool"),
     createdAt: createdAt(),
   },
   (t) => [
     index("purchases_verdict").on(t.verdictId),
     uniqueIndex("purchases_receipt").on(t.receiptHash),
+    index("purchases_created").on(t.createdAt),
   ],
 );
 
@@ -182,8 +255,11 @@ export const webhooks = pgTable("webhooks", {
   id: uuid("id").primaryKey().defaultRandom(),
   consumerId: uuid("consumer_id").notNull().references(() => consumers.id),
   url: text("url").notNull(),
+  /** HMAC key for X-Skein-Signature; shown to the partner once. */
+  secret: text("secret").notNull(),
   secretHash: text("secret_hash").notNull(),
   active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
 });
 
 /** Backs the SSE stream; pruned after 7 days. Not evidence. */
@@ -192,6 +268,8 @@ export const events = pgTable(
   {
     id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
     verdictId: text("verdict_id").notNull(),
+    /** The event's position in its run, the SSE id both live and on replay. */
+    seq: integer("seq"),
     type: text("type").notNull(),
     payload: jsonb("payload").notNull(),
     ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),

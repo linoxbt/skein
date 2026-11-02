@@ -29,7 +29,12 @@ const { values } = parseArgs({
 });
 
 const subject = parseSubject({ chainId: Number(values.chain), token: values.token });
-const { policy } = getPolicy(values.policy!);
+const { policy, sha256: policySha256 } = getPolicy(values.policy!);
+const budgetUsdc = values.budget === undefined ? undefined : Number(values.budget);
+if (budgetUsdc !== undefined && !(Number.isFinite(budgetUsdc) && budgetUsdc > 0)) {
+  console.error(`--budget must be a positive number of USDC, not "${values.budget}"`);
+  process.exit(2);
+}
 const intents = Object.values(CHECK_INTENTS).filter((i): i is string => !!i);
 const snapshot = JSON.parse(readFileSync(new URL("../../telegraph/snapshots/2026-10-30.json", import.meta.url), "utf8"));
 
@@ -50,7 +55,9 @@ async function deps() {
   const canned: Record<string, unknown> = {
     "200001": { result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
     "78021": { matched: "clear" },
-    "72006": { liquidity_usd: 4_500_000 },
+    // Liquidity is pinned to 7373 first (allowlist order), 72006 as its fallback.
+    "7373": { liquidity_usd: 4_500_000 },
+    "72006": { data: { id: "base_0xd0b53d9277642d899df5c87a3966a349a798f224", attributes: { reserve_in_usd: "4500000" } } },
     "7302": { holders_count: 120_000 },
     "7378": values.scenario === "conflict" ? { verdict: "wash_trading", wash_volume_pct: 72 } : { verdict: "organic", wash_volume_pct: 3 },
     "7457": { verdict: "human" },
@@ -87,7 +94,8 @@ const run = await runVerdict(
       ...(values.deployer ? { deployer: values.deployer } : {}),
       ...(values.pool ? { pool: values.pool } : {}),
     },
-    ...(values.budget ? { budgetUusdc: Math.round(Number(values.budget) * 1e6) } : {}),
+    ...(budgetUsdc !== undefined ? { budgetUusdc: Math.round(budgetUsdc * 1e6) } : {}),
+    policySha256,
   },
   { client: d.client, catalogue: d.catalogue, resolver: d.resolver, priceUusdc: 250_000, onEvent: log },
 );
@@ -98,7 +106,8 @@ if (!run.ok) {
   process.exit(2);
 }
 const v = run.verdict;
-const record = { mode: d.mode, verdict: v, purchases: run.purchases, stored: run.stored };
+// "simulated" travels inside the stored verdict too, so a copied file can't pass for evidence.
+const record = { mode: d.mode, verdict: v, purchases: run.purchases, stored: { ...run.stored, mode: values.live ? "live" : "simulated" } };
 const dir = resolve(process.env.INIT_CWD ?? process.cwd(), values.out!);
 mkdirSync(dir, { recursive: true });
 const file = `${dir}/${v.verdictHash.slice(2, 14)}.json`;

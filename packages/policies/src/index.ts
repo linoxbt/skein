@@ -24,11 +24,27 @@ function load(file: string): PolicyRecord {
   return { ref, policy, yaml, sha256: createHash("sha256").update(bytes).digest("hex") };
 }
 
-export function listPolicies(): PolicyRecord[] {
+/** Every policy file, published or not, unchecked against the lock. For the lock script and tests. */
+export function listAllPolicyFiles(): PolicyRecord[] {
   return readdirSync(POLICY_DIR)
     .filter((f) => f.endsWith(".yaml"))
     .sort()
     .map(load);
+}
+
+/**
+ * Published policies only: each file's bytes must hash to its entry in
+ * policies.lock.json. An edited file throws (a change is a new version), and
+ * a file with no entry is an unpublished draft that verdicts may not use.
+ */
+export function listPolicies(): PolicyRecord[] {
+  const lock = readLock();
+  return listAllPolicyFiles().filter((p) => {
+    const want = lock[p.ref];
+    if (want === undefined) return false;
+    if (want !== p.sha256) throw new Error(`POLICY_TAMPERED ${p.ref}: file sha256 ${p.sha256} is not the published ${want}`);
+    return true;
+  });
 }
 
 /** Resolves "id@version", or "id" for the highest version. */

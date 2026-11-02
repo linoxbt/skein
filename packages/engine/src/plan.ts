@@ -44,7 +44,7 @@ export interface Dropped {
   intent?: string;
 }
 
-export type RefusalCode = "UPSTREAM_UNAVAILABLE" | "SELF_ROUTING" | "BUDGET_TOO_LOW" | "MARGIN_GUARD";
+export type RefusalCode = "UPSTREAM_UNAVAILABLE" | "SELF_ROUTING" | "BUDGET_TOO_LOW" | "MARGIN_GUARD" | "PURCHASE_CEILING" | "INVALID_INPUT";
 
 export type Plan =
   | { ok: true; purchases: PlannedPurchase[]; dropped: Dropped[]; estimateUusdc: number; capUusdc: number }
@@ -69,9 +69,18 @@ export function isSelfRouting(intent: string, served: readonly string[]): boolea
 
 const sum = (xs: readonly PlannedPurchase[]) => xs.reduce((a, p) => a + p.quoteUusdc, 0);
 
+const finiteNonNegative = (n: number | undefined) => n === undefined || (Number.isFinite(n) && n >= 0);
+
 /** Decides what to buy. Pure: every live fact arrives in the input. */
 export function plan(input: PlanInput): Plan {
   const { policy } = input;
+  // A NaN budget would turn every comparison below false and bypass the caps.
+  const bad = (["priceUusdc", "callerBudgetUusdc", "protocolFeeBps", "marginGuardBps", "maxPurchases"] as const).filter(
+    (k) => !finiteNonNegative(input[k]),
+  );
+  if (bad.length > 0) {
+    return { ok: false, refusal: { code: "INVALID_INPUT", detail: `not a finite, non-negative number: ${bad.join(", ")}`, checks: [] }, dropped: [] };
+  }
   const required = new Set(policy.required);
   const dropped: Dropped[] = [];
   let purchases: PlannedPurchase[] = [];
@@ -128,7 +137,7 @@ export function plan(input: PlanInput): Plan {
 
   const ceiling = input.maxPurchases ?? MAX_PURCHASES_PER_VERDICT;
   if (purchases.filter((p) => p.required).length > ceiling) {
-    return refuse("BUDGET_TOO_LOW", `more than ${ceiling} required purchases`, policy.required);
+    return refuse("PURCHASE_CEILING", `more than ${ceiling} required purchases`, policy.required);
   }
   for (const p of purchases.filter((x) => !x.required).sort(dropOrder)) {
     if (purchases.length <= ceiling) break;

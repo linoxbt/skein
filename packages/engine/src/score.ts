@@ -35,9 +35,10 @@ export function normaliseFinding(policy: Policy, f: Finding): ScoredFinding {
   const out: ScoredFinding = { ...f, confidence };
   const t = policy.thresholds[f.check];
   if (!t || f.metric !== t.field || typeof f.value !== "number" || !Number.isFinite(f.value)) return out;
-  if (!(ANSWERED.has(f.status) || f.status === "UNKNOWN")) return out;
+  // Only an answer is graded: a non-answer stays a non-answer even if it carries a number.
+  if (!ANSWERED.has(f.status)) return out;
   const r = applyThreshold(t, f.value);
-  const own = ANSWERED.has(f.status) ? (f.status as "PASS" | "WARN" | "FAIL") : "PASS";
+  const own = f.status as "PASS" | "WARN" | "FAIL";
   out.status = RANK[r.status] >= RANK[own] ? r.status : own;
   out.severity = Math.max(f.severity, r.severity) as Severity;
   out.thresholdDetail = r.detail;
@@ -54,7 +55,9 @@ export interface CheckState {
   severity: Severity;
   /** 0..1 risk of the worst answered finding. */
   risk: number;
+  /** The best answered finding's confidence: more answers never make a check less certain. */
   confidence: number;
+  /** The provider family of the finding that sets the check's risk. */
   sourceGroup?: string;
   effectiveWeight: number;
   /** Answered findings for this check include both PASS and FAIL. */
@@ -81,15 +84,17 @@ export function checkStates(policy: Policy, findings: readonly Finding[]): Check
         risk: 0, confidence: 0, effectiveWeight: 0, disagreement: false, findings: all,
       };
     }
+    // The deciding answer: worst status, then highest risk, then highest
+    // severity, then the lowest provider group. A total order, so the input's
+    // order can never change which answer decides (or the verdict hash).
+    const key = (f: ScoredFinding): [number, number, number, string] => [RANK[f.status as "PASS"], findingRisk(policy, f), f.severity, f.sourceGroup];
+    const worse = (a: ScoredFinding, b: ScoredFinding) => {
+      const [x, y] = [key(a), key(b)];
+      return x[0] !== y[0] ? x[0] > y[0] : x[1] !== y[1] ? x[1] > y[1] : x[2] !== y[2] ? x[2] > y[2] : x[3] < y[3];
+    };
     let worst = answered[0]!;
-    let worstRisk = findingRisk(policy, worst);
-    for (const f of answered.slice(1)) {
-      const r = findingRisk(policy, f);
-      if (RANK[f.status as "PASS"] > RANK[worst.status as "PASS"] || (f.status === worst.status && r > worstRisk)) {
-        worst = f;
-        worstRisk = r;
-      }
-    }
+    for (const f of answered.slice(1)) if (worse(f, worst)) worst = f;
+    const worstRisk = findingRisk(policy, worst);
     const statuses = new Set(answered.map((f) => f.status));
     return {
       check,
@@ -99,8 +104,10 @@ export function checkStates(policy: Policy, findings: readonly Finding[]): Check
       status: worst.status,
       severity: worst.severity,
       risk: worstRisk,
-      confidence: answered.reduce((s, f) => s + f.confidence, 0) / answered.length,
-      sourceGroup: answered.map((f) => f.sourceGroup).sort()[0],
+      confidence: Math.max(...answered.map((f) => f.confidence)),
+      // The worst finding decides the check's risk, so its provider decides the
+      // check's independence group: a further PASS can never move the check.
+      sourceGroup: worst.sourceGroup,
       effectiveWeight: 0,
       disagreement: statuses.has("PASS") && statuses.has("FAIL"),
       findings: all,

@@ -6,8 +6,14 @@ const status = z.enum(STATUSES);
 const severity = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
 const fraction = z.number().min(0).max(1);
 
+/**
+ * A hard blocker. It fires on an answer (WARN or FAIL) at or above
+ * minSeverity, and only when that answer's confidence reaches minConfidence:
+ * a low-confidence hit is not allowed to REJECT on its own, and is left to
+ * risk, required-check and contradiction rules instead.
+ */
 const blocker = z
-  .object({ check, status, minSeverity: severity.optional() })
+  .object({ check, status: z.enum(["WARN", "FAIL"]), minSeverity: severity.optional(), minConfidence: fraction.default(0.5) })
   .strict();
 
 /**

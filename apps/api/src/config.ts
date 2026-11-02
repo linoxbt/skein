@@ -18,6 +18,22 @@ export interface ApiConfig {
   webOrigins: string[];
   /** Shown instead of the CAIP-2 id, e.g. "simulated" for the local dev stack. */
   networkLabel?: string;
+  /** Hard ceiling one upstream payment may never exceed, whatever a 402 asks. */
+  maxUusdcPerCall: number;
+  /** One deadline for a whole verdict run. */
+  verdictDeadlineMs: number;
+  /** /miner/verdict answers within this, with ABSTAIN if the verdict is not sealed yet. */
+  minerDeadlineMs: number;
+  /** A cache hit older than this refreshes in the background (docs/DECISIONS.md, D5). */
+  cacheRefreshMinAgeSec: number;
+  /** /v1/status raises an alert below this purchaser wallet balance. */
+  hotWalletAlertUusdc: number;
+  /** Proxies in front of the API that append to X-Forwarded-For (Railway's edge: 1). */
+  trustProxyHops: number;
+  /** SHA-256 hashes of partner keys to refuse, without database access. */
+  revokedKeyHashes: string[];
+  /** SSE event rows older than this are pruned (they are not evidence). */
+  eventRetentionDays: number;
 }
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -35,8 +51,17 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     syncTimeoutMs: num(env.SYNC_TIMEOUT_MS, 25_000),
     ...(env.MINER_AUTH_KEY ? { minerAuthKey: env.MINER_AUTH_KEY } : {}),
     allowPreSeason: env.ALLOW_PRE_SEASON === "true",
-    defaultPolicy: env.DEFAULT_POLICY || "cex-standard",
+    // dex-list is plannable on today's intents; cex-standard waits for a holder-concentration miner.
+    defaultPolicy: env.DEFAULT_POLICY || "dex-list",
     webOrigins: (env.WEB_ORIGINS || "http://localhost:3000").split(",").map((o) => o.trim()).filter(Boolean),
     ...(env.NETWORK_LABEL ? { networkLabel: env.NETWORK_LABEL } : {}),
+    maxUusdcPerCall: usdc(env.MAX_USDC_PER_CALL, 0.05),
+    verdictDeadlineMs: num(env.VERDICT_DEADLINE_MS, 90_000),
+    minerDeadlineMs: num(env.MINER_DEADLINE_MS, 25_000),
+    cacheRefreshMinAgeSec: num(env.CACHE_REFRESH_MIN_AGE_SEC, 480),
+    hotWalletAlertUusdc: usdc(env.HOT_WALLET_ALERT_USDC, 2),
+    trustProxyHops: num(env.TRUST_PROXY_HOPS, 1),
+    revokedKeyHashes: (env.REVOKED_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
+    eventRetentionDays: num(env.EVENT_RETENTION_DAYS, 7),
   };
 }

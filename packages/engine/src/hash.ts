@@ -48,9 +48,11 @@ export function uniqueReceipts(receipts: readonly string[]): string[] {
   return [...new Set(receipts.map(normaliseReceipt))];
 }
 
-/** Bytes of a receipt hash: hex is decoded, anything else is hashed as UTF-8. */
-function receiptBytes(receipt: string): Uint8Array {
-  return HEX.test(receipt) ? hexToBytes(receipt.slice(2).toLowerCase()) : utf8ToBytes(receipt);
+/** A receipt hash in the BOM: exactly 32 bytes of hex. */
+const RECEIPT = /^0x[0-9a-f]{64}$/;
+
+export function isReceiptHash(receipt: string): boolean {
+  return RECEIPT.test(normaliseReceipt(receipt));
 }
 
 function compareBytes(a: Uint8Array, b: Uint8Array): number {
@@ -60,28 +62,41 @@ function compareBytes(a: Uint8Array, b: Uint8Array): number {
   return a.length - b.length;
 }
 
-function hashPair(a: Uint8Array, b: Uint8Array): Uint8Array {
-  const [lo, hi] = compareBytes(a, b) <= 0 ? [a, b] : [b, a];
-  const buf = new Uint8Array(lo.length + hi.length);
-  buf.set(lo, 0);
-  buf.set(hi, lo.length);
-  return keccak_256(buf);
+function prefixed(tag: number, ...parts: Uint8Array[]): Uint8Array {
+  const buf = new Uint8Array(1 + parts.reduce((n, p) => n + p.length, 0));
+  buf[0] = tag;
+  let at = 1;
+  for (const p of parts) {
+    buf.set(p, at);
+    at += p.length;
+  }
+  return buf;
 }
 
 /**
- * Merkle root over receipt hashes. Leaves are keccak256 of each receipt's
- * bytes, de-duplicated and sorted; pairs are hashed in sorted order
- * (commutative, OpenZeppelin-compatible); an odd node is promoted unchanged.
- * An empty set gives the zero hash.
+ * Merkle root over receipt hashes, domain-separated (engine 0.2.0 on):
+ * leaf = keccak256(0x00 ‖ receipt), node = keccak256(0x01 ‖ lo ‖ hi) with the
+ * pair in sorted order; an odd node is promoted unchanged; the empty set gives
+ * the zero hash. Receipts must be 32-byte hashes, so neither a leaf nor a
+ * crafted "receipt" can stand in for an internal node.
  */
 export function merkleRoot(receipts: readonly string[]): string {
-  let level: Uint8Array[] = uniqueReceipts(receipts).map((r) => keccak_256(receiptBytes(r))).sort(compareBytes);
+  const unique = uniqueReceipts(receipts);
+  const bad = unique.find((r) => !RECEIPT.test(r));
+  if (bad !== undefined) throw new Error(`not a 32-byte receipt hash: ${bad.slice(0, 20)}`);
+  let level: Uint8Array[] = unique.map((r) => keccak_256(prefixed(0x00, hexToBytes(r.slice(2))))).sort(compareBytes);
   if (level.length === 0) return ZERO_HASH;
   while (level.length > 1) {
     const next: Uint8Array[] = [];
     for (let i = 0; i < level.length; i += 2) {
-      const right = level[i + 1];
-      next.push(right ? hashPair(level[i]!, right) : level[i]!);
+      const a = level[i]!;
+      const b = level[i + 1];
+      if (!b) {
+        next.push(a);
+        continue;
+      }
+      const [lo, hi] = compareBytes(a, b) <= 0 ? [a, b] : [b, a];
+      next.push(keccak_256(prefixed(0x01, lo, hi)));
     }
     level = next;
   }
