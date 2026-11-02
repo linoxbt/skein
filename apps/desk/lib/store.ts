@@ -87,19 +87,33 @@ function fileKV(dir: string): KV {
   };
 }
 
+/** Fails a Blobs call that does not answer, rather than letting it hold a function for 30 s. */
+async function within<T>(ms: number, what: string, p: Promise<T>): Promise<T> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([p, new Promise<never>((_, reject) => (t = setTimeout(() => reject(new Error(`blobs ${what}: no answer in ${ms} ms`)), ms)))]);
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function blobKV(): Promise<KV> {
   const { getStore } = await import("@netlify/blobs");
   const s = getStore({ name: "desk", consistency: "strong" });
   return {
     async get<T>(key: string) {
-      const r = await s.getWithMetadata(key, { type: "json" });
+      // A get of a key that does not exist never answers on Netlify's runtime
+      // (@netlify/blobs 11.1.4, observed 2026-11-02), while list does: check first.
+      const { blobs } = await within(8_000, `list ${key}`, s.list({ prefix: key }));
+      if (!blobs.some((b) => b.key === key)) return null;
+      const r = await within(8_000, `get ${key}`, s.getWithMetadata(key, { type: "json" }));
       return r && r.etag ? { value: r.data as T, etag: r.etag } : null;
     },
     async create<T>(key: string, value: T) {
-      return (await s.setJSON(key, value, { onlyIfNew: true })).modified;
+      return (await within(8_000, `create ${key}`, s.setJSON(key, value, { onlyIfNew: true }))).modified;
     },
     async update<T>(key: string, value: T, etag: string) {
-      return (await s.setJSON(key, value, { onlyIfMatch: etag })).modified;
+      return (await within(8_000, `update ${key}`, s.setJSON(key, value, { onlyIfMatch: etag }))).modified;
     },
   };
 }
