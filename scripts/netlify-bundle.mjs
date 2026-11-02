@@ -4,7 +4,7 @@
 // the pnpm workspace: the app's sources, plus every @skein/* package it uses
 // (transitively) copied into vendor/ and referenced as file: dependencies.
 // The same script makes every deploy, so a deployed site is always a commit.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
 const [appArg, outArg] = process.argv.slice(2);
@@ -18,10 +18,12 @@ const out = resolve(outArg);
 const SKIP = new Set(["node_modules", ".next", ".turbo", "test", ".desk-data", "next-env.d.ts", "tsconfig.tsbuildinfo", "Dockerfile", "dist", ".netlify"]);
 const copyFiltered = (from, to) => cpSync(from, to, { recursive: true, filter: (src) => !SKIP.has(basename(src)) });
 
+// Every workspace library, found rather than listed, so a new package can't be missed.
 const workspace = new Map();
-for (const base of ["packages/engine", "packages/policies", "packages/telegraph", "packages/pipeline", "packages/db", "packages/sdk", "packages/mcp"]) {
-  const pkg = JSON.parse(readFileSync(join(root, base, "package.json"), "utf8"));
-  workspace.set(pkg.name, join(root, base));
+for (const dir of readdirSync(join(root, "packages"))) {
+  const file = join(root, "packages", dir, "package.json");
+  if (!existsSync(file)) continue;
+  workspace.set(JSON.parse(readFileSync(file, "utf8")).name, join(root, "packages", dir));
 }
 
 rmSync(out, { recursive: true, force: true });
