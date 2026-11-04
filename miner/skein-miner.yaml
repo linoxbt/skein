@@ -1,0 +1,64 @@
+# DRAFT, not registered. Validate before spending gas (miner/validate.sh), then
+# register with miner/tools.ts. base_url is fixed at registration: it points at
+# api.skeinlabs.site, a CNAME to the API on Railway (domain bought 2026-11-03).
+# id: set to an unused numeric id just before registering (validate.sh refuses 0).
+version: "1"
+kind: miner
+id: 0
+slug: skein-listing-verdict
+protocol: generic
+name: Skein Listing Verdict
+description: >
+  Composite token-listing verdict (APPROVE/REJECT/ESCALATE/ABSTAIN) for an EVM token,
+  fused from ranked Telegraph inputs, with reasons, confidence and a receipt bill of materials.
+  Not for price prediction or trading signals.
+base_url: https://api.skeinlabs.site
+auth:
+  type: header
+  header_name: X-Skein-Miner-Key
+rate_limit_per_sec: 5
+cache_ttl_sec: 600
+circuit_threshold: 5
+circuit_cooldown_seconds: 30
+errors:
+  message_path: error.message
+  code_path: error.code
+endpoints:
+  - path: /verdict
+    external_path: /miner/verdict
+    method: POST
+    description: >
+      Listing verdict for one EVM token under a named policy. Returns
+      APPROVE, REJECT, ESCALATE or ABSTAIN with reason codes, risk and
+      confidence in basis points, and the Merkle root of the paid inputs.
+    intents: [FRAUD_RISK_TOKEN_LISTING]
+    params:
+      body:
+        required:
+          - name: token
+            type: string
+            intents: ["*"]
+            description: "ERC-20 contract address, 0x-prefixed, 40 hex characters."
+          - name: chain
+            type: string
+            intents: ["*"]
+            description: "Chain of the token: one of ethereum, base, bsc, arbitrum (or its numeric chain id)."
+        optional:
+          - name: policy
+            type: string
+            intents: ["*"]
+            description: "Policy id and version, e.g. dex-list@0.1.0. Defaults to the latest dex-list."
+semantics:
+  signal_mapping:
+    confidence_field: confidence
+    label_field: verdict
+    reason_field: summary
+  # Plan A. FRAUD_RISK_TOKEN_LISTING is not canonical yet (isCanonicalIntent, 2026-11-02);
+  # FRAUD_RISK_GENERAL is (plan B): the endpoint also accepts its request shape
+  # (subject as an address string) and answers risk_level.
+  supported_intents:
+    - FRAUD_RISK_TOKEN_LISTING
+# No on_chain block: since V2 the node builds job requests and callbacks from
+# the intent's own layout, so the intent proposal defines what a contract sees
+# (verdict_code, risk_bps, confidence_bps, bom_root, reasons). The price floor is the
+# registerMiner MIN_PRICE argument (0.25 USDC = 250000).

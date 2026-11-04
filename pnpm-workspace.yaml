@@ -1,0 +1,6 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "miner"
+  - "e2e"
+  - "eval"

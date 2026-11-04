@@ -1,0 +1,21 @@
+{
+  "name": "@skein/pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Plan, buy, adapt, decide and seal: one Listing Verdict end to end.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "verdict": "tsx bin/verdict.ts",
+    "repro": "tsx bin/repro.ts"
+  },
+  "dependencies": {
+    "@skein/engine": "workspace:*",
+    "@skein/policies": "workspace:*",
+    "@skein/telegraph": "workspace:*"
+  }
+}

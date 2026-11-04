@@ -1,0 +1,22 @@
+{
+  "name": "@skein/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Skein decision engine: planner, adapters, scoring, reconcile, decide, seal. Pure and deterministic; no network calls.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/hashes": "2.4.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2",
+    "yaml": "2.8.4"
+  }
+}

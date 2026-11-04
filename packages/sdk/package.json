@@ -1,0 +1,79 @@
+{
+  "name": "@skeinlabs/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "TypeScript client for Skein token listing verdicts: verdict(), quote(), verify(), stream(), typed errors, retries and a spend cap checked before any payment. Pays with a partner key or per call through Telegraph.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./telegraph": "./src/telegraph.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
+    "build": "tsup",
+    "prepublishOnly": "tsup"
+  },
+  "devDependencies": {
+    "@skein/api": "workspace:*",
+    "@skein/telegraph": "workspace:*",
+    "tsup": "8.5.0",
+    "typescript": "5.9.3",
+    "viem": "2.57.5"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linoxbt/skein",
+    "directory": "packages/sdk"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./telegraph": {
+        "types": "./dist/telegraph.d.ts",
+        "import": "./dist/telegraph.js"
+      },
+      "./package.json": "./package.json"
+    },
+    "types": "./dist/index.d.ts"
+  },
+  "keywords": [
+    "skein",
+    "telegraph",
+    "token",
+    "listing",
+    "risk",
+    "verdict",
+    "fraud",
+    "x402",
+    "agents",
+    "web3",
+    "evm"
+  ],
+  "author": "Skein Labs (https://skeinlabs.site)",
+  "homepage": "https://skeinlabs.site/tutorial",
+  "bugs": {
+    "url": "https://github.com/linoxbt/skein/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false,
+  "peerDependencies": {
+    "viem": "^2.30.0"
+  },
+  "peerDependenciesMeta": {
+    "viem": {
+      "optional": true
+    }
+  }
+}

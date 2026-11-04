@@ -1,0 +1,19 @@
+{
+  "name": "@skein/policies",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Versioned, immutable Skein policies.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lock": "tsx src/lock.ts"
+  },
+  "dependencies": {
+    "@skein/engine": "workspace:*",
+    "yaml": "2.8.4"
+  }
+}

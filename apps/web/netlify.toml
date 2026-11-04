@@ -1,0 +1,13 @@
+# Netlify builds apps/web on its own (it has no workspace dependencies).
+# NEXT_PUBLIC_SKEIN_API is set in the Netlify UI, not here.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Netlify's Next.js runtime: routes pages, renders /v/[id] on demand.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

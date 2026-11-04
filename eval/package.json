@@ -1,0 +1,19 @@
+{
+  "name": "@skein/eval",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Benchmark harness: Skein against the spec's baselines on a labelled, point-in-time token set.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "eval": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@skein/engine": "workspace:*",
+    "@skein/pipeline": "workspace:*",
+    "@skein/policies": "workspace:*",
+    "@skein/telegraph": "workspace:*",
+    "zod": "3.25.76"
+  }
+}

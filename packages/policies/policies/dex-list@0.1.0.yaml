@@ -1,0 +1,34 @@
+id: dex-list
+version: 0.1.0
+description: >
+  DEX token lists, launchpads and wallets: badge or hide a token. Lighter than
+  cex-standard and plannable on today's intents (holder count in place of
+  top-10 concentration). Draft thresholds.
+blockers:
+  - { check: sanctions, status: FAIL }
+  - { check: contract_audit, status: FAIL, minSeverity: 3 }
+required: [contract_audit, sanctions, liquidity_depth, holder_count]
+optional: [wash_trading, social_bots]
+thresholds:
+  liquidity_depth: { warn: 100000, fail: 20000, field: liquidity_usd }
+  holder_count: { warn: 300, fail: 50, field: holders_count }
+  wash_trading: { warn: 25, fail: 60, field: wash_volume_pct }
+weights: { contract_audit: 0.35, liquidity_depth: 0.25, holder_count: 0.15,
+           wash_trading: 0.15, social_bots: 0.10 }
+conflicts:
+  - code: MARKET_INTEGRITY_CONFLICT
+    detail: audit PASS but wash_trading FAIL
+    when: [{ check: contract_audit, status: PASS }, { check: wash_trading, status: FAIL }]
+decision:
+  approve_below_risk_bps: 3000
+  reject_above_risk_bps: 7000
+  min_coverage: 0.75
+  min_confidence: 0.55
+  conflict_escalates: true
+  abstain_on_missing_required: true
+  required_fail_blocks_approve: true
+  agreement_penalty: 0.25
+scoring:
+  status_risk: { PASS: 0, WARN: 0.5, FAIL: 1 }
+  severity_multiplier: [0.6, 0.8, 1.0, 1.0]
+budget: { max_usdc: 0.12, per_check_timeout_ms: { contract_audit: 16000, default: 4000 } }
