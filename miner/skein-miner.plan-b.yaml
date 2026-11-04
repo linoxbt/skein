@@ -1,0 +1,60 @@
+# Plan B: Skein served under the canonical FRAUD_RISK_GENERAL intent, ready to
+# register today (FRAUD_RISK_TOKEN_LISTING, plan A, is not canonical yet).
+# Paste this file into anjoman.ai/dashboard/earn; see docs/guides/MINER_REGISTRATION.md.
+# id 845301 and slug skein-listing-verdict were unused on the dev node on 2026-11-04.
+version: "1"
+kind: miner
+id: 845301
+slug: skein-listing-verdict
+protocol: generic
+name: Skein Listing Verdict
+description: >
+  Token listing risk for one EVM token (Ethereum, Base, BNB Chain, Arbitrum), fused
+  from independent Telegraph checks (contract audit, sanctions, holders, liquidity,
+  wash trading, social bots) under a published policy. Answers a risk level with a
+  score, the signals behind it and a summary, plus a receipt bill of materials.
+  Not for IP, payment or account fraud, price prediction or trading signals.
+base_url: https://api.skeinlabs.site
+auth:
+  type: header
+  header_name: X-Skein-Miner-Key
+rate_limit_per_sec: 5
+cache_ttl_sec: 600
+circuit_threshold: 5
+circuit_cooldown_seconds: 30
+errors:
+  message_path: error.message
+  code_path: error.code
+endpoints:
+  - path: /verdict
+    external_path: /miner/verdict
+    method: POST
+    description: >
+      Fraud and listing risk of one EVM token contract. Returns risk_level (LOW,
+      MEDIUM, HIGH or CRITICAL), risk_score from 0 to 1, signals (the reasons and
+      open risks) and a one-line summary, plus the full verdict (APPROVE, REJECT,
+      ESCALATE or ABSTAIN) with its id and Merkle root of the paid inputs.
+    intents: [FRAUD_RISK_GENERAL]
+    params:
+      body:
+        required:
+          - name: subject
+            type: string
+            intents: ["*"]
+            description: >
+              The token to assess, written as chain:address, for example
+              base:0x4200000000000000000000000000000000000006. Chain is one of
+              ethereum, base, bsc, arbitrum, or a CAIP-10 id such as
+              eip155:8453:0x… A bare 0x address (40 hex characters) means Ethereum.
+        optional:
+          - name: policy
+            type: string
+            intents: ["*"]
+            description: "Policy id and version, e.g. dex-list@0.1.0. Defaults to the latest dex-list."
+semantics:
+  signal_mapping:
+    confidence_field: confidence
+    label_field: risk_level
+    reason_field: summary
+  supported_intents:
+    - FRAUD_RISK_GENERAL

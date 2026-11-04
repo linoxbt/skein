@@ -6,10 +6,12 @@
   "description": "Registration and escrow tooling for the Skein miner.",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "tools": "tsx tools.ts"
+    "tools": "tsx tools.ts",
+    "check-yaml": "tsx check-yaml.ts"
   },
   "dependencies": {
     "@skein/telegraph": "workspace:*",
-    "viem": "2.57.5"
+    "viem": "2.57.5",
+    "yaml": "2.8.4"
   }
 }

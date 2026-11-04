@@ -13,12 +13,18 @@ export interface SkeinMcpOptions {
 }
 
 const CHAINS = { ethereum: 1, base: 8453, bsc: 56, bnb: 56, arbitrum: 42161 } as const;
+// One plain string type in the published schema: some MCP clients (the MCP
+// Inspector among them) mishandle a number-or-enum union on the first call.
+// A model that sends a number (8453) still works: it is read as "8453".
 const chainId = z
-  .union([z.number().int(), z.enum(Object.keys(CHAINS) as [keyof typeof CHAINS, ...(keyof typeof CHAINS)[]])])
-  .describe("EVM chain: 1 / ethereum, 8453 / base, 56 / bsc, 42161 / arbitrum");
+  .preprocess(
+    (v) => (typeof v === "number" ? String(v) : typeof v === "string" ? v.trim().toLowerCase() : v),
+    z.string().refine((s) => s in CHAINS || /^\d+$/.test(s), { message: "a chain name (ethereum, base, bsc, arbitrum) or a numeric chain id" }),
+  )
+  .describe('EVM chain: "base", "ethereum", "bsc", "arbitrum", or its id ("8453", "1", "56", "42161")');
 const token = z.string().regex(/^0x[0-9a-fA-F]{40}$/).describe("Token contract address (0x + 40 hex)");
 const policy = z.string().optional().describe('Policy id or id@version, e.g. "dex-list" or "dex-list@0.1.0"');
-const toChain = (c: number | keyof typeof CHAINS) => (typeof c === "number" ? c : CHAINS[c]);
+const toChain = (c: string) => (c in CHAINS ? CHAINS[c as keyof typeof CHAINS] : Number(c));
 
 const text = (s: string) => [{ type: "text" as const, text: s }];
 const fail = (e: unknown) => ({
@@ -42,7 +48,7 @@ export function describeVerdict(v: VerdictResult, link: string): string {
 }
 
 export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "telegraph" }): { server: McpServer; spentUsdc: () => number } {
-  const server = new McpServer({ name: "skein", version: "0.1.0" });
+  const server = new McpServer({ name: "skein", version: "0.1.1" });
   const web = opts.webUrl.replace(/\/$/, "");
   let spent = 0;
 
