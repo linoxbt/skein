@@ -56,6 +56,33 @@ function resolveSubject(s: { chainId: unknown; token: unknown }): Subject {
   }
 }
 
+/** The chain a plan-B subject means when it names none (the YAML says so to the request builder). */
+const MINER_DEFAULT_CHAIN = 1;
+
+/**
+ * Reads a token and, if present, a chain out of a free-text subject, as
+ * FRAUD_RISK_GENERAL sends it: "eip155:8453:0x…" (CAIP-10), "base:0x…",
+ * "8453:0x…", "0x… on base", or a bare address. undefined when it holds no address.
+ */
+export function subjectFromText(text: string): { token: string; chain?: string } | undefined {
+  const token = text.match(/0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/)?.[0];
+  if (!token) return undefined;
+  const rest = text.replace(token, " ").toLowerCase();
+  const caip = rest.match(/eip155:(\d+)/)?.[1];
+  if (caip) return { token, chain: caip };
+  const named = Object.values(SUPPORTED_CHAINS).find((n) => new RegExp(`\\b${n}\\b`).test(rest)) ?? (/\bbnb\b/.test(rest) ? "bsc" : /\beth\b/.test(rest) ? "ethereum" : undefined);
+  if (named) return { token, chain: named };
+  const id = rest.match(/(?:^|[^\w])(\d{1,6})\s*:/)?.[1] ?? rest.match(/chain\s*(?:id)?\s*[:=]?\s*(\d{1,6})/)?.[1];
+  return id ? { token, chain: id } : { token };
+}
+
+/** FRAUD_RISK_GENERAL's risk_level, as the intent proposal maps it: a blocker REJECT is CRITICAL. */
+export function riskLevel(verdict: string, reasons: readonly { code: string }[]): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
+  if (verdict === "APPROVE") return "LOW";
+  if (verdict === "REJECT") return reasons.some((r) => r.code.startsWith("BLOCKER_")) ? "CRITICAL" : "HIGH";
+  return "MEDIUM"; // ESCALATE, and ABSTAIN: not enough evidence is not "low risk"
+}
+
 /** A refusal before any spend, as the HTTP error the spec names for it. */
 export function refusalError(r: Refusal): ApiError {
   switch (r.code) {
@@ -537,13 +564,16 @@ export function createApp(service: VerdictService) {
     const outer = ((await c.req.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;
     const b = (outer.params && typeof outer.params === "object" ? outer.params : outer) as Record<string, unknown>;
     const subjectObj = typeof b.subject === "object" && b.subject !== null ? (b.subject as { chainId?: unknown; token?: unknown }) : undefined;
-    const chainRaw = subjectObj?.chainId ?? b.chain ?? b.chainId ?? b.chain_id;
+    // Plan B sends one free-text `subject` and no chain: read both out of it.
+    const fromText = typeof b.subject === "string" ? subjectFromText(b.subject) : undefined;
+    const chainRaw = subjectObj?.chainId ?? b.chain ?? b.chainId ?? b.chain_id ?? fromText?.chain;
     const chainId =
       typeof chainRaw === "number" ? chainRaw
       : typeof chainRaw === "string" && /^\d+$/.test(chainRaw) ? Number(chainRaw)
       : typeof chainRaw === "string" ? Number(Object.entries(SUPPORTED_CHAINS).find(([, n]) => n === chainRaw.toLowerCase())?.[0])
+      : fromText ? MINER_DEFAULT_CHAIN
       : NaN;
-    const token = subjectObj?.token ?? (typeof b.subject === "string" ? b.subject : undefined) ?? b.token ?? b.address;
+    const token = subjectObj?.token ?? fromText?.token ?? b.token ?? b.address;
     const subject = resolveSubject({ chainId, token });
     const record = resolvePolicy(typeof b.policy === "string" ? b.policy : config.defaultPolicy);
     const ctxHash = contextHash({});
@@ -551,10 +581,13 @@ export function createApp(service: VerdictService) {
     const answer = async (id: string, cached: boolean) => {
       const v = await verdictObject(db, id);
       if (!v) throw new ApiError(503, "VERDICT_FAILED", FAILED_MESSAGE);
+      const reasons = v.reasons as { code: string; check?: string; detail: string }[];
       return c.json({
         verdict: v.verdict,
-        // Plan B (FRAUD_RISK_GENERAL) reads a risk level.
-        risk_level: { APPROVE: "low", ESCALATE: "medium", REJECT: "high", ABSTAIN: "unknown" }[v.verdict],
+        // Plan B (FRAUD_RISK_GENERAL) reads its response fields: risk_level, risk_score, signals, summary.
+        risk_level: riskLevel(v.verdict, reasons),
+        risk_score: v.riskBps / 10_000,
+        signals: [...reasons.map((r) => r.detail), ...(v.openRisks as string[]).map((r) => `open: ${r}`)],
         confidence: v.confidenceBps / 10_000,
         summary: v.summary,
         reasons: (v.reasons as { code: string; check?: string; detail: string }[]).map((r) => ({ code: r.code, ...(r.check ? { check: r.check } : {}), detail: r.detail })),
@@ -571,7 +604,7 @@ export function createApp(service: VerdictService) {
     };
     const abstain = (code: string, detail: string, extra: Record<string, unknown> = {}) =>
       c.json({
-        verdict: "ABSTAIN", risk_level: "unknown", confidence: 0, summary: `Abstained: ${detail}`,
+        verdict: "ABSTAIN", risk_level: "MEDIUM", risk_score: 0, signals: [detail], confidence: 0, summary: `Abstained: ${detail}`,
         reasons: [{ code, detail }], open_risks: [], verdict_code: 0, risk_bps: 0, confidence_bps: 0, bom_root: null, cached: false, ...extra,
       });
 
