@@ -1,0 +1,12 @@
+# Skein Desk on Netlify. Set SKEIN_API_URL, DESK_SKEIN_KEY and DESK_CRON_SECRET
+# in the Netlify UI (never here).
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
