@@ -69,8 +69,8 @@ export function Footer() {
           <div>
             <h3 className="mb-5 font-mono text-[13px] text-muted">Skein/</h3>
             <ul className="space-y-3 text-[15px]">
-              <li><a href="https://skein-web.netlify.app" className="hover:text-thread">The verdict service</a></li>
-              <li><a href="https://skein-web.netlify.app/docs" className="hover:text-thread">Integrate</a></li>
+              <li><a href="https://skeinlabs.site" className="hover:text-thread">The verdict service</a></li>
+              <li><a href="https://skeinlabs.site/docs" className="hover:text-thread">Integrate</a></li>
               <li><a href={`${REPO_URL}/apps/desk`} className="hover:text-thread">Fork the Desk</a></li>
             </ul>
           </div>

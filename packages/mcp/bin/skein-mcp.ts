@@ -3,8 +3,8 @@
 //     "env": { "SKEIN_API_KEY": "sk_part_…" } }
 //
 // Environment:
-//   SKEIN_API_URL             default https://api-production-9396.up.railway.app
-//   SKEIN_WEB_URL             default https://skein-web.netlify.app
+//   SKEIN_API_URL             default https://api.skeinlabs.site
+//   SKEIN_WEB_URL             default https://skeinlabs.site
 //   SKEIN_API_KEY             a partner key (pays nothing during the hackathon), or
 //   SKEIN_PAYER_KEY           a burner private key that pays through Telegraph escrow
 //   SKEIN_MINER_ID            pin the Skein miner (otherwise routed by intent)
@@ -35,7 +35,7 @@ if (env.SKEIN_PAYER_KEY) {
 }
 if (!payer) console.error("skein-mcp: no SKEIN_API_KEY or SKEIN_PAYER_KEY; skein_quote and skein_verify work, skein_verdict will refuse.");
 
-const skein = new Skein({ apiUrl: env.SKEIN_API_URL ?? "https://api-production-9396.up.railway.app", ...(payer ? { payer } : {}), maxUsdcPerCall });
-const { server } = createSkeinMcp({ skein, webUrl: env.SKEIN_WEB_URL ?? "https://skein-web.netlify.app", sessionCapUsdc, maxUsdcPerCall, ...(payer ? { rail: payer.kind } : {}) });
+const skein = new Skein({ apiUrl: env.SKEIN_API_URL ?? "https://api.skeinlabs.site", ...(payer ? { payer } : {}), maxUsdcPerCall });
+const { server } = createSkeinMcp({ skein, webUrl: env.SKEIN_WEB_URL ?? "https://skeinlabs.site", sessionCapUsdc, maxUsdcPerCall, ...(payer ? { rail: payer.kind } : {}) });
 await server.connect(new StdioServerTransport());
 console.error(`skein-mcp ready · ${payer?.kind ?? "no payer"} · cap ${maxUsdcPerCall} USDC/call, ${sessionCapUsdc} USDC/session`);
