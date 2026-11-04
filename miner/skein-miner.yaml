@@ -1,5 +1,6 @@
-# DRAFT, not registered. Validate before spending gas (miner/validate.sh), then
-# register with miner/tools.ts. base_url is fixed at registration: it points at
+# PLAN A DRAFT, not registrable: FRAUD_RISK_TOKEN_LISTING is not canonical yet.
+# Register skein-miner.plan-b.yaml instead (docs/guides/MINER_REGISTRATION.md);
+# this file is for when plan A's intent is approved. base_url is fixed at registration: it points at
 # api.skeinlabs.site, a CNAME to the API on Railway (domain bought 2026-11-03).
 # id: set to an unused numeric id just before registering (validate.sh refuses 0).
 version: "1"

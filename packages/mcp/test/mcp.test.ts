@@ -51,6 +51,23 @@ describe("skein mcp", () => {
     expect(v.content[0]!.text).toMatch(/^VERIFIED/);
   });
 
+  it("publishes chainId as one plain string type, and reads names, ids and numbers", async () => {
+    const { client } = await connect();
+    const { tools } = await client.listTools();
+    for (const t of tools.filter((x) => x.name !== "skein_verify")) {
+      const prop = (t.inputSchema.properties as Record<string, { type?: string; anyOf?: unknown }>).chainId!;
+      expect(prop.type).toBe("string");
+      expect(prop.anyOf).toBeUndefined();
+    }
+    for (const chainId of ["base", "BASE", "8453", 8453]) {
+      const q = (await client.callTool({ name: "skein_quote", arguments: { chainId, token: tok() } })) as Result;
+      expect(q.isError, String(chainId)).toBeFalsy();
+      expect((q.structuredContent!.subject as { chainId: number }).chainId).toBe(8453);
+    }
+    const bad = (await client.callTool({ name: "skein_quote", arguments: { chainId: "solana", token: tok() } })) as Result;
+    expect(bad.isError).toBe(true);
+  });
+
   it("quotes for free", async () => {
     const { client, mcp } = await connect();
     const q = (await client.callTool({ name: "skein_quote", arguments: { chainId: 8453, token: tok() } })) as Result;

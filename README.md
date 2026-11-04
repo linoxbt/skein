@@ -19,7 +19,9 @@ open, confidence, cost and a verifiable bill of materials.
 > **Not done yet:** no paid upstream call has been made (the purchaser key and
 > escrow deposit are pending), the miner is not registered, the labelled
 > evaluation set is not curated, and x402 payment on the direct API is not
-> built. See docs/REVIEWER_GUIDE.md for what to try.
+> built. See docs/REVIEWER_GUIDE.md for what to try, and
+> [docs/guides](docs/guides/README.md) for the three remaining steps (purchaser
+> wallet, miner registration under plan B, the labelled set).
 
 ## Use it
 
