@@ -1,4 +1,4 @@
-import { SkeinError, type Skein, type VerdictObject, type VerdictResult } from "@skein/sdk";
+import { SkeinError, type Skein, type VerdictObject, type VerdictResult } from "@skeinlabs/sdk";
 import { mutate, type Store } from "./store";
 import { CHAINS, EXCHANGE, RULE, type Action, type Application, type Decision } from "./types";
 

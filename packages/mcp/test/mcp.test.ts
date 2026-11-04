@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { simulatedApi } from "@skein/api/simulated";
-import { Skein } from "@skein/sdk";
+import { Skein } from "@skeinlabs/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createSkeinMcp } from "../src/server";
 

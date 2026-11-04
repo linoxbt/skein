@@ -14,8 +14,8 @@
 //
 // stdout carries the protocol; everything else goes to stderr.
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { Skein, type Payer } from "@skein/sdk";
-import { networkFromEnv, TelegraphClient, viemSigner } from "@skein/telegraph";
+import { Skein, type Payer } from "@skeinlabs/sdk";
+import { networkFromEnv, TelegraphClient, viemSigner } from "@skeinlabs/sdk/telegraph";
 import { createSkeinMcp } from "../src/server";
 
 const env = process.env;

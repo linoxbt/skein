@@ -1,5 +1,5 @@
 import { simulatedApi } from "@skein/api/simulated";
-import { TelegraphClient, TESTNET, viemSigner } from "@skein/telegraph";
+import { TelegraphClient, TESTNET, viemSigner } from "../src/telegraph";
 import { FakeNode } from "@skein/telegraph/testing";
 import { beforeAll, describe, expect, it } from "vitest";
 import { parseSse, Skein, SKEIN_INTENT, SkeinError, SpendCapError, type VerdictEvent } from "../src";

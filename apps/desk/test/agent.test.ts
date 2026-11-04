@@ -1,5 +1,5 @@
 import { simulatedApi } from "@skein/api/simulated";
-import { Skein, type TelegraphAsker } from "@skein/sdk";
+import { Skein, type TelegraphAsker } from "@skeinlabs/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
 import { decide, InputError, parseApplication, process, receive, tick, type AgentDeps } from "../lib/agent";
 import { memoryStore, type Store } from "../lib/store";

@@ -16,7 +16,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       # The packages outside teams install must build.
-      - run: pnpm --filter @skein/sdk --filter @skein/mcp build
+      - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp build
       # Spec section 14: every stored verdict replays to the same hash with the engine that sealed it.
       - run: pnpm repro eval/verdicts
       # The property tests at the depth DECISIONS D8 claims.

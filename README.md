@@ -12,7 +12,7 @@ open, confidence, cost and a verifiable bill of materials.
 > **Status (Nov 2, season open).** Built and tested: the decision engine and
 > policies, the escrow-paying Telegraph client, the purchasing pipeline and
 > CLI, the Postgres store, the HTTP API and miner endpoint (Railway), the web app
-> and Skein Desk (Netlify), `@skein/sdk`, `@skein/mcp`, miner tooling, the
+> and Skein Desk (Netlify), `@skeinlabs/sdk`, `@skeinlabs/mcp`, miner tooling, the
 > benchmark harness and browser tests. An independent audit on Nov 2 and its
 > fixes are recorded in docs/DECISIONS.md (D14).
 >
@@ -20,6 +20,29 @@ open, confidence, cost and a verifiable bill of materials.
 > escrow deposit are pending), the miner is not registered, the labelled
 > evaluation set is not curated, and x402 payment on the direct API is not
 > built. See docs/REVIEWER_GUIDE.md for what to try.
+
+## Use it
+
+**[Tutorial: build a listing gate with Skein →](https://skeinlabs.site/tutorial)**
+From a free quote to a verified paid verdict, paying per call through
+Telegraph, and the same tools for Claude or Cursor over MCP.
+
+```sh
+npm install @skeinlabs/sdk                                    # TypeScript client
+claude mcp add skein --env SKEIN_API_KEY=sk_part_… -- npx -y @skeinlabs/mcp   # MCP server
+```
+
+```ts
+import { Skein } from "@skeinlabs/sdk";
+
+const skein = new Skein({ apiUrl: "https://api.skeinlabs.site", payer: { kind: "apiKey", key }, maxUsdcPerCall: 0.3 });
+const v = await skein.verdict({ subject: { chainId: 8453, token: "0x…" } });
+if (v.verdict !== "APPROVE") holdForReview(v.reasons);
+```
+
+Partner keys are free during the hackathon:
+[request one](https://github.com/linoxbt/skein/issues/new?template=partner-key.yml).
+A runnable example is in [`examples/listing-gate`](examples/listing-gate).
 
 ## Layout
 
@@ -32,9 +55,9 @@ packages/
               miner allowlist, catalogue snapshot, and a fake node for tests
   pipeline/   request builders, purchaser, runVerdict(); the verdict and repro CLIs
   db/         Drizzle schema and migrations (append-only evidence, RLS), verdict store
-  sdk/        @skein/sdk: verdict(), quote(), verify(), stream(), submit()/wait(), typed
+  sdk/        @skeinlabs/sdk: verdict(), quote(), verify(), stream(), submit()/wait(), typed
               errors, retries, spend cap; pays with a partner key or through Telegraph
-  mcp/        @skein/mcp: stdio MCP server with skein_verdict, skein_quote, skein_verify
+  mcp/        @skeinlabs/mcp: stdio MCP server with skein_verdict, skein_quote, skein_verify
   ui/         shared design tokens and components (web and Desk)
 apps/
   api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
@@ -74,7 +97,7 @@ SKEIN_API_URL=http://localhost:8787 DESK_SKEIN_KEY=sk_dev_local_simulated \
   pnpm --filter @skein/desk dev                            # http://localhost:3100
 
 # MCP server for Claude Desktop, Cursor and others (stdio):
-SKEIN_API_KEY=sk_part_… npx tsx packages/mcp/bin/skein-mcp.ts
+SKEIN_API_KEY=sk_part_… npx tsx packages/mcp/bin/skein-mcp.ts       # or, from npm: npx -y @skeinlabs/mcp
 
 # API (needs Postgres). Migrations run on start (under an advisory lock).
 DATABASE_URL=postgres://… pnpm --filter @skein/api start
@@ -109,9 +132,27 @@ node scripts/netlify-bundle.mjs apps/desk /tmp/desk-upload   # vendors @skein/* 
 ```
 
 then run Netlify's deploy command from that folder. Connecting the repo to
-Netlify (base directory `apps/web` or `apps/desk`) would make it redeploy on push. Connecting the repo to
-Netlify (Project configuration → Build & deploy, base directory `apps/web`)
-makes it redeploy on push.
+Netlify (Project configuration → Build & deploy, base directory `apps/web` or
+`apps/desk`) would make it redeploy on push.
+
+### Releasing the npm packages
+
+`@skeinlabs/sdk` and `@skeinlabs/mcp` are published by
+`.github/workflows/release.yml` (Actions → Release packages → Run workflow, or
+push a `v*` tag), with npm provenance. It needs the repository secret
+`NPM_TOKEN`: an npm granular access token with write access to the
+`@skeinlabs` scope. Bump `version` in the package's `package.json` first; a
+version already on npm is skipped.
+
+### Issuing a partner key
+
+```sh
+node scripts/issue-partner-key.mjs "Acme Launchpad" team 2 ./acme.key
+# prints the SEED_CONSUMERS entry (name|kind|sha256|cap); the key is only in ./acme.key
+```
+
+Append the printed entry to `SEED_CONSUMERS` on the Railway api service and
+send the key file's contents to the partner privately.
 
 ## How a verdict is decided
 

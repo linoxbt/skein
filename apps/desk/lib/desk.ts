@@ -1,4 +1,4 @@
-import { Skein } from "@skein/sdk";
+import { Skein } from "@skeinlabs/sdk";
 import { networkFromEnv, TelegraphClient, viemSigner } from "@skein/telegraph";
 import type { AgentDeps } from "./agent";
 import { defaultStore } from "./store";

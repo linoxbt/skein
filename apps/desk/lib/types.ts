@@ -1,4 +1,4 @@
-import type { Subject, Verdict } from "@skein/sdk";
+import type { Subject, Verdict } from "@skeinlabs/sdk";
 
 export const EXCHANGE = "Halyard Exchange";
 

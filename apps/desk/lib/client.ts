@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { Verdict } from "@skein/sdk";
+import type { Verdict } from "@skeinlabs/sdk";
 import type { Summary } from "./store";
 
 export const VCOLOR: Record<Verdict, string> = {

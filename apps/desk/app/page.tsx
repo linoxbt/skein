@@ -151,7 +151,7 @@ export default function Queue() {
             <span className="tag tag-dark">Fork it</span>
             <h2 className="display mt-6 text-[44px] md:text-[72px]">A whole desk in one call.</h2>
             <p className="mt-6 max-w-xl text-[18px] text-muted">
-              Skein Desk is open source and talks to Skein only through <code className="font-mono">@skein/sdk</code>. Swap the house rule, keep the receipts.
+              Skein Desk is open source and talks to Skein only through <code className="font-mono">@skeinlabs/sdk</code>. Swap the house rule, keep the receipts.
             </p>
             <a href={`${REPO_URL}/apps/desk`} className="btn btn-light mt-10">Read the source</a>
           </div>
