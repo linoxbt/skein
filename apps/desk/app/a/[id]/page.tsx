@@ -7,7 +7,7 @@ import { Stripes } from "@skein/ui";
 import { short, usd, VCOLOR } from "@/lib/client";
 import { CHAINS, columnOf, type Application } from "@/lib/types";
 
-const SKEIN_WEB = process.env.NEXT_PUBLIC_SKEIN_WEB_URL ?? "https://skein-web.netlify.app";
+const SKEIN_WEB = process.env.NEXT_PUBLIC_SKEIN_WEB_URL ?? "https://skeinlabs.site";
 const COLUMN_LABEL = { incoming: "Incoming", shortlist: "Shortlisted", analyst: "Analyst queue", declined: "Declined" } as const;
 
 export default function ApplicationPage() {

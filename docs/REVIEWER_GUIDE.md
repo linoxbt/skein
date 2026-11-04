@@ -5,9 +5,9 @@ links are live; every page labels the network it reads.
 
 | | |
 |---|---|
-| Web app | https://skein-web.netlify.app |
-| API | https://api-production-9396.up.railway.app |
-| Skein Desk (Apps & Agents) | https://skein-desk.netlify.app |
+| Web app | https://skeinlabs.site |
+| API | https://api.skeinlabs.site |
+| Skein Desk (Apps & Agents) | https://desk.skeinlabs.site |
 | Source | https://github.com/linoxbt/skein (branch `ccr-4e0a77db-k2xyoy`) |
 
 ## 1. New input

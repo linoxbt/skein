@@ -21,7 +21,7 @@ export type Payer =
   | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string };
 
 export interface SkeinOptions {
-  /** e.g. https://api-production-9396.up.railway.app (with or without /v1). */
+  /** e.g. https://api.skeinlabs.site (with or without /v1). */
   apiUrl: string;
   payer?: Payer;
   /** Refuse, before paying, any verdict whose quoted price is above this. */

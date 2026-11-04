@@ -13,8 +13,8 @@ import { defaultStore } from "./store";
  *   SKEIN_MINER_ID           pin the Skein miner on Telegraph (otherwise routed by intent)
  *   DESK_MAX_USDC_PER_CALL   default 0.30; the Telegraph client refuses any 402 above it
  */
-export const SKEIN_API_URL = process.env.SKEIN_API_URL ?? "https://api-production-9396.up.railway.app";
-export const SKEIN_WEB_URL = process.env.SKEIN_WEB_URL ?? "https://skein-web.netlify.app";
+export const SKEIN_API_URL = process.env.SKEIN_API_URL ?? "https://api.skeinlabs.site";
+export const SKEIN_WEB_URL = process.env.SKEIN_WEB_URL ?? "https://skeinlabs.site";
 
 export function payerRail(): "apiKey" | "telegraph" {
   return process.env.DESK_PAYER === "telegraph" ? "telegraph" : "apiKey";
