@@ -10,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
-    "build": "tsup"
+    "build": "tsup",
+    "prepublishOnly": "tsup"
   },
   "devDependencies": {
     "@skein/api": "workspace:*",
@@ -32,7 +33,6 @@
   ],
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
