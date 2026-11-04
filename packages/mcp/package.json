@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
     "start": "tsx bin/skein-mcp.ts",
-    "build": "tsup"
+    "build": "tsup",
+    "prepublishOnly": "tsup"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -47,8 +48,7 @@
         "types": "./dist/server.d.ts",
         "import": "./dist/server.js"
       }
-    },
-    "provenance": true
+    }
   },
   "keywords": [
     "mcp",
