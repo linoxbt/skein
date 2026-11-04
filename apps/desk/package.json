@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@netlify/blobs": "11.1.4",
-    "@skein/sdk": "workspace:*",
+    "@skeinlabs/sdk": "workspace:*",
     "next": "15.5.28",
     "react": "19.3.0",
     "react-dom": "19.3.0",

@@ -1,8 +1,8 @@
 {
-  "name": "@skein/mcp",
+  "name": "@skeinlabs/mcp",
   "version": "0.1.0",
   "type": "module",
-  "description": "Skein as an MCP tool for LLM agents (stdio): skein_verdict, skein_quote, skein_verify, with a per-call and per-session spend cap.",
+  "description": "Skein as an MCP server for LLM agents (Claude, Cursor, any MCP client): skein_verdict, skein_quote and skein_verify, with a per-call and per-session spend cap.",
   "exports": {
     ".": "./src/server.ts"
   },
@@ -17,25 +17,25 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
+    "@skeinlabs/sdk": "workspace:^",
     "viem": "2.57.5",
-    "zod": "3.25.76",
-    "@noble/hashes": "2.4.0"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@skein/api": "workspace:*",
     "tsup": "8.5.0",
-    "typescript": "5.9.3",
-    "@skein/sdk": "workspace:*",
-    "@skein/telegraph": "workspace:*"
+    "typescript": "5.9.3"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/linoxbt/skein",
     "directory": "packages/mcp"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public",
@@ -47,6 +47,27 @@
         "types": "./dist/server.d.ts",
         "import": "./dist/server.js"
       }
-    }
+    },
+    "provenance": true
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "cursor",
+    "agents",
+    "skein",
+    "telegraph",
+    "token",
+    "listing",
+    "risk"
+  ],
+  "author": "Skein Labs (https://skeinlabs.site)",
+  "homepage": "https://skeinlabs.site/tutorial",
+  "bugs": {
+    "url": "https://github.com/linoxbt/skein/issues"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

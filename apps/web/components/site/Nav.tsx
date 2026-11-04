@@ -98,7 +98,7 @@ export function Nav() {
                 <span className="hidden sm:inline">{label === "Simulated" ? "Simulated · not evidence" : label === "Testnet" ? "Telegraph testnet" : label}</span>
               </span>
             ) : null}
-            <Link href="/console" className="btn btn-primary hidden !h-10 !px-5 !text-[15px] md:inline-flex">
+            <Link href="/console" className="btn btn-primary !hidden !h-10 !px-5 !text-[15px] md:!inline-flex">
               Run a verdict
             </Link>
             <button type="button" className="grid h-10 w-10 place-items-center bg-panel-2 lg:hidden" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -118,6 +118,7 @@ export function Nav() {
               ["/ledger", "Ledger"],
               ["/policies", "Policies"],
               ["/docs", "Integrate"],
+              ["/tutorial", "Tutorial"],
             ].map(([href, l]) => (
               <Link key={href} href={href!} className="display border-b border-edge py-4 text-[40px]">
                 {l}

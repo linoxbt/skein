@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Skein, SkeinError, type VerdictResult } from "@skein/sdk";
+import { Skein, SkeinError, type VerdictResult } from "@skeinlabs/sdk";
 import { z } from "zod";
 
 export interface SkeinMcpOptions {

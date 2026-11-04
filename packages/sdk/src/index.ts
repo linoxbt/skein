@@ -13,7 +13,7 @@ const CHAIN_NAMES: Record<number, string> = { 1: "ethereum", 56: "bsc", 8453: "b
  * How a verdict is paid for:
  * - apiKey: a Skein partner key against the HTTP API (free during the hackathon);
  * - telegraph: one paid Telegraph ask, routed to the Skein miner or pinned to it.
- *   `client` is any Telegraph client, e.g. new TelegraphClient(...) from @skein/telegraph,
+ *   `client` is any Telegraph client, e.g. new TelegraphClient(...) from @skeinlabs/sdk/telegraph,
  *   which enforces its own per-call price cap on the 402 challenge.
  */
 export type Payer =

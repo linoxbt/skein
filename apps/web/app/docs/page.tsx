@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IconArrow, IconPlug, IconReplay, IconTerminal, IconThreads } from "@skein/ui";
 import { Lead, PageHero, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
+import { Code } from "@/components/Code";
 import { API } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Integrate" };
@@ -11,7 +12,7 @@ const WAYS: [string, string, string, typeof IconThreads][] = [
   ["Direct API", "One authenticated POST. Partner keys are free during the hackathon.", "live", IconTerminal],
   ["Through Telegraph", "One paid /engine/v1/ask, routed to the Skein miner or pinned to its ID.", "Nov 1", IconThreads],
   ["Verify anything", "POST any verdict id to /v1/verify and get each recomputed step back.", "live", IconReplay],
-  ["SDK and MCP", "@skein/sdk for TypeScript agents; @skein/mcp gives Claude, Cursor or any MCP client three tools.", "live", IconPlug],
+  ["SDK and MCP", "@skeinlabs/sdk for TypeScript agents; @skeinlabs/mcp gives Claude, Cursor or any MCP client three tools.", "live", IconPlug],
 ];
 
 const ENDPOINTS: [string, string, string, string][] = [
@@ -31,7 +32,8 @@ const ERRORS: [string, number, string][] = [
   ["INVALID_SUBJECT", 400, "Unknown chain or a malformed token address."],
   ["UNKNOWN_POLICY", 400, "No published policy by that id and version."],
   ["IDEMPOTENCY_KEY_REQUIRED", 400, "POST /v1/verdicts needs an Idempotency-Key."],
-  ["UNAUTHORIZED", 401, "Missing or revoked partner key."],
+  ["PAYMENT_REQUIRED", 402, "No partner key sent: send one, or buy through Telegraph."],
+  ["UNAUTHORIZED", 401, "Unknown or revoked partner key."],
   ["IDEMPOTENCY_CONFLICT", 409, "The key was used with a different body."],
   ["BUDGET_TOO_LOW", 422, "Live floors exceed your budget; refused before any spend."],
   ["RATE_LIMITED", 429, "Slow down; Retry-After says how long."],
@@ -55,7 +57,7 @@ const events = new EventSource("${api}/v1/verdicts/" + id + "/events");
 events.addEventListener("finding", (e) => draw(JSON.parse(e.data)));
 events.addEventListener("done", (e) => seal(JSON.parse(e.data)));`;
 
-const sdk = (api: string) => `import { Skein } from "@skein/sdk";
+const sdk = (api: string) => `import { Skein } from "@skeinlabs/sdk";
 
 const skein = new Skein({
   apiUrl: "${api}",
@@ -72,13 +74,13 @@ await skein.verify(v.id); // recompute it`;
 const mcp = `{
   "mcpServers": {
     "skein": {
-      "command": "node",
-      "args": ["/absolute/path/to/skein/packages/mcp/dist/skein-mcp.js"],
+      "command": "npx",
+      "args": ["-y", "@skeinlabs/mcp"],
       "env": { "SKEIN_API_KEY": "sk_part_…" }
     }
   }
 }
-// build once: pnpm --filter @skein/mcp build
+// Claude Code: claude mcp add skein --env SKEIN_API_KEY=sk_part_… -- npx -y @skeinlabs/mcp
 // tools: skein_verdict · skein_quote · skein_verify`;
 
 const ask = `POST /engine/v1/ask
@@ -87,22 +89,6 @@ const ask = `POST /engine/v1/ask
   "params": { "token": "0x…", "chain": "base" }
 }
 → 402 challenge → sign → X-PAYMENT → verdict + receipt`;
-
-function Code({ label, children }: { label: string; children: string }) {
-  return (
-    <figure className="min-w-0 border border-edge bg-panel">
-      <figcaption className="flex items-center justify-between border-b border-edge px-4 py-3 font-mono text-[12px] text-muted">
-        <span>{label}</span>
-        <span className="flex gap-1.5" aria-hidden>
-          <span className="h-2 w-2 bg-edge" />
-          <span className="h-2 w-2 bg-edge" />
-          <span className="h-2 w-2 bg-thread" />
-        </span>
-      </figcaption>
-      <pre tabIndex={0} className="overflow-x-auto p-5 font-mono text-[13px] leading-relaxed text-text">{children}</pre>
-    </figure>
-  );
-}
 
 export default function DocsPage() {
   return (
@@ -115,8 +101,9 @@ export default function DocsPage() {
         background={<Stripes seed={3} className="opacity-35" />}
         actions={
           <>
-            <a href="#quickstart" className="btn btn-primary">Quickstart</a>
-            <a href="#endpoints" className="btn btn-light">Endpoints</a>
+            <Link href="/tutorial" className="btn btn-primary">Tutorial</Link>
+            <a href="#quickstart" className="btn btn-light">Quickstart</a>
+            <a href="#endpoints" className="btn btn-ghost">Endpoints</a>
           </>
         }
       />
@@ -197,7 +184,7 @@ export default function DocsPage() {
               verdict(), quote(), verify() and stream(), typed errors, retries that reuse the idempotency key, and a spend cap checked before any payment. Pays with a partner key or through Telegraph.
             </p>
             <div className="mt-8">
-              <Code label="typescript · @skein/sdk">{sdk(API)}</Code>
+              <Code label="typescript · @skeinlabs/sdk">{sdk(API)}</Code>
             </div>
           </div>
           <div className="min-w-0">
@@ -206,7 +193,7 @@ export default function DocsPage() {
               The MCP server pays inside, with a per-call and a per-session cap, and returns the verdict as text an agent can act on plus the full object.
             </p>
             <div className="mt-8">
-              <Code label="mcp client config · @skein/mcp">{mcp}</Code>
+              <Code label="mcp client config · @skeinlabs/mcp">{mcp}</Code>
             </div>
           </div>
         </div>
@@ -255,8 +242,8 @@ export default function DocsPage() {
         <div className="mx-auto grid max-w-[1400px] gap-px px-5 py-20 md:grid-cols-2 md:px-10 md:py-28">
           {(
             [
+              ["Follow the tutorial", "/tutorial"],
               ["Try it in the console", "/console"],
-              ["Read the policies", "/policies"],
             ] as [string, string][]
           ).map(([t, href]) => (
             <Link key={href} href={href} className="group flex items-center justify-between gap-6 border border-edge bg-panel p-6 transition-colors hover:border-thread md:p-10">

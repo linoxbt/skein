@@ -344,3 +344,13 @@ writes and reads of existing keys answer in under half a second
 (`@netlify/blobs` 11.1.4, measured 2026-11-02). That was the Desk's 502 in the
 audit. The Desk's store now checks existence with a prefix `list` first, and
 every Blobs call has an 8 s timeout so a hang surfaces as an error.
+
+**L19. The `@skein` npm scope belongs to someone else.** It already holds an
+unrelated package (checked 2026-11-04), so the public packages are
+`@skeinlabs/sdk` and `@skeinlabs/mcp`, matching skeinlabs.site; the private
+workspace packages keep `@skein/*`. The first packed `@skein/mcp` would also
+have shipped type declarations importing a package nobody could install, so the
+MCP server now depends on the published SDK, and the Telegraph rail ships as the
+SDK's own `@skeinlabs/sdk/telegraph` entry (viem as an optional peer), with no
+private code left to bundle. Both tarballs were installed into an empty project,
+type-checked under `nodenext`, and run against the live API before release.

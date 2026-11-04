@@ -1,0 +1,44 @@
+name: Partner key request
+description: Ask for a free Skein partner key (hackathon partners and builders)
+title: "Partner key: <your project>"
+labels: ["partner-key"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Partner keys pay for Skein verdicts on the direct API. They are free during the
+        Telegraph hackathon and carry a small daily cap. **Never post a key here**: we send
+        it to you privately. You can also skip the key entirely and pay per call through
+        Telegraph escrow (see https://skeinlabs.site/tutorial#telegraph).
+  - type: input
+    id: project
+    attributes:
+      label: Project or agent name
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What will call Skein?
+      options: ["An agent", "A team or app", "A contract or keeper"]
+    validations:
+      required: true
+  - type: textarea
+    id: use
+    attributes:
+      label: What will you use verdicts for?
+      description: A sentence or two, e.g. "gate new tokens before our launchpad lists them".
+    validations:
+      required: true
+  - type: input
+    id: volume
+    attributes:
+      label: Expected verdicts per day
+      placeholder: "10"
+  - type: input
+    id: contact
+    attributes:
+      label: Where should we send the key?
+      description: A Discord handle or an email address you are happy to share publicly.
+    validations:
+      required: true

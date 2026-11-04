@@ -75,15 +75,15 @@ importers:
       '@netlify/blobs':
         specifier: 11.1.4
         version: 11.1.4
-      '@skein/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
       '@skein/telegraph':
         specifier: workspace:*
         version: link:../../packages/telegraph
       '@skein/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@skeinlabs/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       next:
         specifier: 15.5.28
         version: 15.5.28(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -244,9 +244,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.32.1
         version: 1.32.1(zod@3.25.76)
-      '@noble/hashes':
-        specifier: 2.4.0
-        version: 2.4.0
+      '@skeinlabs/sdk':
+        specifier: workspace:^
+        version: link:../sdk
       viem:
         specifier: 2.57.5
         version: 2.57.5(typescript@5.9.3)(zod@3.25.76)
@@ -257,12 +257,6 @@ importers:
       '@skein/api':
         specifier: workspace:*
         version: link:../../apps/api
-      '@skein/sdk':
-        specifier: workspace:*
-        version: link:../sdk
-      '@skein/telegraph':
-        specifier: workspace:*
-        version: link:../telegraph
       tsup:
         specifier: 8.5.0
         version: 8.5.0(jiti@2.7.0)(postcss@8.5.32)(tsx@4.23.15)(typescript@5.9.3)(yaml@2.8.4)
@@ -305,6 +299,9 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+      viem:
+        specifier: 2.57.5
+        version: 2.57.5(typescript@5.9.3)(zod@3.25.76)
 
   packages/telegraph:
     dependencies:

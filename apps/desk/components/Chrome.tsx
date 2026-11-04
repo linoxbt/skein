@@ -33,7 +33,7 @@ export function Nav() {
           </nav>
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden font-mono text-[12px] text-muted lg:inline">Halyard Exchange · fictional</span>
-            <Link href="/apply" className="btn btn-primary hidden !h-10 !px-5 !text-[15px] md:inline-flex">File an application</Link>
+            <Link href="/apply" className="btn btn-primary !hidden !h-10 !px-5 !text-[15px] md:!inline-flex">File an application</Link>
             <button type="button" className="grid h-10 w-10 place-items-center bg-panel-2 md:hidden" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
               {open ? <IconClose size={20} /> : <IconMenu size={20} />}
             </button>

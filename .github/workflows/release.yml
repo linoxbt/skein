@@ -1,0 +1,42 @@
+name: Release packages
+# Publishes @skeinlabs/sdk and @skeinlabs/mcp to npm with provenance.
+# Run it from the Actions tab (Run workflow), or push a tag like v0.1.0.
+# pnpm publish -r skips any package whose version is already on npm, so
+# re-running after a partial release only publishes what is missing.
+#
+# Needs the repository secret NPM_TOKEN: an npm granular access token with
+# read and write access to the @skeinlabs scope.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Pack and check only; publish nothing"
+        type: boolean
+        default: false
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp typecheck
+      - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp test
+      - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp build
+      - name: Publish
+        run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp publish -r --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"

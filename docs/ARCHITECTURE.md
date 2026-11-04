@@ -4,7 +4,7 @@
             ┌────────────────────────── consumers ──────────────────────────┐
             │  web (Next.js, Netlify)   Desk (Next.js, Netlify)   MCP / SDK  │
             └──────────────┬────────────────────┬────────────────────┬──────┘
-                           │ HTTPS               │ @skein/sdk         │
+                           │ HTTPS               │ @skeinlabs/sdk         │
                            ▼                     ▼                    ▼
    Telegraph dispatcher ─► API (Hono, Railway) ─ /v1/* and /miner/verdict
                            │  VerdictService: claim run → plan → buy → decide → seal

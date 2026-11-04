@@ -17,7 +17,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // The workspace packages ship TypeScript source.
-  transpilePackages: ["@skein/sdk", "@skein/telegraph", "@skein/engine", "@skein/ui"],
+  transpilePackages: ["@skeinlabs/sdk", "@skein/telegraph", "@skein/engine", "@skein/ui"],
   async headers() {
     return [
       {

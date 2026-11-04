@@ -114,7 +114,7 @@ export interface TelegraphAskOutcomeFail {
   httpStatus?: number;
 }
 
-/** Anything that can make one paid Telegraph ask, e.g. TelegraphClient from @skein/telegraph. */
+/** Anything that can make one paid Telegraph ask, e.g. TelegraphClient from @skeinlabs/sdk/telegraph. */
 export interface TelegraphAsker {
   ask(
     req: { intent: string; params?: Record<string, unknown> },
