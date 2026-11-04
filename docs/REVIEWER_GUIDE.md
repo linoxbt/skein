@@ -8,7 +8,7 @@ links are live; every page labels the network it reads.
 | Web app | https://skeinlabs.site |
 | API | https://api.skeinlabs.site |
 | Skein Desk (Apps & Agents) | https://desk.skeinlabs.site |
-| Source | https://github.com/linoxbt/skein (branch `ccr-4e0a77db-k2xyoy`) |
+| Source | https://github.com/linoxbt/skein |
 
 ## 1. New input
 
