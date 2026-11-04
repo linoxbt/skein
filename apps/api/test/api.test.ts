@@ -8,7 +8,7 @@ import { FakeNode } from "@skein/telegraph/testing";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createApp } from "../src/app";
+import { createApp, riskLevel, subjectFromText } from "../src/app";
 import { configFromEnv } from "../src/config";
 import { VerdictService } from "../src/service";
 
@@ -185,9 +185,22 @@ describe("POST /miner/verdict (the Telegraph dispatcher)", () => {
       const res = await minerPost(body);
       expect(res.status, JSON.stringify(body)).toBe(200);
       const out = await j(res);
-      expect(out).toMatchObject({ verdict: "APPROVE", risk_level: "low" });
+      expect(out).toMatchObject({ verdict: "APPROVE", risk_level: "LOW" });
       expect(out.bom_root).toMatch(/^0x[0-9a-f]{64}$/);
       expect(Array.isArray(out.reasons)).toBe(true);
+    }
+  });
+
+  it("answers Plan B's request, which is one subject string with no chain field", async () => {
+    for (const subject of [`eip155:8453:${TOKEN}`, `base:${TOKEN}`, `8453:${TOKEN}`, `${TOKEN} on Base`]) {
+      const res = await minerPost({ subject });
+      expect(res.status, subject).toBe(200);
+      const out = await j(res);
+      expect(out, subject).toMatchObject({ verdict: "APPROVE", risk_level: "LOW" });
+      expect(out.risk_score).toBeGreaterThanOrEqual(0);
+      expect(out.risk_score).toBeLessThanOrEqual(1);
+      expect(Array.isArray(out.signals)).toBe(true);
+      expect((await j(app.request(`/v1/verdicts/${out.id}`))).subject.chainId).toBe(8453);
     }
   });
 
@@ -196,5 +209,25 @@ describe("POST /miner/verdict (the Telegraph dispatcher)", () => {
     const outs = await Promise.all(Array.from({ length: 5 }, () => j(minerPost({ token, chain: "base" }))));
     expect(new Set(outs.map((o) => o.id)).size).toBe(1);
     expect(node.charges.length).toBeLessThanOrEqual(6);
+  });
+});
+
+describe("plan B helpers", () => {
+  const T = "0x4200000000000000000000000000000000000006";
+  it("reads the chain out of a free-text subject", () => {
+    expect(subjectFromText(`eip155:42161:${T}`)).toEqual({ token: T, chain: "42161" });
+    expect(subjectFromText(`bsc:${T}`)).toEqual({ token: T, chain: "bsc" });
+    expect(subjectFromText(`BNB token ${T}`)).toEqual({ token: T, chain: "bsc" });
+    expect(subjectFromText(`56:${T}`)).toEqual({ token: T, chain: "56" });
+    expect(subjectFromText(`token ${T} on ethereum`)).toEqual({ token: T, chain: "ethereum" });
+    expect(subjectFromText(T)).toEqual({ token: T });
+    expect(subjectFromText("not an address")).toBeUndefined();
+  });
+  it("maps verdicts to the intent's risk levels", () => {
+    expect(riskLevel("APPROVE", [])).toBe("LOW");
+    expect(riskLevel("ESCALATE", [])).toBe("MEDIUM");
+    expect(riskLevel("ABSTAIN", [])).toBe("MEDIUM");
+    expect(riskLevel("REJECT", [{ code: "SCORE_ABOVE_REJECT" }])).toBe("HIGH");
+    expect(riskLevel("REJECT", [{ code: "BLOCKER_SANCTIONS_FAIL" }])).toBe("CRITICAL");
   });
 });
