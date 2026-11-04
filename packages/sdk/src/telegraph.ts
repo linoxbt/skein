@@ -19,5 +19,5 @@ export {
   TESTNET,
   PreSeasonError,
   ChallengeMismatchError,
-} from "../../telegraph/src/index";
-export type { NetworkConfig, ClientOptions, AskOutcome, AskRequest, AskResponse, AskFailureKind, MessageSigner, Receipt } from "../../telegraph/src/index";
+} from "@skein/telegraph";
+export type { NetworkConfig, ClientOptions, AskOutcome, AskRequest, AskResponse, AskFailureKind, MessageSigner, Receipt } from "@skein/telegraph";
