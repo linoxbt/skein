@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const REPO = "https://github.com/linoxbt/skein";
 /** The source tree the site is built from, and its branch (REPO_URL names it). */
 const TREE = REPO_URL;
-const BRANCH = REPO_URL.includes("/tree/") ? REPO_URL.split("/tree/")[1]! : "";
+const BRANCH = REPO_URL.includes("/tree/") && !REPO_URL.endsWith("/tree/main") ? REPO_URL.split("/tree/")[1]! : "";
 const EXAMPLE = `${TREE}/examples/listing-gate`;
 const KEY_REQUEST = `${REPO}/issues/new?template=partner-key.yml`;
 const WETH_BASE = "0x4200000000000000000000000000000000000006";
