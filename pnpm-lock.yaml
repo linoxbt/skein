@@ -119,6 +119,34 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  apps/sniper:
+    dependencies:
+      '@hono/node-server':
+        specifier: 2.1.5
+        version: 2.1.5(hono@4.13.13)
+      '@skeinlabs/sdk':
+        specifier: npm:@skeinlabs/sdk@0.2.0
+        version: 0.2.0(viem@2.57.5(typescript@5.9.3)(zod@3.25.76))
+      hono:
+        specifier: 4.13.13
+        version: 4.13.13
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+      viem:
+        specifier: 2.57.5
+        version: 2.57.5(typescript@5.9.3)(zod@3.25.76)
+    devDependencies:
+      '@skein/api':
+        specifier: workspace:*
+        version: link:../api
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+
   apps/web:
     dependencies:
       '@skein/ui':
@@ -1366,6 +1394,15 @@ packages:
 
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
+
+  '@skeinlabs/sdk@0.2.0':
+    resolution: {integrity: sha512-n2RBZXKefdJG3/SzpGBCyvur/GpHGxDM3OXSo/4dWP3Lrwt/3Em1cHL3B/yY61aL4BeWwvaok9Px9d9H281XCg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      viem: ^2.30.0
+    peerDependenciesMeta:
+      viem:
+        optional: true
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -3523,6 +3560,10 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
+
+  '@skeinlabs/sdk@0.2.0(viem@2.57.5(typescript@5.9.3)(zod@3.25.76))':
+    optionalDependencies:
+      viem: 2.57.5(typescript@5.9.3)(zod@3.25.76)
 
   '@standard-schema/spec@1.1.0': {}
 
