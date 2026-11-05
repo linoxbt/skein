@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",
-    "@skeinlabs/sdk": "workspace:*",
+    "@skeinlabs/sdk": "npm:@skeinlabs/sdk@0.2.0",
     "hono": "4.13.13",
     "pg": "8.23.1",
     "tsx": "4.23.15",
