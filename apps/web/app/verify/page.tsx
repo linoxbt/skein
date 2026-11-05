@@ -14,6 +14,8 @@ const STEPS: [string, string, string][] = [
   ["bomRootRebuilt", "Receipts re-rooted", "The bill-of-materials Merkle root rebuilt from every receipt hash."],
   ["engineVersion", "Engine matched", "The engine version is the one that made the verdict."],
 ];
+/** Shown when the API signs verdicts. */
+const SIGNED: [string, string, string] = ["attestation", "Signature checked", "Skein's EIP-191 signature over this verdict recovers to its published attester address."];
 
 function VerifyInner() {
   const params = useSearchParams();
@@ -76,7 +78,7 @@ function VerifyInner() {
               {report.ok ? "Every step matches." : "Something changed."}
             </h2>
             <ol className="mt-12">
-              {STEPS.map(([k, title, line], i) => {
+              {(report.checks.attestation === undefined ? STEPS : [...STEPS, SIGNED]).map(([k, title, line], i, steps) => {
                 const ok = report.checks[k];
                 return (
                   <li key={k} className="rise" style={{ animationDelay: `${i * 140}ms` }}>
@@ -89,7 +91,7 @@ function VerifyInner() {
                         {ok ? <IconCheck size={30} /> : <IconCross size={30} />}
                       </span>
                     </div>
-                    {i < STEPS.length - 1 ? <div className="rule-dots" /> : null}
+                    {i < steps.length - 1 ? <div className="rule-dots" /> : null}
                   </li>
                 );
               })}

@@ -199,6 +199,13 @@ for (const line of bom.lines) {
   console.log(line.check, line.minerName, line.amountUsdc, "USDC", line.receiptHash);
 }`;
 
+const attestCode = `import { verifyAttestation } from "@skeinlabs/sdk/attest";
+
+const ATTESTER = "0x…"; // Skein's address from /v1/status: pin it in your config
+
+const check = await verifyAttestation(v, { signer: ATTESTER });
+if (!check.ok) throw new Error("not signed by Skein: " + check.problems.join("; "));`;
+
 const errorsCode = `import { SkeinError, SpendCapError } from "@skeinlabs/sdk";
 
 try {
@@ -645,6 +652,14 @@ export default function TutorialPage() {
               <A href="/verify">verify page</A> does the same check in a browser. Every receipt hash in the bill of materials is the one the
               Telegraph network returned for that purchase, so an auditor can trace each input to a settled payment.
             </P>
+            <H3>Check Skein&apos;s signature, offline</H3>
+            <P>
+              Every verdict also carries an <C>attestation</C>: Skein&apos;s EIP-191 signature over a plain-text message naming its id,
+              subject, outcome, policy, verdict hash, receipts root and cost. Attach it to a listing memo or a payment, and anyone can check
+              it without asking Skein: the check rebuilds the message from the verdict&apos;s own fields, so an edited verdict fails even with
+              the original signature attached. The signer&apos;s address is published at <C>/v1/status</C> as <C>attester</C>.
+            </P>
+            <Block label="typescript · @skeinlabs/sdk/attest (needs viem)">{attestCode}</Block>
 
             {/* 08 */}
             <H2 id="production" n="08 · Production">Production patterns</H2>

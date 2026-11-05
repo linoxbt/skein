@@ -354,3 +354,29 @@ MCP server now depends on the published SDK, and the Telegraph rail ships as the
 SDK's own `@skeinlabs/sdk/telegraph` entry (viem as an optional peer), with no
 private code left to bundle. Both tarballs were installed into an empty project,
 type-checked under `nodenext`, and run against the live API before release.
+
+**L20. Signed verdicts, and a context mismatch that refused every rich application.**
+Mission 01 (Exchange) asks for a *signed* listing risk memo. Every served
+verdict now carries `attestation`: Skein's EIP-191 signature over a plain-text
+message (id, subject, outcome, policy, engine, verdict hash, receipts root,
+cost), signed on read (RFC 6979 makes it deterministic, so nothing is stored),
+checked by `/v1/verify`, published at `/v1/status` (`attester`), and checkable
+offline with `@skeinlabs/sdk/attest`, which rebuilds the message from the
+verdict's own fields. The Desk renders it in a printable listing risk memo.
+Building that memo surfaced a real bug: the Desk (and the SDK's own type)
+sent `context.social` and `context.repo`, while the API's strict schema takes
+`socialHandle` and `repoUrl`, so every application with a social handle or a
+repo was refused as an invalid body, and the bot and code checks were never
+bought. The SDK now maps the aliases, and the API names the offending field.
+
+**L21. dex-list@0.2.0: code review; holder concentration stays a gap.** The
+mission's listing desk buys "commit history and contributor authenticity"
+through CODE_REVIEW; dex-list@0.1.0 never bought it. 0.2.0 adds it as an
+optional check (weight 0.07, asked specifically about commit history,
+contributor authenticity and copied code) and lowers min_coverage to 0.70 so
+that, as in 0.1.0, all required checks answering is enough. 0.1.0 is unchanged
+for anyone who pinned it. Holder *concentration* is still not bought: on
+2026-11-05 no intent returns a holder distribution (ONCHAIN_METRIC_VERIFY is a
+wallet's ETH balance at a block; TOKEN_HOLDER_COUNT is a count; the only other
+token intent is total supply), and mapping it onto one of those would be a fake
+check. It is reported as not covered.

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { claimRun, finishRun, getRun, loadStoredVerdict, newVerdictId, schema, type RunRow } from "@skein/db";
-import { canonicalJson, InvalidSubjectError, parseSubject, plan, reproduce, SUPPORTED_CHAINS, type Policy, type Subject } from "@skein/engine";
+import { ATTESTATION_SCHEME, attestationMessage, canonicalJson, InvalidSubjectError, parseSubject, plan, reproduce, SUPPORTED_CHAINS, type Attestation, type Policy, type Subject } from "@skein/engine";
 import { availability, quotes, type VerdictContext } from "@skein/pipeline";
 import { getPolicy, listPolicies, type PolicyRecord } from "@skein/policies";
 import { CHECK_INTENTS, SEASON_START, SERVED_INTENTS } from "@skein/telegraph";
@@ -13,7 +13,9 @@ import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { ApiError, errorResponse } from "./errors";
 import { contextHash, FAILED_MESSAGE, normaliseContext, type Consumer, type Refusal, type RunOutcome, type VerdictEvent, type VerdictService } from "./service";
-import { bomObject, verdictObject } from "./views";
+import { privateKeyToAccount } from "viem/accounts";
+import { verifyMessage } from "viem";
+import { bomObject, verdictObject, type VerdictObject } from "./views";
 
 const UUSDC = 1_000_000;
 const usdc = (u: number) => Math.round(u) / UUSDC;
@@ -216,12 +218,23 @@ export function createApp(service: VerdictService) {
     return consumer;
   }
 
+  // Every served verdict is signed. The signature is deterministic (RFC 6979),
+  // so signing on read gives the same attestation every time, with nothing stored.
+  const attester = config.attestationKey ? privateKeyToAccount(config.attestationKey) : null;
+  const attest = async (v: VerdictObject): Promise<Attestation | null> => {
+    if (!attester) return null;
+    const message = attestationMessage(v);
+    return { scheme: ATTESTATION_SCHEME, signer: attester.address, message, signature: await attester.signMessage({ message }) };
+  };
+
   const sendVerdict = async (c: Context, id: string, extra: Record<string, unknown> = {}) => {
     const v = await verdictObject(db, id);
     if (!v) throw new ApiError(404, "NOT_FOUND", `verdict ${id} not found`);
     c.header("X-Skein-Verdict-Hash", v.verdictHash);
     c.header("X-Skein-Bom-Root", v.bom.root);
-    return c.json({ ...v, ...extra });
+    const attestation = await attest(v);
+    if (attestation) c.header("X-Skein-Attestation", attestation.signature);
+    return c.json({ ...v, ...(attestation ? { attestation } : {}), ...extra });
   };
 
   /** What a run that is not a fresh verdict tells its caller. */
@@ -252,7 +265,10 @@ export function createApp(service: VerdictService) {
     if (!idemKey || idemKey.length > 128) throw new ApiError(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required (at most 128 characters)");
     const raw = await c.req.json().catch(() => null);
     const parsed = createSchema.safeParse(raw);
-    if (!parsed.success) throw new ApiError(400, "INVALID_REQUEST", "invalid body", parsed.error.issues);
+    if (!parsed.success) {
+      const where = parsed.error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; ");
+      throw new ApiError(400, "INVALID_REQUEST", `invalid body (${where})`, parsed.error.issues);
+    }
     const body = parsed.data;
 
     const subject = resolveSubject(body.subject);
@@ -395,6 +411,12 @@ export function createApp(service: VerdictService) {
     const record = resolvePolicy(`${stored.policy.id}@${stored.policy.version}`);
     const report = reproduce(stored, record.policy, { policySha256: record.sha256 });
     const has = (prefix: string) => report.problems.some((p) => p.startsWith(prefix));
+    // The signature over the served verdict: rebuilt from the stored record, then recovered.
+    const served = attester ? await verdictObject(db, body.id) : null;
+    const attestation = served ? await attest(served) : null;
+    const attestationOk = attestation
+      ? await verifyMessage({ address: attestation.signer as `0x${string}`, message: attestationMessage(served!), signature: attestation.signature as `0x${string}` })
+      : null;
 
     // The network's own record of each paid answer.
     const signals = { verified: 0, missing: 0, mismatch: 0, unchecked: 0 };
@@ -414,7 +436,9 @@ export function createApp(service: VerdictService) {
         decisionMatches: !has("served "),
         receiptsMatch: !has("BOM receipt") && !has("purchase receipt"),
         policyFile: !has("policy file differs"),
+        ...(attestationOk === null ? {} : { attestation: attestationOk }),
       },
+      ...(attestation ? { attester: attestation.signer } : {}),
       signals,
       verdictHash: { stored: stored.verdictHash, recomputed: report.verdictHash },
       bomRoot: { stored: stored.bomRoot, recomputed: report.bomRoot },
@@ -490,6 +514,7 @@ export function createApp(service: VerdictService) {
       node: config.networkLabel === "simulated" ? "local fake node" : config.network.nodeUrl,
       preSeason: t < SEASON_START && !config.allowPreSeason,
       payer: service.deps.payerAddress ?? null,
+      attester: attester?.address ?? null,
       payerUsdcBalance: wallet.balanceUusdc === null ? null : usdc(wallet.balanceUusdc),
       walletAlert: wallet.balanceUusdc !== null && wallet.balanceUusdc < config.hotWalletAlertUusdc,
       catalogueFetchedAt: service.catalogue.fetchedAt,
@@ -582,6 +607,7 @@ export function createApp(service: VerdictService) {
       const v = await verdictObject(db, id);
       if (!v) throw new ApiError(503, "VERDICT_FAILED", FAILED_MESSAGE);
       const reasons = v.reasons as { code: string; check?: string; detail: string }[];
+      const attestation = await attest(v);
       return c.json({
         verdict: v.verdict,
         // Plan B (FRAUD_RISK_GENERAL) reads its response fields: risk_level, risk_score, signals, summary.
@@ -599,6 +625,7 @@ export function createApp(service: VerdictService) {
         bom: { root: v.bom.root, items: v.bom.items },
         id: v.id,
         verdict_hash: v.verdictHash,
+        ...(attestation ? { attestation } : {}),
         cached,
       });
     };

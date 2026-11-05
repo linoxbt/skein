@@ -12,6 +12,8 @@ export interface ApiConfig {
   syncTimeoutMs: number;
   /** Shared secret the Telegraph dispatcher presents on /miner/verdict. */
   minerAuthKey?: string;
+  /** Signs every verdict (EIP-191); its address is published at /v1/status. Not a wallet: it holds nothing. */
+  attestationKey?: `0x${string}`;
   allowPreSeason: boolean;
   defaultPolicy: string;
   /** Origins allowed to call the API from a browser. */
@@ -41,6 +43,12 @@ export interface ApiConfig {
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
 const usdc = (v: string | undefined, d: number) => Math.round(num(v, d) * 1_000_000);
 
+function attestationKey(raw: string): `0x${string}` {
+  const k = raw.trim();
+  if (!/^0x[0-9a-fA-F]{64}$/.test(k)) throw new Error("SKEIN_ATTESTATION_KEY must be a 0x-prefixed 32-byte hex private key");
+  return k as `0x${string}`;
+}
+
 export function configFromEnv(env: Record<string, string | undefined> = process.env): ApiConfig {
   return {
     port: num(env.PORT, 8080),
@@ -52,6 +60,7 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     cacheTtlSec: num(env.CACHE_TTL_SEC, 600),
     syncTimeoutMs: num(env.SYNC_TIMEOUT_MS, 25_000),
     ...(env.MINER_AUTH_KEY ? { minerAuthKey: env.MINER_AUTH_KEY } : {}),
+    ...(env.SKEIN_ATTESTATION_KEY ? { attestationKey: attestationKey(env.SKEIN_ATTESTATION_KEY) } : {}),
     allowPreSeason: env.ALLOW_PRE_SEASON === "true",
     // dex-list is plannable on today's intents; cex-standard waits for a holder-concentration miner.
     defaultPolicy: env.DEFAULT_POLICY || "dex-list",
