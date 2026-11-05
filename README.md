@@ -121,8 +121,9 @@ PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --soc
 | Service | Host | URL |
 |---|---|---|
 | Web app | Netlify | https://skeinlabs.site (also https://skein-web.netlify.app) |
-| API | Railway (Docker, `railway.json`) | https://api.skeinlabs.site (also https://api-production-9396.up.railway.app) |
+| API | Railway (Docker, `apps/api/Dockerfile`) | https://api.skeinlabs.site (also https://api-production-9396.up.railway.app) |
 | Skein Desk | Netlify | https://desk.skeinlabs.site (also https://skein-desk.netlify.app) |
+| Skein Sniper (Mission 14) | Railway (Docker, `apps/sniper/Dockerfile`) | https://sniper-production-bea6.up.railway.app |
 | Postgres | Railway | private network only |
 
 The API redeploys on every push to the branch. The web app and the Desk are
