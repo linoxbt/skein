@@ -56,5 +56,10 @@ export const ALLOWLIST: Readonly<Partial<Record<Check, readonly MinerCandidate[]
   social_bots: [
     { minerId: "7457", name: "TradeWire Social Bot Detection", why: "takes an account plus follower signals; canonical params accepted" },
   ],
-  code_review: [],
+  // Checked 2026-11-05 with unpaid asks carrying the listing question (dex-list@0.2.0's request).
+  // The github.com wrappers (60001-60007) each return one fixed endpoint, not a review: not listed.
+  code_review: [
+    { minerId: "1900999004", name: "CodeWire Code Review", why: "a model reviews the code or link it is sent and states whether it is correct; answered 503 'try again later' on 2026-11-05" },
+    { minerId: "7310045", name: "CodeWire Code Review Request Contract", why: "accepted the canonical {code} request (402); says it returns review prose rather than the canonical verdict enum, so it may score UNKNOWN until a paid answer is checked" },
+  ],
 };
