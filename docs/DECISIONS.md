@@ -394,3 +394,15 @@ every allowlisted miner. Note: both share the margyn.workers.dev operator with
 four other allowlisted miners, which the engine's source groups account for.
 The github.com wrappers (60001-60007) each return one fixed endpoint and are
 not listed.
+
+**L23. Skein Sniper (Mission 14) is its own app and its own customer.** It runs
+as a separate Railway service with its own partner key, so its spend and caps
+are separate from the Desk's, and it depends on the *published*
+`@skeinlabs/sdk@0.2.0` from npm rather than the workspace copy, as any outside
+developer would (a `--prod` install of the workspace copy also lacked the SDK's
+dev-only viem). It buys a verdict only for launches that reach tradeable
+liquidity (a free DEX Screener look first), under `agent-pretrade`, and trades
+on paper: buying real Base tokens would be real money, and the event is
+testnet. Railway applied the repository-root `railway.json` (the API's
+Dockerfile) to every service from the repo, so the first sniper deploy ran a
+second API; each service now carries its own build settings and the file is gone.
