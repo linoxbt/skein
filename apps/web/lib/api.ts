@@ -33,6 +33,7 @@ export const verify = (id: string) =>
     bomRoot: { stored: string; recomputed: string };
     receipts: string[];
     problems: string[];
+    attester?: string;
   }>("/v1/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) });
 
 export interface Status {

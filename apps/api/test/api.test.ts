@@ -7,6 +7,9 @@ import { TelegraphClient, TESTNET, viemSigner } from "@skein/telegraph";
 import { FakeNode } from "@skein/telegraph/testing";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { attestationMessage } from "@skein/engine";
+import { verifyMessage } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp, riskLevel, subjectFromText } from "../src/app";
 import { configFromEnv } from "../src/config";
@@ -15,6 +18,8 @@ import { VerdictService } from "../src/service";
 const SEASON = Date.parse("2026-11-03T10:00:00Z");
 const snapshot = JSON.parse(readFileSync(new URL("../../../packages/telegraph/snapshots/2026-10-30.json", import.meta.url), "utf8"));
 const TOKEN = "0x4200000000000000000000000000000000000006";
+const ATTESTATION_KEY = `0x${"ab".repeat(32)}` as const;
+const ATTESTER = privateKeyToAccount(ATTESTATION_KEY).address;
 const KEY = "sk_part_test_key";
 const MINER_KEY = "miner-secret";
 
@@ -40,7 +45,7 @@ beforeEach(async () => {
   const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(`0x${"33".repeat(32)}`), fetch: node.fetch, maxUusdcPerCall: 50_000, now: () => SEASON });
   service = new VerdictService({
     db,
-    config: { ...configFromEnv({}), minerAuthKey: MINER_KEY, defaultPolicy: "dex-list" },
+    config: { ...configFromEnv({}), minerAuthKey: MINER_KEY, defaultPolicy: "dex-list", attestationKey: ATTESTATION_KEY },
     client,
     catalogue: catalogueFromSnapshot(snapshot),
     resolver: { resolve: async () => "0xd0b53d9277642d899df5c87a3966a349a798f224" },
@@ -66,7 +71,8 @@ describe("POST /v1/verdicts", () => {
     const res = await post(body);
     expect(res.status).toBe(200);
     const v = await j(res);
-    expect(v).toMatchObject({ verdict: "APPROVE", verdictCode: 1, coverage: 1, policy: { id: "dex-list", version: "0.1.0" }, network: "testnet", cost: { upstreamUsdc: 0.06, priceUsdc: 0.25 } });
+    // The bare id is dex-list@0.2.0: no repo in this request, so its optional code review is not bought.
+    expect(v).toMatchObject({ verdict: "APPROVE", verdictCode: 1, coverage: 0.93, policy: { id: "dex-list", version: "0.2.0" }, network: "testnet", cost: { upstreamUsdc: 0.06, priceUsdc: 0.25 } });
     expect(res.headers.get("x-skein-verdict-hash")).toBe(v.verdictHash);
     expect(res.headers.get("x-skein-bom-root")).toBe(v.bom.root);
     expect(node.charges).toHaveLength(6);
@@ -140,12 +146,14 @@ describe("POST /v1/verdicts", () => {
 describe("read-only routes", () => {
   it("quote, status, policies and ledger", async () => {
     const q = await j(app.request(`/v1/quote?chain=8453&token=${TOKEN}&policy=dex-list`));
-    expect(q).toMatchObject({ ok: true, upstreamUsdc: 0.06, priceUsdc: 0.25 });
+    // The quote prices every check the policy may buy, the optional code review included.
+    expect(q).toMatchObject({ ok: true, upstreamUsdc: 0.07, priceUsdc: 0.25, policy: "dex-list@0.2.0" });
+    expect((await j(app.request(`/v1/quote?chain=8453&token=${TOKEN}&policy=dex-list@0.1.0`))).upstreamUsdc).toBe(0.06);
     const s = await j(app.request("/v1/status"));
     expect(s).toMatchObject({ network: "eip155:11155111" });
     expect(s.intents.find((i: { check: string }) => i.check === "holder_concentration")).toMatchObject({ intent: null, activeMiners: 0 });
     const ps = await j(app.request("/v1/policies"));
-    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "cex-standard@0.1.0", "dex-list@0.1.0"]);
+    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
     await post(body);
     const l = await j(app.request("/v1/ledger"));
     expect(l).toMatchObject({ verdicts: { APPROVE: 1 }, upstreamSpendUsdc: 0.06, receipts: 6, minersUsed: 6 });
@@ -229,5 +237,41 @@ describe("plan B helpers", () => {
     expect(riskLevel("ABSTAIN", [])).toBe("MEDIUM");
     expect(riskLevel("REJECT", [{ code: "SCORE_ABOVE_REJECT" }])).toBe("HIGH");
     expect(riskLevel("REJECT", [{ code: "BLOCKER_SANCTIONS_FAIL" }])).toBe("CRITICAL");
+  });
+});
+
+describe("signed verdicts", () => {
+  it("signs every served verdict, and anyone can check it against the published attester", async () => {
+    const v = await j(post(body));
+    expect(v.attestation).toMatchObject({ scheme: "eip191", signer: ATTESTER });
+    expect(v.attestation.message).toBe(attestationMessage(v));
+    expect(v.attestation.message).toContain(`verdict_hash: ${v.verdictHash}`);
+    expect(await verifyMessage({ address: ATTESTER, message: v.attestation.message, signature: v.attestation.signature })).toBe(true);
+    // Deterministic: the same verdict read again carries the same signature, and a header with it.
+    const res = await app.request(`/v1/verdicts/${v.id}`);
+    expect(res.headers.get("x-skein-attestation")).toBe(v.attestation.signature);
+    expect((await j(res)).attestation.signature).toBe(v.attestation.signature);
+    // A changed field no longer matches the signature.
+    const forged = attestationMessage({ ...v, verdict: v.verdict === "APPROVE" ? "REJECT" : "APPROVE" });
+    expect(await verifyMessage({ address: ATTESTER, message: forged, signature: v.attestation.signature })).toBe(false);
+  });
+
+  it("verify reports the signature, and status publishes the attester", async () => {
+    const v = await j(post(body));
+    const r = await j(app.request("/v1/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: v.id }) }));
+    expect(r.checks.attestation).toBe(true);
+    expect(r.attester).toBe(ATTESTER);
+    expect((await j(app.request("/v1/status"))).attester).toBe(ATTESTER);
+  });
+
+  it("the miner's answer carries the same proof, for a buyer to attach to a payment", async () => {
+    const res = await app.request("/miner/verdict", { method: "POST", headers: { "content-type": "application/json", "x-skein-miner-key": MINER_KEY }, body: JSON.stringify({ subject: `base:${TOKEN}` }) });
+    const out = await j(res);
+    expect(out.attestation.signer).toBe(ATTESTER);
+    expect(await verifyMessage({ address: ATTESTER, message: out.attestation.message, signature: out.attestation.signature })).toBe(true);
+  });
+
+  it("refuses a malformed attestation key at startup", () => {
+    expect(() => configFromEnv({ SKEIN_ATTESTATION_KEY: "0x1234" })).toThrow(/SKEIN_ATTESTATION_KEY/);
   });
 });

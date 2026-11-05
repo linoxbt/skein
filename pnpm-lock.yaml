@@ -293,6 +293,9 @@ importers:
       '@skein/api':
         specifier: workspace:*
         version: link:../../apps/api
+      '@skein/engine':
+        specifier: workspace:*
+        version: link:../engine
       '@skein/telegraph':
         specifier: workspace:*
         version: link:../telegraph

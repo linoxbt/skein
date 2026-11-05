@@ -49,8 +49,23 @@ export function buildRequest(check: Check, intent: string, subject: Subject, ctx
         ? { ok: true, req: { intent, params: { account: ctx.socialHandle } } }
         : { ok: false, note: "no_social_handle" };
     case "code_review":
+      // The listing question, not a generic review: a link alone got a style review.
+      // The intent's one input is `code` ("the code to review, or a link to the change").
       return ctx.repoUrl
-        ? { ok: true, req: { intent, params: { code: ctx.repoUrl } } }
+        ? {
+            ok: true,
+            req: {
+              intent,
+              params: {
+                code:
+                  `${ctx.repoUrl}\n\nReview this repository for a token listing decision (${token} on ${chain}). ` +
+                  "Cover: commit history (age, cadence, gaps, rewritten history); contributor authenticity " +
+                  "(established accounts or new, duplicated or anonymous ones; a single author); code copied or " +
+                  "forked without credit; and security issues in the token or deployment code. " +
+                  "Answer Approve, Comment or Request changes, with findings.",
+              },
+            },
+          }
         : { ok: false, note: "no_repo_url" };
     case "holder_concentration":
       return { ok: false, note: "no_live_intent" };

@@ -203,6 +203,11 @@ export function VerdictHeader({ v, size = "md" }: { v: VerdictObject; size?: "md
       <p className="statement max-w-4xl text-[22px] md:text-[30px]">{v.summary}</p>
       <div className="font-mono text-[12px] text-muted">
         <code className="break-all">{v.subject.token}</code> · chain {v.subject.chainId} · verdict hash <code title={v.verdictHash}>{short(v.verdictHash)}</code>
+        {v.attestation ? (
+          <>
+            {" "}· signed by <code title={`${v.attestation.signer}\n\n${v.attestation.message}\n\n${v.attestation.signature}`}>{short(v.attestation.signer)}</code> (EIP-191)
+          </>
+        ) : null}
       </div>
     </div>
   );

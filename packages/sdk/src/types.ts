@@ -19,6 +19,16 @@ export interface Finding {
   notes: string[];
 }
 
+/** Skein's signature over a verdict (EIP-191); check it with @skeinlabs/sdk/attest. */
+export interface Attestation {
+  scheme: "eip191";
+  /** Skein's attester address, published at /v1/status. */
+  signer: string;
+  /** The exact signed text: the verdict's id, subject, outcome, policy, hashes and cost. */
+  message: string;
+  signature: string;
+}
+
 /** The verdict object (build spec, section 6). */
 export interface VerdictObject {
   id: string;
@@ -45,6 +55,8 @@ export interface VerdictObject {
   disclaimer: string;
   cached?: boolean;
   replayed?: boolean;
+  /** Present when the API signs verdicts. */
+  attestation?: Attestation;
 }
 
 export interface Quote {
@@ -66,6 +78,8 @@ export interface VerifyReport {
   bomRoot: { stored: string; recomputed: string };
   receipts: string[];
   problems: string[];
+  /** The signer the API checked the attestation against, when it signs verdicts. */
+  attester?: string;
 }
 
 export interface BomLine {

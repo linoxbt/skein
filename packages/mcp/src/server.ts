@@ -43,12 +43,13 @@ export function describeVerdict(v: VerdictResult, link: string): string {
   const paid = v.payment.rail === "telegraph" ? `paid ${v.payment.amountUsdc} USDC through Telegraph (receipt ${v.payment.receiptHash ?? "none"})` : "paid with a Skein partner key";
   lines.push(`Upstream cost ${v.cost.upstreamUsdc} USDC across ${v.bom.items} receipts; ${paid}.`);
   lines.push(`Verdict hash ${v.verdictHash}. Verify: ${link}`);
+  if (v.attestation) lines.push(`Signed by Skein (${v.attestation.signer}, EIP-191): ${v.attestation.signature}`);
   if (v.network === "simulated") lines.push("SIMULATED: canned answers, not evidence.");
   return lines.join("\n");
 }
 
 export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "telegraph" }): { server: McpServer; spentUsdc: () => number } {
-  const server = new McpServer({ name: "skein", version: "0.1.1" });
+  const server = new McpServer({ name: "skein", version: "0.2.0" });
   const web = opts.webUrl.replace(/\/$/, "");
   let spent = 0;
 
@@ -98,6 +99,7 @@ export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "tele
             payment: v.payment,
             verdictHash: v.verdictHash,
             bomRoot: v.bom.root,
+            ...(v.attestation ? { attestation: v.attestation } : {}),
             network: v.network,
             link,
           },
