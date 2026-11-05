@@ -1,0 +1,25 @@
+{
+  "name": "@skein/sniper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mission 14 (Web3 Native & DeFi): a rug-proof sniper that buys a Skein verdict before every trade on new Base launches.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node --import tsx src/main.ts",
+    "dev": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.5",
+    "@skeinlabs/sdk": "workspace:*",
+    "hono": "4.13.13",
+    "pg": "8.23.1",
+    "tsx": "4.23.15",
+    "viem": "2.57.5"
+  },
+  "devDependencies": {
+    "@skein/api": "workspace:*",
+    "@types/pg": "8.23.1"
+  }
+}
