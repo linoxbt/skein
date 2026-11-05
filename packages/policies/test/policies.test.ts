@@ -4,7 +4,7 @@ import { getPolicy, listAllPolicyFiles, listPolicies, readLock } from "../src/in
 describe("policies", () => {
   it("every policy file parses and is named after its id@version", () => {
     const all = listPolicies();
-    expect(all.map((p) => p.ref)).toEqual(["agent-pretrade@0.1.0", "cex-standard@0.1.0", "dex-list@0.1.0"]);
+    expect(all.map((p) => p.ref)).toEqual(["agent-pretrade@0.1.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
   });
 
   it("published policies are immutable: each file matches its locked SHA-256", () => {
@@ -26,5 +26,9 @@ describe("policies", () => {
   it("resolves a bare id to its highest version", () => {
     expect(getPolicy("cex-standard").ref).toBe("cex-standard@0.1.0");
     expect(() => getPolicy("cex-standard@9.9.9")).toThrow(/UNKNOWN_POLICY/);
+    // A new version reaches callers of the bare id; a pinned version never changes.
+    expect(getPolicy("dex-list").ref).toBe("dex-list@0.2.0");
+    expect(getPolicy("dex-list@0.1.0").policy.optional).not.toContain("code_review");
+    expect(getPolicy("dex-list@0.2.0").policy.optional).toContain("code_review");
   });
 });

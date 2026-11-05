@@ -9,7 +9,8 @@ listing verdict for an EVM token (**APPROVE**, **REJECT**, **ESCALATE** or
 - retries that reuse the idempotency key, so a retried call is never charged twice
 - a per-call spend cap, checked **before** any payment
 - two ways to pay: a Skein partner key, or per call through Telegraph escrow
-- no runtime dependencies (the Telegraph entry needs `viem`)
+- every verdict signed by Skein, checkable offline with `@skeinlabs/sdk/attest`
+- no runtime dependencies (the Telegraph and attest entries need `viem`)
 
 **[Read the full tutorial →](https://skeinlabs.site/tutorial)**
 
@@ -47,7 +48,8 @@ const skein = new Skein({
 try {
   const v = await skein.verdict({
     subject: { chainId: 8453, token: "0x…" },
-    policy: "dex-list@0.1.0",
+    policy: "dex-list@0.2.0",
+    context: { socialHandle: "project_handle", repoUrl: "https://github.com/org/repo" }, // optional: buys bot and code checks
     onEvent: (e) => console.log(e.type), // plan, purchase, finding, decision, done
   });
   if (v.verdict !== "APPROVE") console.log("needs a human:", v.reasons.map((r) => r.detail));
@@ -78,6 +80,24 @@ const skein = new Skein({ apiUrl: "https://api.skeinlabs.site", payer: { kind: "
 const v = await skein.verdict({ subject: { chainId: 1, token: "0x…" } });
 console.log(v.verdict, v.payment); // { rail: "telegraph", minerId, amountUsdc, receiptHash, signalHash }
 ```
+
+## Check Skein's signature yourself
+
+Every verdict is signed by Skein (EIP-191) over its id, subject, outcome,
+policy, verdict hash, receipts root and cost. The signer's address is published
+at `https://api.skeinlabs.site/v1/status` (`attester`). The check rebuilds the
+message from the verdict's own fields, so an edited verdict fails even with the
+original signature attached:
+
+```ts
+import { verifyAttestation } from "@skeinlabs/sdk/attest";   // needs viem
+
+const { attester } = await (await fetch("https://api.skeinlabs.site/v1/status")).json();
+const check = await verifyAttestation(v, { signer: attester });
+if (!check.ok) throw new Error(check.problems.join("; "));
+```
+
+Pin the attester address in your own config rather than fetching it on every call.
 
 ## API
 
