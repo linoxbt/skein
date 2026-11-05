@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { isSelfRouting } from "@skein/engine";
 import { describe, expect, it } from "vitest";
 import { ALLOWLIST, CHECK_INTENTS, SERVED_INTENTS, sourceGroup } from "../src";
@@ -9,6 +9,9 @@ interface Snapshot {
 const snap = JSON.parse(
   readFileSync(new URL("../snapshots/2026-10-30.json", import.meta.url), "utf8"),
 ) as Snapshot;
+/** The newest recorded catalogue (bin/snapshot.ts): where an allowlisted miner must be registered. */
+const latestName = readdirSync(new URL("../snapshots/", import.meta.url)).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().at(-1)!;
+const latest = JSON.parse(readFileSync(new URL(`../snapshots/${latestName}`, import.meta.url), "utf8")) as Snapshot;
 
 describe("source groups", () => {
   it.each([
@@ -42,10 +45,10 @@ describe("intent map against the 2026-10-30 snapshot", () => {
     expect(isSelfRouting("FRAUD_RISK_GENERAL", SERVED_INTENTS)).toBe(true);
   });
 
-  it("every allowlisted miner was registered on its check's intent", () => {
+  it("every allowlisted miner is registered on its check's intent in the newest snapshot", () => {
     for (const [check, miners] of Object.entries(ALLOWLIST)) {
       const intent = CHECK_INTENTS[check as keyof typeof CHECK_INTENTS];
-      const ids = new Set(snap.intents[intent!]?.miners.map((m) => m.id));
+      const ids = new Set(latest.intents[intent!]?.miners.map((m) => m.id));
       for (const m of miners ?? []) expect(ids.has(m.minerId), `${m.minerId} on ${intent}`).toBe(true);
     }
   });
