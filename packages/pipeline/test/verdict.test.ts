@@ -221,7 +221,7 @@ describe("runVerdict spend safety", () => {
   it("does not route a check with no live allowlisted miner", async () => {
     const { node, deps } = harness();
     const run = await runVerdict({ policy: dex(), subject, context: { ...context, repoUrl: "https://github.com/a/b" } }, deps);
-    // code_review has no allowlist: it is UNAVAILABLE, not bought from whoever /ask routes to.
+    // The allowlisted code-review miners registered after this 2026-10-30 fake node, so here it is UNAVAILABLE, never bought from whoever /ask routes to.
     expect(run.ok && run.verdict.findings.find((f) => f.check === "code_review")).toBeFalsy();
     expect(node.charges.every((c) => c.minerId !== "")).toBe(true);
   });

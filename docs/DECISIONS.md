@@ -380,3 +380,17 @@ for anyone who pinned it. Holder *concentration* is still not bought: on
 wallet's ETH balance at a block; TOKEN_HOLDER_COUNT is a count; the only other
 token intent is total supply), and mapping it onto one of those would be a fake
 check. It is reported as not covered.
+
+**L22. Code review had no allowlisted miner.** Live checking of dex-list@0.2.0
+on 2026-11-05 showed `code_review UNAVAILABLE (no_allowlisted_miner)`: the
+allowlist had no candidates, so the check could never be bought even with a
+repo. Two are now listed, recorded in `snapshots/2026-11-05.json` (new
+`bin/snapshot.ts`), which the allowlist test now checks against: CodeWire Code
+Review (1900999004, states a verdict; answered 503 "try again later" that
+day) and CodeWire's request-contract miner (7310045, accepted the canonical
+request with a 402; says it returns prose rather than the verdict enum, so it
+may score UNKNOWN). Both are unverified until a paid answer is recorded, like
+every allowlisted miner. Note: both share the margyn.workers.dev operator with
+four other allowlisted miners, which the engine's source groups account for.
+The github.com wrappers (60001-60007) each return one fixed endpoint and are
+not listed.
