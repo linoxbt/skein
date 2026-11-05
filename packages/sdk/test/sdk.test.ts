@@ -2,7 +2,7 @@ import { simulatedApi } from "@skein/api/simulated";
 import { TelegraphClient, TESTNET, viemSigner } from "../src/telegraph";
 import { FakeNode } from "@skein/telegraph/testing";
 import { beforeAll, describe, expect, it } from "vitest";
-import { parseSse, Skein, SKEIN_INTENT, SkeinError, SpendCapError, type VerdictEvent } from "../src";
+import { canonicalContext, parseSse, Skein, SKEIN_INTENT, SkeinError, SpendCapError, type VerdictEvent } from "../src";
 
 const TOKEN = "0x4200000000000000000000000000000000000006";
 const CONFLICT = "0x420000000000000000000000000000000000000c";
@@ -33,6 +33,19 @@ describe("verdict() with a partner key", () => {
     const report = await skein().verify(v.id);
     expect(report.ok).toBe(true);
     expect((await skein().bom(v.id)).root).toBe(v.bom.root);
+  });
+
+  it("sends a social handle and a repo under the API's names, so those checks are bought", async () => {
+    // The Desk's shape: `social` and `repo`. Before canonicalContext the API refused it as an invalid body.
+    const v = await skein().verdict({ subject: { chainId: 8453, token: tok() }, context: { social: "@base", repo: "https://github.com/base/node" } });
+    expect(v.verdict).toBe("APPROVE");
+    const checks = v.findings.map((f) => f.check);
+    expect(checks).toContain("social_bots");
+    // dex-list@0.2.0 (the latest dex-list) buys the code review when a repo is given.
+    expect(v.policy).toMatchObject({ id: "dex-list", version: "0.2.0" });
+    expect(checks).toContain("code_review");
+    expect(canonicalContext({ social: "x", repo: "https://github.com/a/b", deployer: "" })).toEqual({ socialHandle: "x", repoUrl: "https://github.com/a/b" });
+    expect(canonicalContext({})).toBeUndefined();
   });
 
   it("escalates the market-integrity conflict", async () => {

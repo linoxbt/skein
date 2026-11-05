@@ -39,6 +39,8 @@ export interface VerdictObject {
   disclaimer: string;
   cached?: boolean;
   replayed?: boolean;
+  /** Skein's EIP-191 signature over the verdict; /verify checks it. */
+  attestation?: { scheme: "eip191"; signer: string; message: string; signature: string };
 }
 
 export interface BomLine {

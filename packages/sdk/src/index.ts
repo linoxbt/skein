@@ -41,7 +41,12 @@ export interface VerdictRequest {
   subject: Subject;
   /** "dex-list@0.1.0", or an id for its latest version. */
   policy?: string;
-  context?: { deployer?: string; social?: string; repo?: string; [k: string]: unknown };
+  /**
+   * Optional evidence about the project. socialHandle buys the social-bot
+   * check, repoUrl (github.com or gitlab.com) buys the code review.
+   * `social` and `repo` are accepted as aliases.
+   */
+  context?: VerdictContextInput;
   /** Reuse to make a retried call return the original verdict. Generated when omitted. */
   idempotencyKey?: string;
   /** Called with each live event (API key path). */
@@ -49,6 +54,29 @@ export interface VerdictRequest {
   signal?: AbortSignal;
   /** A quote you already fetched for this request, so verdict() does not fetch another. */
   quote?: Quote;
+}
+
+export interface VerdictContextInput {
+  deployer?: string;
+  socialHandle?: string;
+  repoUrl?: string;
+  treasuryAddresses?: string[];
+  pool?: string;
+  /** Alias of socialHandle. */
+  social?: string;
+  /** Alias of repoUrl. */
+  repo?: string;
+}
+
+/** The API's field names: aliases mapped, empty values dropped. */
+export function canonicalContext(c: VerdictContextInput | undefined): Record<string, unknown> | undefined {
+  if (!c) return undefined;
+  const { social, repo, ...rest } = c;
+  const out: Record<string, unknown> = { ...rest };
+  if (out.socialHandle === undefined && social) out.socialHandle = social;
+  if (out.repoUrl === undefined && repo) out.repoUrl = repo;
+  for (const [k, v] of Object.entries(out)) if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) delete out[k];
+  return Object.keys(out).length ? out : undefined;
 }
 
 export type Payment =
@@ -237,7 +265,7 @@ export class Skein {
         body: JSON.stringify({
           subject: req.subject,
           ...(req.policy ? { policy: req.policy } : {}),
-          ...(req.context ? { context: req.context } : {}),
+          ...(canonicalContext(req.context) ? { context: canonicalContext(req.context) } : {}),
           ...(this.opts.maxUsdcPerCall !== undefined ? { budgetUsdcMax: this.opts.maxUsdcPerCall } : {}),
           mode: "async",
         }),
@@ -287,7 +315,7 @@ export class Skein {
       chain: CHAIN_NAMES[req.subject.chainId] ?? String(req.subject.chainId),
       subject: req.subject,
       ...(req.policy ? { policy: req.policy } : {}),
-      ...(req.context ? { context: req.context } : {}),
+      ...(canonicalContext(req.context) ? { context: canonicalContext(req.context) } : {}),
     };
     const out = await payer.client.ask({ intent: payer.intent ?? SKEIN_INTENT, params }, { ...(payer.minerId ? { minerId: payer.minerId } : {}), timeoutMs: this.timeoutMs });
     if (!out.ok) {

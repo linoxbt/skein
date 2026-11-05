@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Skein decision engine: planner, adapters, scoring, reconcile, decide, seal. Pure and deterministic; no network calls.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./attest": "./src/attest.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

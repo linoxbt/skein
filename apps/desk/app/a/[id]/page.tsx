@@ -122,6 +122,7 @@ export default function ApplicationPage() {
             </dl>
             {d.verdictId ? (
               <div className="mt-8 flex flex-wrap">
+                <Link href={`/a/${a!.id}/memo`} className="btn btn-primary">Listing risk memo</Link>
                 <a href={`${SKEIN_WEB}/v/${d.verdictId}`} className="btn btn-ink">Open the verdict on Skein</a>
                 <a href={`${SKEIN_WEB}/verify?id=${d.verdictId}`} className="btn btn-light border border-rule">Verify it</a>
               </div>

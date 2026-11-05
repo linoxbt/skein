@@ -1,0 +1,38 @@
+id: dex-list
+version: 0.2.0
+description: >
+  DEX token lists, launchpads and wallets: badge or hide a token. Lighter than
+  cex-standard and plannable on today's intents (holder count in place of
+  top-10 concentration, which no Telegraph intent supplies yet). 0.2.0 adds an
+  optional code review of the project's repository (commit history and
+  contributor authenticity), bought when a repo is given; min_coverage moves
+  from 0.75 to 0.70 so that, as in 0.1.0, all required checks answering is
+  enough coverage. Draft thresholds.
+blockers:
+  - { check: sanctions, status: FAIL }
+  - { check: contract_audit, status: FAIL, minSeverity: 3 }
+required: [contract_audit, sanctions, liquidity_depth, holder_count]
+optional: [wash_trading, social_bots, code_review]
+thresholds:
+  liquidity_depth: { warn: 100000, fail: 20000, field: liquidity_usd }
+  holder_count: { warn: 300, fail: 50, field: holders_count }
+  wash_trading: { warn: 25, fail: 60, field: wash_volume_pct }
+weights: { contract_audit: 0.33, liquidity_depth: 0.23, holder_count: 0.14,
+           wash_trading: 0.14, social_bots: 0.09, code_review: 0.07 }
+conflicts:
+  - code: MARKET_INTEGRITY_CONFLICT
+    detail: audit PASS but wash_trading FAIL
+    when: [{ check: contract_audit, status: PASS }, { check: wash_trading, status: FAIL }]
+decision:
+  approve_below_risk_bps: 3000
+  reject_above_risk_bps: 7000
+  min_coverage: 0.70
+  min_confidence: 0.55
+  conflict_escalates: true
+  abstain_on_missing_required: true
+  required_fail_blocks_approve: true
+  agreement_penalty: 0.25
+scoring:
+  status_risk: { PASS: 0, WARN: 0.5, FAIL: 1 }
+  severity_multiplier: [0.6, 0.8, 1.0, 1.0]
+budget: { max_usdc: 0.13, per_check_timeout_ms: { contract_audit: 16000, default: 4000 } }
