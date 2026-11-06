@@ -13,7 +13,13 @@ import {
 /** POST /engine/v1/ask[/{minerId}] bodies (docs: "Make a Request"). */
 export type AskRequest =
   | { intent: string; params?: Record<string, unknown>; query?: string; context?: Record<string, unknown> }
-  | { method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; endpoint: string; payload: Record<string, unknown> };
+  | {
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      endpoint: string;
+      payload: Record<string, unknown>;
+      /** Runs a request the node's pre-check predicts will fail (a 422); charged only if it runs. */
+      acknowledge_warnings?: true;
+    };
 
 export interface AskResponse {
   miner_id: string;

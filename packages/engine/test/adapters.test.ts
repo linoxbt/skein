@@ -29,8 +29,8 @@ describe("adapter versions", () => {
   // Every version ever published. Stored verdicts replay with the version they
   // recorded, so removing one from the registry breaks their reproducibility.
   const PUBLISHED = [
-    "contract_audit@0.1.0", "contract_audit@0.2.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
-    "sanctions@0.1.0", "sanctions@0.2.0", "sanctions@0.3.0", "wash_trading@0.1.0",
+    "contract_audit@0.1.0", "contract_audit@0.2.0", "contract_audit@0.3.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
+    "sanctions@0.1.0", "sanctions@0.2.0", "sanctions@0.3.0", "wash_trading@0.1.0", "wash_trading@0.2.0",
     "liquidity_depth@0.1.0", "liquidity_depth@0.2.0", "liquidity_depth@0.3.0", "social_bots@0.1.0", "code_review@0.1.0",
   ];
   it("every published version is still registered, and each check has exactly one current adapter", () => {
@@ -78,6 +78,16 @@ describe("wash trading (WASH_TRADING_DETECTION)", () => {
   it("uses the miner's confidence when it is in range", () => {
     expect(washTrading.adapt({ verdict: "organic", confidence: 0.91 }, ctx).confidence).toBe(0.91);
     expect(washTrading.adapt({ verdict: "organic", confidence: 7 }, ctx).confidence).toBe(washTrading.defaultConfidence);
+  });
+  it("reads VerifyWire's native answer: risk_label and the round-trip volume share (0.2.0)", () => {
+    // Fields from miner 7378's answer for WETH on Base, 2026-11-06.
+    const native = { risk_label: "HIGH", risk_score: 0.644, round_trip_volume_share_percent: 76.79, reciprocal_pairs: 12 };
+    expect(washTrading.adapt(native, ctx)).toMatchObject({
+      status: "WARN", severity: 2, metric: "wash_volume_pct", value: 76.79, unit: "percent", adapterVersion: "0.2.0", notes: ["risk_high"],
+    });
+    expect(washTrading.adapt({ risk_label: "low", round_trip_volume_share_percent: 3 }, ctx)).toMatchObject({ status: "PASS" });
+    expect(washTrading.adapt({ risk_score: 0.2 }, ctx).notes).toEqual(["missing_risk_label"]);
+    expect(adapterFor("wash_trading", "0.1.0").adapt(native, ctx).status).toBe("UNKNOWN");
   });
 });
 
@@ -136,6 +146,21 @@ describe("contract audit (GoPlus-style flags)", () => {
   it("warns on mintable, fails on a sell tax above 10%", () => {
     expect(contractAudit.adapt({ ...clean, is_mintable: "1" }, ctx)).toMatchObject({ status: "WARN", severity: 1 });
     expect(contractAudit.adapt({ ...clean, sell_tax: "0.25" }, ctx)).toMatchObject({ status: "FAIL", severity: 2, notes: ["sell_tax_gt_10pct"] });
+  });
+  it("grades a GoPlus answer with no tax simulation on its owner flags, at lower confidence (0.3.0)", () => {
+    // The shape GoPlus returned for WETH on Base on 2026-11-06: no buy_tax or sell_tax.
+    const weth = {
+      anti_whale_modifiable: "0", can_take_back_ownership: "0", cannot_buy: "0", external_call: "0", hidden_owner: "0",
+      is_blacklisted: "0", is_honeypot: "0", is_mintable: "0", is_open_source: "1", is_proxy: "0",
+      owner_change_balance: "0", selfdestruct: "0", slippage_modifiable: "0", transfer_pausable: "0", transfer_tax: "",
+    };
+    const f = contractAudit.adapt({ code: 1, message: "OK", result: { [token]: weth } }, ctx);
+    expect(f).toMatchObject({ status: "PASS", adapterVersion: "0.3.0", notes: ["tax_not_reported"] });
+    expect(f.confidence).toBeLessThanOrEqual(0.6);
+    expect(contractAudit.adapt({ result: { [token]: { ...weth, hidden_owner: "1" } } }, ctx)).toMatchObject({ status: "FAIL", severity: 2 });
+    expect(adapterFor("contract_audit", "0.2.0").adapt({ result: { [token]: weth } }, ctx).notes).toEqual(["insufficient_flags"]);
+    // is_honeypot and two owner flags, no tax: still not an audit.
+    expect(contractAudit.adapt({ is_honeypot: "0", is_proxy: "0", is_mintable: "0" }, ctx).notes).toEqual(["insufficient_flags"]);
   });
   it("is UNKNOWN when the answer carries no security flags at all", () => {
     expect(contractAudit.adapt({ message: "OK", works: [] }, ctx)).toMatchObject({ status: "UNKNOWN", notes: ["insufficient_flags"] });
