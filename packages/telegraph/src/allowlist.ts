@@ -29,10 +29,20 @@ export const ALLOWLIST: Readonly<Partial<Record<Check, readonly MinerCandidate[]
     { minerId: "200001", name: "GoPlus Security", why: "token security flags (honeypot, taxes, owner, proxy, mint); accepts query + context" },
   ],
   wash_trading: [
-    { minerId: "7378", name: "VerifyWire Wash Trading Detection", why: "scans a token's Transfer logs; canonical params accepted; no BNB" },
+    {
+      minerId: "7378",
+      name: "VerifyWire Wash Trading Detection",
+      why: "scans a token's Transfer logs; no BNB. Native form: the intent's one param (subject) reached it as an empty token on 2026-11-06",
+      native: { method: "GET", endpoint: "/washtrade", params: { subject: "token", chain: "chain" } },
+    },
   ],
   holder_count: [
-    { minerId: "7302", name: "ChainWire Token Holder Count", why: "chain + ERC-20 address; canonical params accepted; no BNB" },
+    {
+      minerId: "7302",
+      name: "ChainWire Token Holder Count",
+      why: "chain + ERC-20 address; no BNB. Native form: on 2026-11-06 the node's canonical-to-native mapping sent it an empty chain (422 'predicted to fail')",
+      native: { method: "GET", endpoint: "/holders", params: { token: "token", chain: "chain" } },
+    },
     { minerId: "900", name: "OnChain Intel Miner", why: "token-holders endpoint; lists bsc among its chains" },
   ],
   liquidity_depth: [
