@@ -13,7 +13,13 @@ import {
 /** POST /engine/v1/ask[/{minerId}] bodies (docs: "Make a Request"). */
 export type AskRequest =
   | { intent: string; params?: Record<string, unknown>; query?: string; context?: Record<string, unknown> }
-  | { method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; endpoint: string; payload: Record<string, unknown> };
+  | {
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      endpoint: string;
+      payload: Record<string, unknown>;
+      /** Runs a request the node's pre-check predicts will fail (a 422); charged only if it runs. */
+      acknowledge_warnings?: true;
+    };
 
 export interface AskResponse {
   miner_id: string;
@@ -138,6 +144,44 @@ export class TelegraphClient {
       return err.name === "TimeoutError" || err.name === "AbortError" ? "timeout" : "network";
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  private registrations = new Map<string, { slug: string; intents: string[] } | null>();
+  private intentMiners = new Map<string, { at: number; slugById: Map<string, string> }>();
+
+  /**
+   * Whether `id`, a registration id from a receipt, names the same miner as
+   * the pinned YAML id: the registration gives the miner's slug (its identity:
+   * only the wallet holding a slug can register it) and intents; the pinned id
+   * must carry that same slug on one of those intents. Small lookups only (the
+   * full catalogue is over the body cap), cached; any failure means "not shown
+   * to be the same", so the receipt stays flagged.
+   */
+  async sameMiner(id: string, pinnedYamlId: string): Promise<boolean> {
+    try {
+      if (!this.registrations.has(id)) {
+        type Reg = { slug?: string; supported_intents?: string[] };
+        const r = await this.getJson<Reg & { miner?: Reg }>(`/api/miners/${encodeURIComponent(id)}`).catch(() => null);
+        const m = r?.miner ?? r; // the node wraps the record in { miner }
+        this.registrations.set(id, m?.slug ? { slug: m.slug, intents: m.supported_intents ?? [] } : null);
+      }
+      const reg = this.registrations.get(id);
+      if (!reg) return false;
+      for (const intent of reg.intents) {
+        let cached = this.intentMiners.get(intent);
+        if (!cached || this.now() - cached.at > 10 * 60_000) {
+          const d = await this.getIntent(intent).catch(() => null);
+          const miners = ((d as { miners?: { id: string | number; slug: string }[] } | null)?.miners ?? []);
+          cached = { at: this.now(), slugById: new Map(miners.map((m) => [String(m.id), m.slug])) };
+          this.intentMiners.set(intent, cached);
+        }
+        const slug = cached.slugById.get(pinnedYamlId);
+        if (slug !== undefined) return slug === reg.slug;
+      }
+      return false;
+    } catch {
+      return false;
     }
   }
 
@@ -270,9 +314,14 @@ export class TelegraphClient {
     const response = parseJson(paid.text) as AskResponse | null;
     if (!response || typeof response !== "object") return fail("server_error", "200 with a body that is not JSON", paid.status, sent);
     const receipt = decodeReceipt(paid.headers.get("x-payment-response"));
-    const problems = receiptProblems(receipt, { payer: signed.authorization.from, amountUusdc: sent, ...(opts.minerId ? { minerId: opts.minerId } : {}) });
-    if (opts.minerId && response.miner_id !== undefined && String(response.miner_id) !== opts.minerId) {
-      problems.push(`answered by miner ${response.miner_id}, pinned ${opts.minerId}`);
+    // Miner identity is checked by slug below: receipts name the on-chain registration id,
+    // the catalogue (and so the pin) the YAML id, two numbers for one miner.
+    const problems = receiptProblems(receipt, { payer: signed.authorization.from, amountUusdc: sent });
+    if (opts.minerId) {
+      for (const [what, id] of [["receipt miner", receipt?.miner], ["answered by miner", response.miner_id]] as const) {
+        if (id === undefined || id === null || String(id) === opts.minerId) continue;
+        if (!(await this.sameMiner(String(id), opts.minerId))) problems.push(`${what} ${id}, pinned ${opts.minerId}`);
+      }
     }
     return {
       ok: true,

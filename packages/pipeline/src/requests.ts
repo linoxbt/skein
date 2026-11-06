@@ -74,14 +74,22 @@ export function buildRequest(check: Check, intent: string, subject: Subject, ctx
 
 /**
  * Re-shapes a canonical ask for a miner that only takes its native request:
- * canonical params are renamed to the miner's own; unmapped ones are dropped.
+ * canonical params (and context, where params lack a field) are renamed to
+ * the miner's own; unmapped ones are dropped. Fixed native params and the
+ * node's acknowledge_warnings flag are added where the allowlist sets them.
  */
 export function forCandidate(req: AskRequest, cand: Pick<MinerCandidate, "native">): AskRequest {
-  if (!cand.native || !("intent" in req) || !req.params) return req;
-  const payload: Record<string, unknown> = {};
-  for (const [canonical, value] of Object.entries(req.params)) {
+  if (!cand.native || !("intent" in req) || (!req.params && !req.context)) return req;
+  const payload: Record<string, unknown> = { ...cand.native.fixed };
+  // Params first, then context for anything the intent's params do not carry (a chain, say).
+  for (const [canonical, value] of [...Object.entries(req.context ?? {}), ...Object.entries(req.params ?? {})]) {
     const native = cand.native.params[canonical];
     if (native) payload[native] = value;
   }
-  return { method: cand.native.method, endpoint: cand.native.endpoint, payload };
+  return {
+    method: cand.native.method,
+    endpoint: cand.native.endpoint,
+    payload,
+    ...(cand.native.acknowledgeWarnings ? { acknowledge_warnings: true as const } : {}),
+  };
 }
