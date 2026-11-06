@@ -31,6 +31,16 @@ const ANSWERS: Record<string, unknown> = {
   audit_clean: { result: { [TOKEN]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
   audit_honeypot: { is_honeypot: "1", buy_tax: "0", sell_tax: "0.3" },
   audit_one_flag: { is_proxy: "0" },
+  audit_no_tax: {
+    code: 1,
+    result: {
+      [TOKEN]: {
+        is_honeypot: "0", is_open_source: "1", is_mintable: "0", hidden_owner: "0", can_take_back_ownership: "0",
+        owner_change_balance: "0", selfdestruct: "0", transfer_pausable: "0", is_proxy: "0", is_blacklisted: "0", transfer_tax: "",
+      },
+    },
+  },
+  wash_native: { risk_label: "HIGH", risk_score: 0.644, round_trip_volume_share_percent: 76.79 },
   audit_other_token: { result: { "0x9999999999999999999999999999999999999999": { is_honeypot: "0", sell_tax: "0" } } },
 };
 

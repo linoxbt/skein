@@ -194,7 +194,7 @@ function metricAdapter(check: Check, intent: string | null, names: readonly stri
 }
 
 /** WASH_TRADING_DETECTION: verdict enum plus wash_volume_pct (0..100). */
-export const washTrading = enumAdapter(
+const washTradingV1 = enumAdapter(
   "wash_trading",
   "WASH_TRADING_DETECTION_GENERAL",
   "verdict",
@@ -206,6 +206,50 @@ export const washTrading = enumAdapter(
   },
   { name: "wash_volume_pct", min: 0, max: 100, unit: "percent" },
 );
+
+/**
+ * 0.2.0: also reads the native answer of VerifyWire (miner 7378), asked in its
+ * own form: a risk_label (LOW, MEDIUM, HIGH) and the share of volume that went
+ * round trip, which stands in for wash_volume_pct so the policy threshold
+ * grades it. The canonical verdict enum still wins when present.
+ */
+export const washTrading: Adapter = {
+  check: "wash_trading",
+  version: "0.2.0",
+  intent: "WASH_TRADING_DETECTION_GENERAL",
+  defaultConfidence: 0.6,
+  adapt(raw, ctx) {
+    const b = { check: "wash_trading" as const, version: "0.2.0", ctx };
+    const early = guard(b, raw);
+    if (early) return early;
+    if (pick(raw, "verdict") !== undefined) return { ...washTradingV1.adapt(raw, ctx), adapterVersion: "0.2.0" };
+    const RISK: Mapping = {
+      LOW: { status: "PASS", severity: 0 },
+      MEDIUM: { status: "WARN", severity: 1 },
+      HIGH: { status: "WARN", severity: 2 },
+    };
+    const label = pickEnum(raw, "risk_label", Object.keys(RISK));
+    let value: number | "out_of_range" | undefined;
+    for (const n of ["wash_volume_pct", "round_trip_volume_share_percent"]) {
+      value = pickNumber(raw, n, 0, 100);
+      if (value !== undefined) break;
+    }
+    if (value === "out_of_range") return unknown(b, "wash_volume_pct_out_of_range");
+    if (!label && value === undefined) return unknown(b, "missing_risk_label");
+    const m = label ? RISK[label]! : { status: "PASS" as const, severity: 0 as Severity };
+    const blocks = pickNumber(raw, "blocks_scanned", 0, 1e7) ?? pickNumber(raw, "blocks", 0, 1e7);
+    return finding(b, {
+      status: m.status,
+      severity: m.severity,
+      ...(value !== undefined ? { metric: "wash_volume_pct", value, unit: "percent" } : {}),
+      confidence: confidenceOf(raw, 0.6),
+      notes: [
+        ...(label ? [`risk_${label.toLowerCase()}`] : []),
+        ...(typeof blocks === "number" ? [`blocks_${blocks}`] : []),
+      ],
+    });
+  },
+};
 
 /** SOCIAL_BOT_DETECTION: verdict enum (bot_score is off-chain only). */
 export const socialBots = enumAdapter("social_bots", "SOCIAL_BOT_DETECTION_GENERAL", "verdict", {
@@ -423,7 +467,7 @@ function entryForToken(raw: unknown, token: string): unknown | "other_token" {
  * flags that decide a token's safety (is_honeypot and a tax) before it can
  * PASS. One benign flag on its own is not an audit.
  */
-export const contractAudit: Adapter = {
+const contractAuditV2: Adapter = {
   check: "contract_audit",
   version: "0.2.0",
   intent: "SMART_CONTRACT_AUDIT_GENERAL",
@@ -447,8 +491,54 @@ export const contractAudit: Adapter = {
   },
 };
 
+/** The owner-privilege flags that, with is_honeypot, stand in for a missing tax simulation. */
+const PRIVILEGE_FLAGS = [
+  "is_open_source", "is_mintable", "hidden_owner", "can_take_back_ownership", "owner_change_balance",
+  "selfdestruct", "transfer_pausable", "is_proxy", "is_blacklisted", "slippage_modifiable",
+] as const;
+
+/**
+ * 0.3.0: GoPlus reports buy and sell taxes only when it has simulated a trade
+ * (for WETH on Base on 2026-11-06 it sent is_honeypot and the owner flags, and
+ * no tax). Without a tax, the answer must still carry is_honeypot and at least
+ * six owner-privilege flags; it is then graded on them at lower confidence,
+ * noted tax_not_reported. One benign flag on its own is still not an audit.
+ */
+export const contractAudit: Adapter = {
+  check: "contract_audit",
+  version: "0.3.0",
+  intent: "SMART_CONTRACT_AUDIT_GENERAL",
+  defaultConfidence: 0.7,
+  adapt(raw, ctx) {
+    const b = { check: "contract_audit" as const, version: "0.3.0", ctx };
+    const early = guard(b, raw);
+    if (early) return early;
+    if (!ctx.subject) return unknown(b, "no_subject");
+    const body = entryForToken(raw, ctx.subject.token);
+    if (body === "other_token") return unknown(b, "answer_for_other_token");
+    const addr = pick(body, "token_address") ?? pick(body, "contract_address");
+    if (typeof addr === "string" && /^0x[0-9a-fA-F]{40}$/.test(addr) && addr.toLowerCase() !== ctx.subject.token.toLowerCase()) {
+      return unknown(b, "answer_for_other_token");
+    }
+    if (flag(body, "is_honeypot") === undefined) return unknown(b, "insufficient_flags");
+    const hasTax = ["buy_tax", "sell_tax"].some((t) => typeof pickNumber(body, t, 0, 1) === "number");
+    const privileges = PRIVILEGE_FLAGS.filter((k) => flag(body, k) !== undefined).length;
+    if (!hasTax && privileges < 6) return unknown(b, "insufficient_flags");
+    const f = contractAuditV1.adapt({ result: body }, ctx);
+    if (hasTax) return { ...f, adapterVersion: "0.3.0" };
+    return {
+      ...f,
+      adapterVersion: "0.3.0",
+      confidence: Math.min(f.confidence, 0.6),
+      notes: [...f.notes, "tax_not_reported"].sort(),
+    };
+  },
+};
+
 /** Superseded versions stay registered so verdicts stored with them still replay. */
 const SUPERSEDED: readonly Adapter[] = [
+  contractAuditV2,
+  washTradingV1,
   contractAuditV1,
   sanctionsV2,
   liquidityDepthV2,

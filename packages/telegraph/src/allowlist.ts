@@ -10,7 +10,18 @@ export interface MinerCandidate {
    * answers 503 no_compatible_miner): the ask is sent in the native form, with
    * canonical params renamed to the miner's own.
    */
-  native?: { method: "GET" | "POST"; endpoint: string; params: Readonly<Record<string, string>> };
+  native?: {
+    method: "GET" | "POST";
+    endpoint: string;
+    params: Readonly<Record<string, string>>;
+    /** Fixed native params sent with every ask. */
+    fixed?: Readonly<Record<string, string | number>>;
+    /**
+     * Send acknowledge_warnings: the node's pre-check rejects well-formed asks
+     * to this miner (it reads the params as empty), and the miner answers them.
+     */
+    acknowledgeWarnings?: true;
+  };
 }
 
 /**
@@ -29,10 +40,31 @@ export const ALLOWLIST: Readonly<Partial<Record<Check, readonly MinerCandidate[]
     { minerId: "200001", name: "GoPlus Security", why: "token security flags (honeypot, taxes, owner, proxy, mint); accepts query + context" },
   ],
   wash_trading: [
-    { minerId: "7378", name: "VerifyWire Wash Trading Detection", why: "scans a token's Transfer logs; canonical params accepted; no BNB" },
+    {
+      minerId: "7378",
+      name: "VerifyWire Wash Trading Detection",
+      why:
+        "scans a token's Transfer logs; no BNB. Native form: the intent's one param (subject) reached it as an empty token on 2026-11-06, " +
+        "and the node's pre-check rejects even the native ask (422 'predicted to fail') that the miner answers when acknowledged",
+      native: {
+        method: "GET",
+        endpoint: "/washtrade",
+        params: { subject: "token", chain: "chain" },
+        // The widest scan window it allows (its default is 120 blocks).
+        fixed: { blocks: 600 },
+        acknowledgeWarnings: true,
+      },
+    },
   ],
   holder_count: [
-    { minerId: "7302", name: "ChainWire Token Holder Count", why: "chain + ERC-20 address; canonical params accepted; no BNB" },
+    {
+      minerId: "7302",
+      name: "ChainWire Token Holder Count",
+      why:
+        "chain + ERC-20 address; no BNB. Native form: on 2026-11-06 the node's canonical-to-native mapping sent it an empty chain " +
+        "(422 'predicted to fail'); the node's pre-check also rejects the native ask, which the miner answers when acknowledged",
+      native: { method: "GET", endpoint: "/holders", params: { token: "token", chain: "chain" }, acknowledgeWarnings: true },
+    },
     { minerId: "900", name: "OnChain Intel Miner", why: "token-holders endpoint; lists bsc among its chains" },
   ],
   liquidity_depth: [

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { isSelfRouting } from "@skein/engine";
 import { describe, expect, it } from "vitest";
-import { ALLOWLIST, CHECK_INTENTS, SERVED_INTENTS, sourceGroup } from "../src";
+import { ALLOWLIST, CHECK_INTENTS, SERVED_INTENTS, sourceGroup, TelegraphClient, TESTNET } from "../src";
 
 interface Snapshot {
   intents: Record<string, { miner_count: number; miners: { id: string; base_url: string }[] }>;
@@ -57,5 +57,36 @@ describe("intent map against the 2026-10-30 snapshot", () => {
     const byId = new Map(Object.values(snap.intents).flatMap((i) => i.miners.map((m) => [m.id, m.base_url] as const)));
     const groups = ["7378", "7302", "7373", "7457"].map((id) => sourceGroup(byId.get(id)!));
     expect(new Set(groups)).toEqual(new Set(["margyn.workers.dev"]));
+  });
+});
+
+describe("miner identity on receipts", () => {
+  // Receipts name the on-chain registration id; the pin is the catalogue's YAML id.
+  const node = (url: string) => {
+    if (url.endsWith("/api/miners/2859")) return { miner: { registration_id: 2859, slug: "san-ofac-entity", supported_intents: ["SANCTIONS_SCREENING_MATCH_GENERAL"] } };
+    if (url.endsWith("/api/miners/4819")) return { miner: { registration_id: 4819, slug: "goplus-security", supported_intents: ["SMART_CONTRACT_AUDIT_GENERAL"] } };
+    if (url.endsWith("/engine/v1/intents/SANCTIONS_SCREENING_MATCH_GENERAL")) return { miners: [{ id: "78021", slug: "san-ofac-entity" }, { id: "9002", slug: "txlens" }] };
+    if (url.endsWith("/engine/v1/intents/SMART_CONTRACT_AUDIT_GENERAL")) return { miners: [{ id: "200001", slug: "goplus-security" }] };
+    return null;
+  };
+  const client = () =>
+    new TelegraphClient({
+      network: TESTNET,
+      maxUusdcPerCall: 1,
+      fetch: async (u) => {
+        const body = node(String(u));
+        return new Response(body ? JSON.stringify(body) : '{"error":"miner registration not found"}', { status: body ? 200 : 404 });
+      },
+    });
+
+  it("accepts a registration id whose slug is the pinned miner's", async () => {
+    expect(await client().sameMiner("2859", "78021")).toBe(true);
+    expect(await client().sameMiner("4819", "200001")).toBe(true);
+  });
+
+  it("refuses another miner's registration, an unknown one, and a pin it cannot place", async () => {
+    expect(await client().sameMiner("2859", "9002")).toBe(false);
+    expect(await client().sameMiner("4819", "78021")).toBe(false);
+    expect(await client().sameMiner("999", "78021")).toBe(false);
   });
 });
