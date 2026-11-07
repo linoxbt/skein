@@ -439,3 +439,28 @@ install-key`); the node's sandbox probe of `/verdict` returns 404, which it
 counts as a pass, because it calls the exposed path rather than the forwarded
 `/miner/verdict`. The first paid ask to 845301 answered LOW for WETH on Base in
 11.4 s, with a verified receipt and signal.
+
+**L26. The benchmark has two bases, and D7's point-in-time promise is replaced.**
+D7 said every check in the benchmark reads state at the case's `as_of_block`.
+It never did: the harness does not send a block, and none of the miners Skein
+buys from (GoPlus, TxLens, VerifyWire) can answer about a past block. Scoring
+old rugs on today's state flatters Skein (a drained rug fails liquidity
+trivially), so each case now carries a `basis`, and the report never pools the two:
+- **current_state**: long-listed good tokens and documented bad tokens, checked
+  as they are when the verdict is bought. It answers "would Skein stop this
+  listing today", not "would it have caught the token before its event".
+  `asOfBlock` is the block when the case was collected. Good tokens are chosen
+  by a written rule (`eval-tools good-from-coingecko`): CoinGecko lists them on
+  two or more of Binance, Coinbase, Kraken and OKX, and gives their contract on
+  that chain, which must hold an ERC-20.
+- **prospective**: the point-in-time measure, by construction. The sniper buys
+  a verdict when a launch first reaches tradeable liquidity; 72 hours later
+  `eval-tools prospective` labels it from public DEX Screener data (bad: the
+  market is gone, liquidity fell under a tenth, or the price fell 90% or more;
+  anything else is ambiguous, never good), and `eval import` scores the
+  verdict bought at the time, never a new one. Only verdicts from the fixed
+  pipeline count (from 2026-11-07 20:20 UTC, `agent-pretrade@0.2.0`). The sniper
+  now records liquidity at the check, and serves every decided token at
+  `/checked.json` (its feed keeps only the latest 100).
+Holdout membership comes from a hash of the case id, so it is fixed when a case
+is added and never chosen by looking at results.

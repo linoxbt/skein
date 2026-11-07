@@ -130,6 +130,21 @@ describe("runVerdict, end to end against a fake node", () => {
     expect(node.charges.filter((c) => c.minerId === "7373")).toHaveLength(0);
   });
 
+  it("falls through when a miner fails before payment (a 503 'try again later'), at no cost", async () => {
+    const { node, deps } = harness();
+    const ask = deps.client.ask.bind(deps.client);
+    deps.client.ask = async (req, opts) =>
+      opts.minerId === "9002"
+        ? { ok: false, kind: "server_error", error: "expected 402, got 503: could not route this question now", httpStatus: 503, durationMs: 1, attempts: 2, paidUusdc: 0, billing: "none" }
+        : ask(req, opts);
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    const hc = run.ok ? run.purchases.filter((p) => p.check === "holder_count") : [];
+    expect(hc).toHaveLength(1);
+    expect(hc[0]).toMatchObject({ minerId: "7302", skipped: ["9002"] });
+    expect(node.charges.filter((c) => c.minerId === "9002")).toHaveLength(0);
+    expect(run.ok && run.verdict.findings.find((f) => f.check === "holder_count")?.status).toBe("PASS");
+  });
+
   it("optional checks without context are not bought", async () => {
     const { node, deps } = harness();
     const run = await runVerdict({ policy: dex(), subject, context: {} }, deps);

@@ -150,6 +150,7 @@ export class Sniper {
         signatureOk: this.d.verify ? await this.d.verify(v).catch(() => false) : null,
         latencyMs: this.now().getTime() - started.getTime(),
         priceAtCheck: r.priceNow ?? null,
+        liquidityAtCheck: r.liquidityUsd ?? null,
         priceAt: started.toISOString(),
       };
       await this.d.store.save(done);

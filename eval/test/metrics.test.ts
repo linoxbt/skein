@@ -13,7 +13,7 @@ const run = (caseId: string, findings: never[], verdict: Run["verdict"]): Run =>
   caseId, policy, findings, verdict, coverageBps: 9000, wallMs: 4000,
   purchases: findings.map((x: { check: string }) => ({ check: x.check, amountUusdc: 10_000, durationMs: 900 })),
 });
-const c = (id: string, label: Case["label"]): Case => ({ id, chainId: 8453, token: `0x${"1".repeat(40)}`, label, labelSourceUrl: "https://example.com/source", asOfBlock: 1, split: "holdout", context: {} });
+const c = (id: string, label: Case["label"]): Case => ({ id, chainId: 8453, token: `0x${"1".repeat(40)}`, label, basis: "current_state", labelSourceUrl: "https://example.com/source", asOfBlock: 1, split: "holdout", context: {} });
 
 describe("eval harness", () => {
   const cases = [c("good-1", "good"), c("bad-1", "bad"), c("bad-2", "bad")];

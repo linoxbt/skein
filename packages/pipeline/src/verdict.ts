@@ -209,7 +209,10 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
         const paidNow = out.ok ? out.amountUusdc : out.paidUusdc;
         spent += paidNow;
         budget -= paidNow;
-        if (out.ok || out.kind !== "incompatible") break;
+        // Anything that failed before payment (a refusal, a 503 "try again later",
+        // an unpaid timeout) cost nothing: try the next allowlisted miner. Once a
+        // payment was sent, or may have been, stop: the attempt is on the record.
+        if (out.ok || paidNow > 0 || out.billing !== "none" || out.kind === "preseason") break;
         if (cand) skipped.push(cand.minerId);
       }
     } catch (e) {
