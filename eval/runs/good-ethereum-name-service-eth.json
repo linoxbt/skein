@@ -1,7 +1,7 @@
 {
   "caseId": "good-ethereum-name-service-eth",
   "policyRef": "dex-list@0.2.0",
-  "wallMs": 3990,
+  "wallMs": 5663,
   "verdict": {
     "engineVersion": "0.2.0",
     "policy": {
@@ -16,14 +16,19 @@
     "decision": {
       "verdict": "ABSTAIN",
       "verdictCode": 0,
-      "riskBps": 2357,
+      "riskBps": 2809,
       "confidenceBps": 0,
-      "coverageBps": 7000,
+      "coverageBps": 4700,
       "reasons": [
         {
           "code": "MISSING_REQUIRED_CHECK",
+          "check": "liquidity_depth",
+          "detail": "required check liquidity_depth is ERROR"
+        },
+        {
+          "code": "MISSING_REQUIRED_CHECK",
           "check": "holder_count",
-          "detail": "required check holder_count is ERROR"
+          "detail": "required check holder_count is UNKNOWN"
         },
         {
           "code": "CONTRACT_AUDIT_WARN",
@@ -32,27 +37,30 @@
         }
       ],
       "openRisks": [
-        "holder_count ERROR",
+        "liquidity_depth ERROR",
+        "holder_count UNKNOWN",
         "social_bots UNAVAILABLE",
         "code_review UNAVAILABLE"
       ],
       "conflicts": []
     },
-    "summary": "Abstained: required check holder_count is ERROR (+1 more).",
+    "summary": "Abstained: required check liquidity_depth is ERROR (+2 more).",
     "findings": [
       {
         "adapterVersion": "0.1.0",
         "check": "holder_count",
         "confidence": 0,
         "evidence": {
-          "minerId": "9002"
+          "minerId": "7302",
+          "receiptHash": "0xe1123bf7624ae89a5f6421cfff02ffb6c524dfc9b91c47494e8f8d8539948e42",
+          "signalHash": "0xdb5112332af6decb5f086233b4fdc6cd66ff3b4b00483edbd8358f2e4d0c7557"
         },
         "notes": [
-          "purchase_failed"
+          "missing_holders_count"
         ],
         "severity": 0,
-        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "status": "ERROR"
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
       },
       {
         "adapterVersion": "0.3.0",
@@ -60,8 +68,8 @@
         "confidence": 0.3,
         "evidence": {
           "minerId": "78021",
-          "receiptHash": "0x3dd410cc14a6ad537e99797fcead37b4d93b1fa38910e8afeb42a3e45ca1dea9",
-          "signalHash": "0xa03c302219f3de80754498b04f4f43afc277da025f3ede06ed2f4d16641cbde0"
+          "receiptHash": "0x60c5442fe6024856e1084184466d65f4cab2f56196e6d8333e492b4d184d117b",
+          "signalHash": "0xc26852fa630a2fc442aa5c925044aaa1f691c1065370dfc8949748de2b2e2fc1"
         },
         "notes": [
           "address_matching_unverified",
@@ -77,8 +85,8 @@
         "confidence": 0.9,
         "evidence": {
           "minerId": "7378",
-          "receiptHash": "0x58c611665b042d1056174bb6ed33b7604b60fca3bde415cd7904100b1cd7748a",
-          "signalHash": "0xf8ddc186c4a6b8b0e748d88ea27d24d5c60de91394cd851161044272108903f9"
+          "receiptHash": "0x757ff95add0b780420cfec20874d61e4c6eab293cbe543ca720941b9c28bd690",
+          "signalHash": "0x2d57f990c7a4e40cff7353a887d8004a51f0371cd5f935603a5ab7fcce727c00"
         },
         "metric": "wash_volume_pct",
         "notes": [
@@ -96,8 +104,8 @@
         "confidence": 0.7,
         "evidence": {
           "minerId": "200001",
-          "receiptHash": "0xd2c1873e200ee5d1c79fe18fecb0656ffd1e606ffe65e87a341c5b71e08087c1",
-          "signalHash": "0xd74b19d91be710f003775859dc095b7b044c56e51ba9de1dd0e29b2db4361b92"
+          "receiptHash": "0xc9e0fe54f73c5d61e6eaac55b084f2e1cfb4164cbd9e26bd083a7839ea5271db",
+          "signalHash": "0x193c68abf19d853986c7de4f1a8e371ad6292bf3a62dd791b8eebc3f22e5f8eb"
         },
         "notes": [
           "is_mintable"
@@ -109,19 +117,16 @@
       {
         "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
-        "confidence": 0.7,
+        "confidence": 0,
         "evidence": {
-          "minerId": "7373",
-          "receiptHash": "0xde07ac337c6b9928a57bcdaf0fc2ddfb6137b1c730d4b39142c0bfb47a303776",
-          "signalHash": "0x6006fabb5de994397316a380ab91c65b38063d95d133d0c50506ee69e991a644"
+          "minerId": "7373"
         },
-        "metric": "liquidity_usd",
-        "notes": [],
+        "notes": [
+          "purchase_failed"
+        ],
         "severity": 0,
         "sourceGroup": "margyn.workers.dev",
-        "status": "PASS",
-        "unit": "USD",
-        "value": 494673.85
+        "status": "ERROR"
       },
       {
         "check": "code_review",
@@ -144,9 +149,9 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x61900d200b1e82ecc30511d0f234cdcfc252c937cf163a1b8b14c1894a2434b6",
+    "verdictHash": "0x5b045fafe4f54307cd1e36579deaa434eb6f9fc736efc39e6d7350ae3705f8d9",
     "bom": {
-      "root": "0x9569f45f4ee08f7c51816af9e545baad33078b8c77cbaf6378bc40310979eecc",
+      "root": "0x6d38aa1e4941a412a4fe23694723bda6e85d2f4dedfa5c099c97d57a01c2bd66",
       "items": 4
     }
   },
@@ -158,15 +163,15 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 2032,
+      "durationMs": 2084,
       "attempts": 1,
       "sourceGroup": "gopluslabs.io",
       "adapterVersion": "0.4.0",
-      "createdAt": "2026-11-07T21:41:28.190Z",
+      "createdAt": "2026-11-07T21:46:26.031Z",
       "minerId": "200001",
       "minerName": "GoPlus Security",
       "httpStatus": 200,
-      "signalHash": "0xd74b19d91be710f003775859dc095b7b044c56e51ba9de1dd0e29b2db4361b92",
+      "signalHash": "0x193c68abf19d853986c7de4f1a8e371ad6292bf3a62dd791b8eebc3f22e5f8eb",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
@@ -522,23 +527,46 @@
         }
       },
       "signalStatus": "verified",
-      "receiptHash": "0xd2c1873e200ee5d1c79fe18fecb0656ffd1e606ffe65e87a341c5b71e08087c1"
+      "receiptHash": "0xc9e0fe54f73c5d61e6eaac55b084f2e1cfb4164cbd9e26bd083a7839ea5271db"
     },
     {
       "check": "holder_count",
       "intent": "TOKEN_HOLDER_COUNT_GENERAL",
       "pinned": true,
+      "skipped": [
+        "9002"
+      ],
       "rail": "escrow",
-      "amountUusdc": 0,
-      "billing": "none",
-      "durationMs": 3176,
-      "attempts": 2,
-      "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 743,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
       "adapterVersion": "0.1.0",
-      "createdAt": "2026-11-07T21:41:29.114Z",
-      "minerId": "9002",
-      "error": "server_error: expected 402, got 503: {\"error\":\"could not route this question now, try again later\"}",
-      "httpStatus": 503
+      "createdAt": "2026-11-07T21:46:27.507Z",
+      "minerId": "7302",
+      "minerName": "ChainWire Token Holder Count",
+      "httpStatus": 200,
+      "signalHash": "0xdb5112332af6decb5f086233b4fdc6cd66ff3b4b00483edbd8358f2e4d0c7557",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-07T21:46:27.159Z",
+        "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+        "chain": "ethereum",
+        "chain_id": 1,
+        "confidence": 0.3,
+        "contract_address": "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72",
+        "detail": "Error: holder count unavailable and nothing stored yet",
+        "holders": null,
+        "intent": "TOKEN_HOLDER_COUNT",
+        "summary": "A holder count for 0xc18360217d8f7ab5e7c516566761ea12ce7f9d72 on Ethereum could not be read: the public index did not return one for this contract.",
+        "supported": true,
+        "symbol": null,
+        "token": "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xe1123bf7624ae89a5f6421cfff02ffb6c524dfc9b91c47494e8f8d8539948e42"
     },
     {
       "check": "liquidity_depth",
@@ -546,24 +574,15 @@
       "pinned": true,
       "rail": "escrow",
       "amountUusdc": 10000,
-      "billing": "paid",
-      "durationMs": 3617,
+      "billing": "unknown",
+      "durationMs": 5545,
       "attempts": 1,
       "sourceGroup": "margyn.workers.dev",
       "adapterVersion": "0.4.0",
-      "createdAt": "2026-11-07T21:41:29.802Z",
+      "createdAt": "2026-11-07T21:46:29.075Z",
       "minerId": "7373",
       "pool": "0x92560c178ce069cc014138ed3c2f5221ba71f58a",
-      "minerName": "VerifyWire Liquidity Depth",
-      "httpStatus": 200,
-      "signalHash": "0x6006fabb5de994397316a380ab91c65b38063d95d133d0c50506ee69e991a644",
-      "epochId": 2037,
-      "resultShape": "intent",
-      "rawResult": {
-        "liquidity_usd": 494673.85
-      },
-      "signalStatus": "verified",
-      "receiptHash": "0xde07ac337c6b9928a57bcdaf0fc2ddfb6137b1c730d4b39142c0bfb47a303776"
+      "error": "timeout: paid request: timeout"
     },
     {
       "check": "sanctions",
@@ -572,15 +591,15 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 560,
+      "durationMs": 554,
       "attempts": 1,
       "sourceGroup": "13.237.89.59",
       "adapterVersion": "0.3.0",
-      "createdAt": "2026-11-07T21:41:26.723Z",
+      "createdAt": "2026-11-07T21:46:24.310Z",
       "minerId": "78021",
       "minerName": "OFAC SDN Entity Screen",
       "httpStatus": 200,
-      "signalHash": "0xa03c302219f3de80754498b04f4f43afc277da025f3ede06ed2f4d16641cbde0",
+      "signalHash": "0xc26852fa630a2fc442aa5c925044aaa1f691c1065370dfc8949748de2b2e2fc1",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
@@ -590,7 +609,7 @@
         "source": "ofac_sdn_xml"
       },
       "signalStatus": "verified",
-      "receiptHash": "0x3dd410cc14a6ad537e99797fcead37b4d93b1fa38910e8afeb42a3e45ca1dea9"
+      "receiptHash": "0x60c5442fe6024856e1084184466d65f4cab2f56196e6d8333e492b4d184d117b"
     },
     {
       "check": "wash_trading",
@@ -599,44 +618,44 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 1183,
+      "durationMs": 1600,
       "attempts": 1,
       "sourceGroup": "margyn.workers.dev",
       "adapterVersion": "0.3.0",
-      "createdAt": "2026-11-07T21:41:27.347Z",
+      "createdAt": "2026-11-07T21:46:25.360Z",
       "minerId": "7378",
       "minerName": "VerifyWire Wash Trading Detection",
       "httpStatus": 200,
-      "signalHash": "0xf8ddc186c4a6b8b0e748d88ea27d24d5c60de91394cd851161044272108903f9",
+      "signalHash": "0x2d57f990c7a4e40cff7353a887d8004a51f0371cd5f935603a5ab7fcce727c00",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
-        "as_of": "2026-11-07T21:41:26.996Z",
+        "as_of": "2026-11-07T21:46:25.010Z",
         "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
         "chain": "ethereum",
         "chain_id": 1,
         "confidence": 0.9,
         "contract_address": "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72",
-        "from_block": 26365133,
-        "head_block": 26365732,
+        "from_block": 26365158,
+        "head_block": 26365757,
         "intent": "WASH_TRADING_DETECTION",
-        "readings": "token ENS 0xc18360217d8f7ab5e7c516566761ea12ce7f9d72 on Ethereum, blocks 26365133-26365732 (600), transfers 29, addresses 27, reciprocal pairs 0, round-trip share 0%, concentration 43.93%, self 0, risk 0.1647 (LOW), read 2026-11-07T21:41:26.996Z.",
+        "readings": "token ENS 0xc18360217d8f7ab5e7c516566761ea12ce7f9d72 on Ethereum, blocks 26365158-26365757 (600), transfers 28, addresses 27, reciprocal pairs 0, round-trip share 0%, concentration 44.3%, self 0, risk 0.1661 (LOW), read 2026-11-07T21:46:25.010Z.",
         "reciprocal_pairs": 0,
         "risk_label": "LOW",
-        "risk_score": 0.1647,
+        "risk_score": 0.1661,
         "round_trip_volume_share_percent": 0,
         "self_transfers": 0,
         "source": "eth_getLogs Transfer events over public RPC",
-        "summary": "Over the last 600 blocks on Ethereum, ENS shows a LOW wash-trading risk (score 0.16): 29 transfers among 27 addresses, with 0 reciprocal address pairs carrying about 0.00% (0.0%) of volume in round trips. The busiest sender moved 43.93% (43.9%) of volume. This is a heuristic over Transfer logs, not a proof of intent.",
+        "summary": "Over the last 600 blocks on Ethereum, ENS shows a LOW wash-trading risk (score 0.17): 28 transfers among 27 addresses, with 0 reciprocal address pairs carrying about 0.00% (0.0%) of volume in round trips. The busiest sender moved 44.30% (44.3%) of volume. This is a heuristic over Transfer logs, not a proof of intent.",
         "symbol": "ENS",
-        "top_sender_concentration_percent": 43.93,
-        "transfers": 29,
+        "top_sender_concentration_percent": 44.3,
+        "transfers": 28,
         "unique_addresses": 27,
         "verified": true,
         "window_blocks": 600
       },
       "signalStatus": "verified",
-      "receiptHash": "0x58c611665b042d1056174bb6ed33b7604b60fca3bde415cd7904100b1cd7748a"
+      "receiptHash": "0x757ff95add0b780420cfec20874d61e4c6eab293cbe543ca720941b9c28bd690"
     }
   ],
   "stored": {
@@ -656,14 +675,16 @@
         "check": "holder_count",
         "confidence": 0,
         "evidence": {
-          "minerId": "9002"
+          "minerId": "7302",
+          "receiptHash": "0xe1123bf7624ae89a5f6421cfff02ffb6c524dfc9b91c47494e8f8d8539948e42",
+          "signalHash": "0xdb5112332af6decb5f086233b4fdc6cd66ff3b4b00483edbd8358f2e4d0c7557"
         },
         "notes": [
-          "purchase_failed"
+          "missing_holders_count"
         ],
         "severity": 0,
-        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "status": "ERROR"
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
       },
       {
         "adapterVersion": "0.3.0",
@@ -671,8 +692,8 @@
         "confidence": 0.3,
         "evidence": {
           "minerId": "78021",
-          "receiptHash": "0x3dd410cc14a6ad537e99797fcead37b4d93b1fa38910e8afeb42a3e45ca1dea9",
-          "signalHash": "0xa03c302219f3de80754498b04f4f43afc277da025f3ede06ed2f4d16641cbde0"
+          "receiptHash": "0x60c5442fe6024856e1084184466d65f4cab2f56196e6d8333e492b4d184d117b",
+          "signalHash": "0xc26852fa630a2fc442aa5c925044aaa1f691c1065370dfc8949748de2b2e2fc1"
         },
         "notes": [
           "address_matching_unverified",
@@ -688,8 +709,8 @@
         "confidence": 0.9,
         "evidence": {
           "minerId": "7378",
-          "receiptHash": "0x58c611665b042d1056174bb6ed33b7604b60fca3bde415cd7904100b1cd7748a",
-          "signalHash": "0xf8ddc186c4a6b8b0e748d88ea27d24d5c60de91394cd851161044272108903f9"
+          "receiptHash": "0x757ff95add0b780420cfec20874d61e4c6eab293cbe543ca720941b9c28bd690",
+          "signalHash": "0x2d57f990c7a4e40cff7353a887d8004a51f0371cd5f935603a5ab7fcce727c00"
         },
         "metric": "wash_volume_pct",
         "notes": [
@@ -707,8 +728,8 @@
         "confidence": 0.7,
         "evidence": {
           "minerId": "200001",
-          "receiptHash": "0xd2c1873e200ee5d1c79fe18fecb0656ffd1e606ffe65e87a341c5b71e08087c1",
-          "signalHash": "0xd74b19d91be710f003775859dc095b7b044c56e51ba9de1dd0e29b2db4361b92"
+          "receiptHash": "0xc9e0fe54f73c5d61e6eaac55b084f2e1cfb4164cbd9e26bd083a7839ea5271db",
+          "signalHash": "0x193c68abf19d853986c7de4f1a8e371ad6292bf3a62dd791b8eebc3f22e5f8eb"
         },
         "notes": [
           "is_mintable"
@@ -720,19 +741,16 @@
       {
         "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
-        "confidence": 0.7,
+        "confidence": 0,
         "evidence": {
-          "minerId": "7373",
-          "receiptHash": "0xde07ac337c6b9928a57bcdaf0fc2ddfb6137b1c730d4b39142c0bfb47a303776",
-          "signalHash": "0x6006fabb5de994397316a380ab91c65b38063d95d133d0c50506ee69e991a644"
+          "minerId": "7373"
         },
-        "metric": "liquidity_usd",
-        "notes": [],
+        "notes": [
+          "purchase_failed"
+        ],
         "severity": 0,
         "sourceGroup": "margyn.workers.dev",
-        "status": "PASS",
-        "unit": "USD",
-        "value": 494673.85
+        "status": "ERROR"
       },
       {
         "check": "code_review",
@@ -1113,29 +1131,40 @@
         },
         "sourceGroup": "gopluslabs.io",
         "minerId": "200001",
-        "receiptHash": "0xd2c1873e200ee5d1c79fe18fecb0656ffd1e606ffe65e87a341c5b71e08087c1",
-        "signalHash": "0xd74b19d91be710f003775859dc095b7b044c56e51ba9de1dd0e29b2db4361b92",
+        "receiptHash": "0xc9e0fe54f73c5d61e6eaac55b084f2e1cfb4164cbd9e26bd083a7839ea5271db",
+        "signalHash": "0x193c68abf19d853986c7de4f1a8e371ad6292bf3a62dd791b8eebc3f22e5f8eb",
         "httpStatus": 200
       },
       {
         "check": "holder_count",
         "adapterVersion": "0.1.0",
-        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "minerId": "9002",
-        "httpStatus": 503,
-        "error": "server_error: expected 402, got 503: {\"error\":\"could not route this question now, try again later\"}"
+        "rawResult": {
+          "as_of": "2026-11-07T21:46:27.159Z",
+          "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+          "chain": "ethereum",
+          "chain_id": 1,
+          "confidence": 0.3,
+          "contract_address": "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72",
+          "detail": "Error: holder count unavailable and nothing stored yet",
+          "holders": null,
+          "intent": "TOKEN_HOLDER_COUNT",
+          "summary": "A holder count for 0xc18360217d8f7ab5e7c516566761ea12ce7f9d72 on Ethereum could not be read: the public index did not return one for this contract.",
+          "supported": true,
+          "symbol": null,
+          "token": "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72"
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7302",
+        "receiptHash": "0xe1123bf7624ae89a5f6421cfff02ffb6c524dfc9b91c47494e8f8d8539948e42",
+        "signalHash": "0xdb5112332af6decb5f086233b4fdc6cd66ff3b4b00483edbd8358f2e4d0c7557",
+        "httpStatus": 200
       },
       {
         "check": "liquidity_depth",
         "adapterVersion": "0.4.0",
-        "rawResult": {
-          "liquidity_usd": 494673.85
-        },
         "sourceGroup": "margyn.workers.dev",
         "minerId": "7373",
-        "receiptHash": "0xde07ac337c6b9928a57bcdaf0fc2ddfb6137b1c730d4b39142c0bfb47a303776",
-        "signalHash": "0x6006fabb5de994397316a380ab91c65b38063d95d133d0c50506ee69e991a644",
-        "httpStatus": 200,
+        "error": "timeout: paid request: timeout",
         "pool": "0x92560c178ce069cc014138ed3c2f5221ba71f58a"
       },
       {
@@ -1149,42 +1178,42 @@
         },
         "sourceGroup": "13.237.89.59",
         "minerId": "78021",
-        "receiptHash": "0x3dd410cc14a6ad537e99797fcead37b4d93b1fa38910e8afeb42a3e45ca1dea9",
-        "signalHash": "0xa03c302219f3de80754498b04f4f43afc277da025f3ede06ed2f4d16641cbde0",
+        "receiptHash": "0x60c5442fe6024856e1084184466d65f4cab2f56196e6d8333e492b4d184d117b",
+        "signalHash": "0xc26852fa630a2fc442aa5c925044aaa1f691c1065370dfc8949748de2b2e2fc1",
         "httpStatus": 200
       },
       {
         "check": "wash_trading",
         "adapterVersion": "0.3.0",
         "rawResult": {
-          "as_of": "2026-11-07T21:41:26.996Z",
+          "as_of": "2026-11-07T21:46:25.010Z",
           "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
           "chain": "ethereum",
           "chain_id": 1,
           "confidence": 0.9,
           "contract_address": "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72",
-          "from_block": 26365133,
-          "head_block": 26365732,
+          "from_block": 26365158,
+          "head_block": 26365757,
           "intent": "WASH_TRADING_DETECTION",
-          "readings": "token ENS 0xc18360217d8f7ab5e7c516566761ea12ce7f9d72 on Ethereum, blocks 26365133-26365732 (600), transfers 29, addresses 27, reciprocal pairs 0, round-trip share 0%, concentration 43.93%, self 0, risk 0.1647 (LOW), read 2026-11-07T21:41:26.996Z.",
+          "readings": "token ENS 0xc18360217d8f7ab5e7c516566761ea12ce7f9d72 on Ethereum, blocks 26365158-26365757 (600), transfers 28, addresses 27, reciprocal pairs 0, round-trip share 0%, concentration 44.3%, self 0, risk 0.1661 (LOW), read 2026-11-07T21:46:25.010Z.",
           "reciprocal_pairs": 0,
           "risk_label": "LOW",
-          "risk_score": 0.1647,
+          "risk_score": 0.1661,
           "round_trip_volume_share_percent": 0,
           "self_transfers": 0,
           "source": "eth_getLogs Transfer events over public RPC",
-          "summary": "Over the last 600 blocks on Ethereum, ENS shows a LOW wash-trading risk (score 0.16): 29 transfers among 27 addresses, with 0 reciprocal address pairs carrying about 0.00% (0.0%) of volume in round trips. The busiest sender moved 43.93% (43.9%) of volume. This is a heuristic over Transfer logs, not a proof of intent.",
+          "summary": "Over the last 600 blocks on Ethereum, ENS shows a LOW wash-trading risk (score 0.17): 28 transfers among 27 addresses, with 0 reciprocal address pairs carrying about 0.00% (0.0%) of volume in round trips. The busiest sender moved 44.30% (44.3%) of volume. This is a heuristic over Transfer logs, not a proof of intent.",
           "symbol": "ENS",
-          "top_sender_concentration_percent": 43.93,
-          "transfers": 29,
+          "top_sender_concentration_percent": 44.3,
+          "transfers": 28,
           "unique_addresses": 27,
           "verified": true,
           "window_blocks": 600
         },
         "sourceGroup": "margyn.workers.dev",
         "minerId": "7378",
-        "receiptHash": "0x58c611665b042d1056174bb6ed33b7604b60fca3bde415cd7904100b1cd7748a",
-        "signalHash": "0xf8ddc186c4a6b8b0e748d88ea27d24d5c60de91394cd851161044272108903f9",
+        "receiptHash": "0x757ff95add0b780420cfec20874d61e4c6eab293cbe543ca720941b9c28bd690",
+        "signalHash": "0x2d57f990c7a4e40cff7353a887d8004a51f0371cd5f935603a5ab7fcce727c00",
         "httpStatus": 200
       }
     ],
@@ -1211,12 +1240,12 @@
       }
     ],
     "receipts": [
-      "0xd2c1873e200ee5d1c79fe18fecb0656ffd1e606ffe65e87a341c5b71e08087c1",
-      "0xde07ac337c6b9928a57bcdaf0fc2ddfb6137b1c730d4b39142c0bfb47a303776",
-      "0x3dd410cc14a6ad537e99797fcead37b4d93b1fa38910e8afeb42a3e45ca1dea9",
-      "0x58c611665b042d1056174bb6ed33b7604b60fca3bde415cd7904100b1cd7748a"
+      "0xc9e0fe54f73c5d61e6eaac55b084f2e1cfb4164cbd9e26bd083a7839ea5271db",
+      "0xe1123bf7624ae89a5f6421cfff02ffb6c524dfc9b91c47494e8f8d8539948e42",
+      "0x60c5442fe6024856e1084184466d65f4cab2f56196e6d8333e492b4d184d117b",
+      "0x757ff95add0b780420cfec20874d61e4c6eab293cbe543ca720941b9c28bd690"
     ],
-    "verdictHash": "0x61900d200b1e82ecc30511d0f234cdcfc252c937cf163a1b8b14c1894a2434b6",
-    "bomRoot": "0x9569f45f4ee08f7c51816af9e545baad33078b8c77cbaf6378bc40310979eecc"
+    "verdictHash": "0x5b045fafe4f54307cd1e36579deaa434eb6f9fc736efc39e6d7350ae3705f8d9",
+    "bomRoot": "0x6d38aa1e4941a412a4fe23694723bda6e85d2f4dedfa5c099c97d57a01c2bd66"
   }
 }

@@ -1,7 +1,7 @@
 {
   "caseId": "bad-oraai-eth-b0f34b",
   "policyRef": "dex-list@0.2.0",
-  "wallMs": 3495,
+  "wallMs": 4872,
   "verdict": {
     "engineVersion": "0.2.0",
     "policy": {
@@ -16,9 +16,9 @@
     "decision": {
       "verdict": "REJECT",
       "verdictCode": 3,
-      "riskBps": 10000,
+      "riskBps": 8213,
       "confidenceBps": 7000,
-      "coverageBps": 3300,
+      "coverageBps": 4700,
       "reasons": [
         {
           "code": "BLOCKER_CONTRACT_AUDIT_FAIL",
@@ -29,32 +29,39 @@
           "code": "CONTRACT_AUDIT_FAIL",
           "check": "contract_audit",
           "detail": "contract_audit FAIL is_honeypot"
+        },
+        {
+          "code": "HOLDER_COUNT_WARN",
+          "check": "holder_count",
+          "detail": "holders_count=154 < 300"
         }
       ],
       "openRisks": [
         "liquidity_depth UNAVAILABLE",
-        "holder_count ERROR",
         "wash_trading UNKNOWN",
         "social_bots UNAVAILABLE",
         "code_review UNAVAILABLE"
       ],
       "conflicts": []
     },
-    "summary": "Rejected: contract_audit FAIL (severity >= 3) is a hard blocker (+1 more).",
+    "summary": "Rejected: contract_audit FAIL (severity >= 3) is a hard blocker (+2 more).",
     "findings": [
       {
         "adapterVersion": "0.1.0",
         "check": "holder_count",
-        "confidence": 0,
+        "confidence": 0.95,
         "evidence": {
-          "minerId": "9002"
+          "minerId": "7302",
+          "receiptHash": "0xe6e6e7c2e851a2c338e39dca9c54759bc6ec06861bf37e5263e11e0749e3ac0a",
+          "signalHash": "0x1d431588b17df0548f9207f19538a212b86ea1f787f13dbe44a66c71adfdb19e"
         },
-        "notes": [
-          "purchase_failed"
-        ],
+        "metric": "holders_count",
+        "notes": [],
         "severity": 0,
-        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "status": "ERROR"
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 154
       },
       {
         "adapterVersion": "0.3.0",
@@ -62,8 +69,8 @@
         "confidence": 0.3,
         "evidence": {
           "minerId": "78021",
-          "receiptHash": "0x92f86b56d0923b6d7a51a2afb3902eec8ef141f99d01f3b926d875c0e6970fe6",
-          "signalHash": "0x94516fd39dc910eaaea42d8dc6924b015b058243a4da810e3ffdeadd395c6b53"
+          "receiptHash": "0x3c0287db80bbe71d0632fd80febfa16b04adc5dd6a8bc1101cca9ffb1c039092",
+          "signalHash": "0x6bee7400e2ebce52ae2576db1f4d6370653534f1a51b01f60df25c82988d0e1b"
         },
         "notes": [
           "address_matching_unverified",
@@ -79,8 +86,8 @@
         "confidence": 0,
         "evidence": {
           "minerId": "7378",
-          "receiptHash": "0x18b698ea130891f72c7784eea5225b0f362ac841601c1a769d4768ca1cabf719",
-          "signalHash": "0x839eeb34574722dec57240a2d840099262da08ef95245964938b1fd0d6bf5247"
+          "receiptHash": "0x2e5d031b910cd0e1c7cad6ae93da32619dd375adf1091e54a4954f5d4205d0db",
+          "signalHash": "0x57866459efb1dc0e87ab8ffa4da3eaa0ac89dbca473ce42b86d1117709c59c2e"
         },
         "notes": [
           "no_transfers_in_window"
@@ -95,8 +102,8 @@
         "confidence": 0.7,
         "evidence": {
           "minerId": "200001",
-          "receiptHash": "0x51a74d9f24dba8619fa32fa50cef187b8fd175faae78e7807da684a63a66c044",
-          "signalHash": "0x0ee560aff5ae52981a6042b253764d4ff3176fb11516d0a06b87494cc039666b"
+          "receiptHash": "0x7f17a260d3ae88e99594a34386ef882e95bf147becf14934ba7a9353f771f692",
+          "signalHash": "0x48346580167660b9bfaed59c2cbb4705b8695f5c8ac7fe178fe1096cbc890087"
         },
         "notes": [
           "is_honeypot"
@@ -136,10 +143,10 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x1ae445ee4355266362f8153263fb48627a33e032f764e84dcc1176bdddd16e21",
+    "verdictHash": "0xbdb6ec765a6f4fbebf7742f2607db388855b8458d22b797c0039161893f072ac",
     "bom": {
-      "root": "0x840c381be98ab1530345873de73365a211664f1ca75bbeef4206dc7c4da06bf6",
-      "items": 3
+      "root": "0xb7fdd0a57391db06409f56a9e62deb223257df86065b02eb03ca8dfe44f1d6b1",
+      "items": 4
     }
   },
   "purchases": [
@@ -150,15 +157,15 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 2130,
+      "durationMs": 2041,
       "attempts": 1,
       "sourceGroup": "gopluslabs.io",
       "adapterVersion": "0.4.0",
-      "createdAt": "2026-11-07T21:43:08.019Z",
+      "createdAt": "2026-11-07T21:47:04.204Z",
       "minerId": "200001",
       "minerName": "GoPlus Security",
       "httpStatus": 200,
-      "signalHash": "0x0ee560aff5ae52981a6042b253764d4ff3176fb11516d0a06b87494cc039666b",
+      "signalHash": "0x48346580167660b9bfaed59c2cbb4705b8695f5c8ac7fe178fe1096cbc890087",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
@@ -317,23 +324,51 @@
         }
       },
       "signalStatus": "verified",
-      "receiptHash": "0x51a74d9f24dba8619fa32fa50cef187b8fd175faae78e7807da684a63a66c044"
+      "receiptHash": "0x7f17a260d3ae88e99594a34386ef882e95bf147becf14934ba7a9353f771f692"
     },
     {
       "check": "holder_count",
       "intent": "TOKEN_HOLDER_COUNT_GENERAL",
       "pinned": true,
+      "skipped": [
+        "9002"
+      ],
       "rail": "escrow",
-      "amountUusdc": 0,
-      "billing": "none",
-      "durationMs": 3418,
-      "attempts": 2,
-      "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 1294,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
       "adapterVersion": "0.1.0",
-      "createdAt": "2026-11-07T21:43:09.035Z",
-      "minerId": "9002",
-      "error": "server_error: expected 402, got 503: {\"error\":\"could not route this question now, try again later\"}",
-      "httpStatus": 503
+      "createdAt": "2026-11-07T21:47:06.693Z",
+      "minerId": "7302",
+      "minerName": "ChainWire Token Holder Count",
+      "httpStatus": 200,
+      "signalHash": "0x1d431588b17df0548f9207f19538a212b86ea1f787f13dbe44a66c71adfdb19e",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-07T21:47:06.349Z",
+        "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+        "chain": "ethereum",
+        "chain_id": 1,
+        "confidence": 0.95,
+        "contract_address": "0xb0f34ba1617bb7c2528e570070b8770e544b003e",
+        "holders": 154,
+        "holders_count": 154,
+        "intent": "TOKEN_HOLDER_COUNT",
+        "name": "Ora AI",
+        "read_at": "2026-11-07T21:47:05.841Z",
+        "readings": "token ORAAI (Ora AI), ERC-20 on Ethereum, chain id 1, contract 0xb0f34ba1617bb7c2528e570070b8770e544b003e, holders 154 (154) distinct addresses, read 2026-11-07T21:47:05.841Z.",
+        "source": "Blockscout eth.blockscout.com token API",
+        "summary": "The token Ora AI (ORAAI) at 0xb0f34ba1617bb7c2528e570070b8770e544b003e on Ethereum has approximately 154 holders.",
+        "symbol": "ORAAI",
+        "token": "0xb0f34ba1617bb7c2528e570070b8770e544b003e",
+        "token_symbol": "ORAAI",
+        "token_type": "ERC-20"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xe6e6e7c2e851a2c338e39dca9c54759bc6ec06861bf37e5263e11e0749e3ac0a"
     },
     {
       "check": "sanctions",
@@ -342,15 +377,15 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 1121,
+      "durationMs": 546,
       "attempts": 1,
       "sourceGroup": "13.237.89.59",
       "adapterVersion": "0.3.0",
-      "createdAt": "2026-11-07T21:43:06.985Z",
+      "createdAt": "2026-11-07T21:47:02.701Z",
       "minerId": "78021",
       "minerName": "OFAC SDN Entity Screen",
       "httpStatus": 200,
-      "signalHash": "0x94516fd39dc910eaaea42d8dc6924b015b058243a4da810e3ffdeadd395c6b53",
+      "signalHash": "0x6bee7400e2ebce52ae2576db1f4d6370653534f1a51b01f60df25c82988d0e1b",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
@@ -360,7 +395,7 @@
         "source": "ofac_sdn_xml"
       },
       "signalStatus": "verified",
-      "receiptHash": "0x92f86b56d0923b6d7a51a2afb3902eec8ef141f99d01f3b926d875c0e6970fe6"
+      "receiptHash": "0x3c0287db80bbe71d0632fd80febfa16b04adc5dd6a8bc1101cca9ffb1c039092"
     },
     {
       "check": "wash_trading",
@@ -369,19 +404,19 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 1203,
+      "durationMs": 1231,
       "attempts": 1,
       "sourceGroup": "margyn.workers.dev",
       "adapterVersion": "0.3.0",
-      "createdAt": "2026-11-07T21:43:07.056Z",
+      "createdAt": "2026-11-07T21:47:03.382Z",
       "minerId": "7378",
       "minerName": "VerifyWire Wash Trading Detection",
       "httpStatus": 200,
-      "signalHash": "0x839eeb34574722dec57240a2d840099262da08ef95245964938b1fd0d6bf5247",
+      "signalHash": "0x57866459efb1dc0e87ab8ffa4da3eaa0ac89dbca473ce42b86d1117709c59c2e",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
-        "as_of": "2026-11-07T21:43:06.698Z",
+        "as_of": "2026-11-07T21:47:03.035Z",
         "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
         "chain": "ethereum",
         "chain_id": 1,
@@ -396,7 +431,7 @@
         "window_blocks": 600
       },
       "signalStatus": "verified",
-      "receiptHash": "0x18b698ea130891f72c7784eea5225b0f362ac841601c1a769d4768ca1cabf719"
+      "receiptHash": "0x2e5d031b910cd0e1c7cad6ae93da32619dd375adf1091e54a4954f5d4205d0db"
     }
   ],
   "stored": {
@@ -414,16 +449,19 @@
       {
         "adapterVersion": "0.1.0",
         "check": "holder_count",
-        "confidence": 0,
+        "confidence": 0.95,
         "evidence": {
-          "minerId": "9002"
+          "minerId": "7302",
+          "receiptHash": "0xe6e6e7c2e851a2c338e39dca9c54759bc6ec06861bf37e5263e11e0749e3ac0a",
+          "signalHash": "0x1d431588b17df0548f9207f19538a212b86ea1f787f13dbe44a66c71adfdb19e"
         },
-        "notes": [
-          "purchase_failed"
-        ],
+        "metric": "holders_count",
+        "notes": [],
         "severity": 0,
-        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "status": "ERROR"
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 154
       },
       {
         "adapterVersion": "0.3.0",
@@ -431,8 +469,8 @@
         "confidence": 0.3,
         "evidence": {
           "minerId": "78021",
-          "receiptHash": "0x92f86b56d0923b6d7a51a2afb3902eec8ef141f99d01f3b926d875c0e6970fe6",
-          "signalHash": "0x94516fd39dc910eaaea42d8dc6924b015b058243a4da810e3ffdeadd395c6b53"
+          "receiptHash": "0x3c0287db80bbe71d0632fd80febfa16b04adc5dd6a8bc1101cca9ffb1c039092",
+          "signalHash": "0x6bee7400e2ebce52ae2576db1f4d6370653534f1a51b01f60df25c82988d0e1b"
         },
         "notes": [
           "address_matching_unverified",
@@ -448,8 +486,8 @@
         "confidence": 0,
         "evidence": {
           "minerId": "7378",
-          "receiptHash": "0x18b698ea130891f72c7784eea5225b0f362ac841601c1a769d4768ca1cabf719",
-          "signalHash": "0x839eeb34574722dec57240a2d840099262da08ef95245964938b1fd0d6bf5247"
+          "receiptHash": "0x2e5d031b910cd0e1c7cad6ae93da32619dd375adf1091e54a4954f5d4205d0db",
+          "signalHash": "0x57866459efb1dc0e87ab8ffa4da3eaa0ac89dbca473ce42b86d1117709c59c2e"
         },
         "notes": [
           "no_transfers_in_window"
@@ -464,8 +502,8 @@
         "confidence": 0.7,
         "evidence": {
           "minerId": "200001",
-          "receiptHash": "0x51a74d9f24dba8619fa32fa50cef187b8fd175faae78e7807da684a63a66c044",
-          "signalHash": "0x0ee560aff5ae52981a6042b253764d4ff3176fb11516d0a06b87494cc039666b"
+          "receiptHash": "0x7f17a260d3ae88e99594a34386ef882e95bf147becf14934ba7a9353f771f692",
+          "signalHash": "0x48346580167660b9bfaed59c2cbb4705b8695f5c8ac7fe178fe1096cbc890087"
         },
         "notes": [
           "is_honeypot"
@@ -666,17 +704,38 @@
         },
         "sourceGroup": "gopluslabs.io",
         "minerId": "200001",
-        "receiptHash": "0x51a74d9f24dba8619fa32fa50cef187b8fd175faae78e7807da684a63a66c044",
-        "signalHash": "0x0ee560aff5ae52981a6042b253764d4ff3176fb11516d0a06b87494cc039666b",
+        "receiptHash": "0x7f17a260d3ae88e99594a34386ef882e95bf147becf14934ba7a9353f771f692",
+        "signalHash": "0x48346580167660b9bfaed59c2cbb4705b8695f5c8ac7fe178fe1096cbc890087",
         "httpStatus": 200
       },
       {
         "check": "holder_count",
         "adapterVersion": "0.1.0",
-        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "minerId": "9002",
-        "httpStatus": 503,
-        "error": "server_error: expected 402, got 503: {\"error\":\"could not route this question now, try again later\"}"
+        "rawResult": {
+          "as_of": "2026-11-07T21:47:06.349Z",
+          "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+          "chain": "ethereum",
+          "chain_id": 1,
+          "confidence": 0.95,
+          "contract_address": "0xb0f34ba1617bb7c2528e570070b8770e544b003e",
+          "holders": 154,
+          "holders_count": 154,
+          "intent": "TOKEN_HOLDER_COUNT",
+          "name": "Ora AI",
+          "read_at": "2026-11-07T21:47:05.841Z",
+          "readings": "token ORAAI (Ora AI), ERC-20 on Ethereum, chain id 1, contract 0xb0f34ba1617bb7c2528e570070b8770e544b003e, holders 154 (154) distinct addresses, read 2026-11-07T21:47:05.841Z.",
+          "source": "Blockscout eth.blockscout.com token API",
+          "summary": "The token Ora AI (ORAAI) at 0xb0f34ba1617bb7c2528e570070b8770e544b003e on Ethereum has approximately 154 holders.",
+          "symbol": "ORAAI",
+          "token": "0xb0f34ba1617bb7c2528e570070b8770e544b003e",
+          "token_symbol": "ORAAI",
+          "token_type": "ERC-20"
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7302",
+        "receiptHash": "0xe6e6e7c2e851a2c338e39dca9c54759bc6ec06861bf37e5263e11e0749e3ac0a",
+        "signalHash": "0x1d431588b17df0548f9207f19538a212b86ea1f787f13dbe44a66c71adfdb19e",
+        "httpStatus": 200
       },
       {
         "check": "sanctions",
@@ -689,15 +748,15 @@
         },
         "sourceGroup": "13.237.89.59",
         "minerId": "78021",
-        "receiptHash": "0x92f86b56d0923b6d7a51a2afb3902eec8ef141f99d01f3b926d875c0e6970fe6",
-        "signalHash": "0x94516fd39dc910eaaea42d8dc6924b015b058243a4da810e3ffdeadd395c6b53",
+        "receiptHash": "0x3c0287db80bbe71d0632fd80febfa16b04adc5dd6a8bc1101cca9ffb1c039092",
+        "signalHash": "0x6bee7400e2ebce52ae2576db1f4d6370653534f1a51b01f60df25c82988d0e1b",
         "httpStatus": 200
       },
       {
         "check": "wash_trading",
         "adapterVersion": "0.3.0",
         "rawResult": {
-          "as_of": "2026-11-07T21:43:06.698Z",
+          "as_of": "2026-11-07T21:47:03.035Z",
           "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
           "chain": "ethereum",
           "chain_id": 1,
@@ -713,8 +772,8 @@
         },
         "sourceGroup": "margyn.workers.dev",
         "minerId": "7378",
-        "receiptHash": "0x18b698ea130891f72c7784eea5225b0f362ac841601c1a769d4768ca1cabf719",
-        "signalHash": "0x839eeb34574722dec57240a2d840099262da08ef95245964938b1fd0d6bf5247",
+        "receiptHash": "0x2e5d031b910cd0e1c7cad6ae93da32619dd375adf1091e54a4954f5d4205d0db",
+        "signalHash": "0x57866459efb1dc0e87ab8ffa4da3eaa0ac89dbca473ce42b86d1117709c59c2e",
         "httpStatus": 200
       }
     ],
@@ -751,11 +810,12 @@
       }
     ],
     "receipts": [
-      "0x51a74d9f24dba8619fa32fa50cef187b8fd175faae78e7807da684a63a66c044",
-      "0x92f86b56d0923b6d7a51a2afb3902eec8ef141f99d01f3b926d875c0e6970fe6",
-      "0x18b698ea130891f72c7784eea5225b0f362ac841601c1a769d4768ca1cabf719"
+      "0x7f17a260d3ae88e99594a34386ef882e95bf147becf14934ba7a9353f771f692",
+      "0xe6e6e7c2e851a2c338e39dca9c54759bc6ec06861bf37e5263e11e0749e3ac0a",
+      "0x3c0287db80bbe71d0632fd80febfa16b04adc5dd6a8bc1101cca9ffb1c039092",
+      "0x2e5d031b910cd0e1c7cad6ae93da32619dd375adf1091e54a4954f5d4205d0db"
     ],
-    "verdictHash": "0x1ae445ee4355266362f8153263fb48627a33e032f764e84dcc1176bdddd16e21",
-    "bomRoot": "0x840c381be98ab1530345873de73365a211664f1ca75bbeef4206dc7c4da06bf6"
+    "verdictHash": "0xbdb6ec765a6f4fbebf7742f2607db388855b8458d22b797c0039161893f072ac",
+    "bomRoot": "0xb7fdd0a57391db06409f56a9e62deb223257df86065b02eb03ca8dfe44f1d6b1"
   }
 }

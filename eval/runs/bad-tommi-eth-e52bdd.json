@@ -1,7 +1,7 @@
 {
   "caseId": "bad-tommi-eth-e52bdd",
   "policyRef": "dex-list@0.2.0",
-  "wallMs": 3163,
+  "wallMs": 6651,
   "verdict": {
     "engineVersion": "0.2.0",
     "policy": {
@@ -14,53 +14,54 @@
       "token": "0xe52bdd1fc98cd6c0cd544c0187129c20d4545c7f"
     },
     "decision": {
-      "verdict": "ABSTAIN",
-      "verdictCode": 0,
-      "riskBps": 0,
-      "confidenceBps": 0,
-      "coverageBps": 0,
+      "verdict": "REJECT",
+      "verdictCode": 3,
+      "riskBps": 8213,
+      "confidenceBps": 7000,
+      "coverageBps": 4700,
       "reasons": [
         {
-          "code": "MISSING_REQUIRED_CHECK",
+          "code": "BLOCKER_CONTRACT_AUDIT_FAIL",
           "check": "contract_audit",
-          "detail": "required check contract_audit is ERROR"
+          "detail": "contract_audit FAIL (severity >= 3) is a hard blocker"
         },
         {
-          "code": "MISSING_REQUIRED_CHECK",
-          "check": "liquidity_depth",
-          "detail": "required check liquidity_depth is UNAVAILABLE"
+          "code": "CONTRACT_AUDIT_FAIL",
+          "check": "contract_audit",
+          "detail": "contract_audit FAIL hidden_owner is_blacklisted is_honeypot slippage_modifiable"
         },
         {
-          "code": "MISSING_REQUIRED_CHECK",
+          "code": "HOLDER_COUNT_WARN",
           "check": "holder_count",
-          "detail": "required check holder_count is ERROR"
+          "detail": "holders_count=64 < 300"
         }
       ],
       "openRisks": [
-        "contract_audit ERROR",
         "liquidity_depth UNAVAILABLE",
-        "holder_count ERROR",
         "wash_trading UNKNOWN",
         "social_bots UNAVAILABLE",
         "code_review UNAVAILABLE"
       ],
       "conflicts": []
     },
-    "summary": "Abstained: required check contract_audit is ERROR (+2 more).",
+    "summary": "Rejected: contract_audit FAIL (severity >= 3) is a hard blocker (+2 more).",
     "findings": [
       {
         "adapterVersion": "0.1.0",
         "check": "holder_count",
-        "confidence": 0,
+        "confidence": 0.7,
         "evidence": {
-          "minerId": "9002"
+          "minerId": "9002",
+          "receiptHash": "0xa7de7b02476c55f236d96cb176f1ba22e6cabfdab226e73ad06d6a4c1c4b2514",
+          "signalHash": "0x993099eefb0b75c2d16ef9f5a2221a5367862330ccb4e73e9c5f1b76b11e3b27"
         },
-        "notes": [
-          "purchase_failed"
-        ],
+        "metric": "holders_count",
+        "notes": [],
         "severity": 0,
         "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "status": "ERROR"
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 64
       },
       {
         "adapterVersion": "0.3.0",
@@ -68,8 +69,8 @@
         "confidence": 0.3,
         "evidence": {
           "minerId": "78021",
-          "receiptHash": "0xf97a5608bdb94882ff8e3b0435ce1928e55b0a4fb4033b1b6906d06296b58282",
-          "signalHash": "0xc17a224d7fac563361a2745fda41fe2cbf0db811831b22b50e303335422aa2f9"
+          "receiptHash": "0xfb008982c3a02a48e7ca7fe0981753e66390da331e904fca9fbb502dc8bcb91c",
+          "signalHash": "0xeca5833a3e188b803d786efd3ba666bc722ad3ecd7ec8efeb818a1493b081e23"
         },
         "notes": [
           "address_matching_unverified",
@@ -85,8 +86,8 @@
         "confidence": 0,
         "evidence": {
           "minerId": "7378",
-          "receiptHash": "0x6a23f2a88345da6ad31db8ee6a63f5f34dc15cdf023bc915837dcc8379029260",
-          "signalHash": "0xb8c5b0731f82c1db3e63f08ee946ac4678b056add910f1fdf18cc93935bb628d"
+          "receiptHash": "0xe270835f50fa5c2fe41f773477c478940681c38658b58937754a105e661afac4",
+          "signalHash": "0x91dd6b7cd959f3cf221f6279489817a8724428beaa8e276ee008058baf017e9e"
         },
         "notes": [
           "no_transfers_in_window"
@@ -98,16 +99,21 @@
       {
         "adapterVersion": "0.4.0",
         "check": "contract_audit",
-        "confidence": 0,
+        "confidence": 0.7,
         "evidence": {
-          "minerId": "200001"
+          "minerId": "200001",
+          "receiptHash": "0x3b013df33049e8784fce53ba7538be5b872441a785e6bdac435b6bc986f136b7",
+          "signalHash": "0x0b74b6d4320c6d507f033457b82e44e836dfef522e486e45b8cc4dda6a779144"
         },
         "notes": [
-          "purchase_failed"
+          "hidden_owner",
+          "is_blacklisted",
+          "is_honeypot",
+          "slippage_modifiable"
         ],
-        "severity": 0,
+        "severity": 3,
         "sourceGroup": "gopluslabs.io",
-        "status": "ERROR"
+        "status": "FAIL"
       },
       {
         "check": "code_review",
@@ -140,10 +146,10 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x1813103fac434de19847c3356bd81cb9989d96f01019c4cb78ca574a0e6aa29f",
+    "verdictHash": "0x50abe7c0370432ac1097400e4f4ad2bc67a2aa634e728b063d6f49f408a78faa",
     "bom": {
-      "root": "0xd7649cd14f9c07dd1518b6a045f885edd32fe035893d50a81c49d48a94723e1d",
-      "items": 2
+      "root": "0x9decd3caa06287edf5bd752551240ff6057a2695d14ea1e8cb67fbf44396c53b",
+      "items": 4
     }
   },
   "purchases": [
@@ -153,31 +159,202 @@
       "pinned": true,
       "rail": "escrow",
       "amountUusdc": 10000,
-      "billing": "unknown",
-      "durationMs": 1931,
+      "billing": "paid",
+      "durationMs": 2220,
       "attempts": 1,
       "sourceGroup": "gopluslabs.io",
       "adapterVersion": "0.4.0",
-      "createdAt": "2026-11-07T21:42:55.207Z",
+      "createdAt": "2026-11-07T21:46:52.997Z",
       "minerId": "200001",
-      "error": "server_error: HTTP 500: {\"error\":\"miner error 4029: too many requests\",\"intent\":\"SMART_CONTRACT_AUDIT_GENERAL\",\"miner_id\":\"200001\"}",
-      "httpStatus": 500
+      "minerName": "GoPlus Security",
+      "httpStatus": 200,
+      "signalHash": "0x0b74b6d4320c6d507f033457b82e44e836dfef522e486e45b8cc4dda6a779144",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "code": 1,
+        "message": "OK",
+        "result": {
+          "0xe52bdd1fc98cd6c0cd544c0187129c20d4545c7f": {
+            "anti_whale_modifiable": "0",
+            "buy_tax": "0",
+            "can_take_back_ownership": "0",
+            "cannot_buy": "0",
+            "creator_address": "0x4bafd8c32d9a8585af0bb6872482a76150f528b7",
+            "creator_balance": "0",
+            "creator_percent": "0.000000",
+            "dex": [
+              {
+                "liquidity": "0.00000000",
+                "liquidity_type": "UniV2",
+                "name": "UniswapV2",
+                "pair": "0x17ec8923bc576be2587adcdcab8d8de879d11c1d"
+              }
+            ],
+            "external_call": "1",
+            "hidden_owner": "1",
+            "holder_count": "64",
+            "holders": [
+              {
+                "address": "0x17ec8923bc576be2587adcdcab8d8de879d11c1d",
+                "balance": "38739354.415484597",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.387393544154845970",
+                "tag": "UniswapV2"
+              },
+              {
+                "address": "0xd1f212f438c1ce7dcaf6aee57503569d641add31",
+                "balance": "4037220.05715752",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.040372200571575200",
+                "tag": ""
+              },
+              {
+                "address": "0x195e1a872447dc8250aa777ceba53e70cf1372fd",
+                "balance": "3193671.327791367",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.031936713277913670",
+                "tag": ""
+              },
+              {
+                "address": "0x464fb0431f50a445b031025de77166fb7b6f7aa4",
+                "balance": "2372652.383186545",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.023726523831865450",
+                "tag": ""
+              },
+              {
+                "address": "0x6cda49eda326422548b0432b4daa06861675e816",
+                "balance": "2184060.382959826",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.021840603829598260",
+                "tag": ""
+              },
+              {
+                "address": "0xe37d148356957c490f0a01314b71cf60772a86e0",
+                "balance": "2069503.466073374",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.020695034660733740",
+                "tag": ""
+              },
+              {
+                "address": "0x0deffea757b4057c431985dc29afd8654bae1e17",
+                "balance": "2034865.370317076",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.020348653703170760",
+                "tag": ""
+              },
+              {
+                "address": "0x986e40318c7d52768bee5b20368a7f46fcd7c987",
+                "balance": "2020745.743026968",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.020207457430269680",
+                "tag": ""
+              },
+              {
+                "address": "0x4027f4dabfbb616a8dcb19bb225b3cf17879c9a8",
+                "balance": "2014455.804349754",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.020144558043497540",
+                "tag": ""
+              },
+              {
+                "address": "0xc9662500a5cff3466a1b0025e1bf3ac37f162b7f",
+                "balance": "1964564.201241948",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.019645642012419480",
+                "tag": ""
+              }
+            ],
+            "honeypot_with_same_creator": "0",
+            "is_anti_whale": "1",
+            "is_blacklisted": "1",
+            "is_honeypot": "1",
+            "is_in_dex": "1",
+            "is_mintable": "0",
+            "is_open_source": "1",
+            "is_proxy": "0",
+            "is_whitelisted": "1",
+            "lp_holder_count": "2",
+            "lp_holders": [
+              {
+                "NFT_list": null,
+                "address": "0x000000000000000000000000000000000000dead",
+                "balance": "0.387298334620740688",
+                "is_contract": 0,
+                "is_locked": 1,
+                "percent": "0.999999999999997418",
+                "tag": "",
+                "value": null
+              },
+              {
+                "NFT_list": null,
+                "address": "0x0000000000000000000000000000000000000000",
+                "balance": "0.000000000000001",
+                "is_contract": 0,
+                "is_locked": 1,
+                "percent": "0.000000000000002581",
+                "tag": "Null Address",
+                "value": null
+              }
+            ],
+            "lp_total_supply": "0.387298334620741688",
+            "owner_address": "0x0000000000000000000000000000000000000000",
+            "owner_balance": "0",
+            "owner_change_balance": "0",
+            "owner_percent": "0.0",
+            "personal_slippage_modifiable": "0",
+            "selfdestruct": "0",
+            "sell_tax": "",
+            "slippage_modifiable": "1",
+            "token_name": "Tommi",
+            "token_symbol": "TOMMI",
+            "total_supply": "100000000",
+            "trading_cooldown": "0",
+            "transfer_pausable": "0",
+            "transfer_tax": "0"
+          }
+        }
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x3b013df33049e8784fce53ba7538be5b872441a785e6bdac435b6bc986f136b7"
     },
     {
       "check": "holder_count",
       "intent": "TOKEN_HOLDER_COUNT_GENERAL",
       "pinned": true,
       "rail": "escrow",
-      "amountUusdc": 0,
-      "billing": "none",
-      "durationMs": 3059,
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 6305,
       "attempts": 2,
       "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
       "adapterVersion": "0.1.0",
-      "createdAt": "2026-11-07T21:42:56.335Z",
+      "createdAt": "2026-11-07T21:46:57.081Z",
       "minerId": "9002",
-      "error": "server_error: expected 402, got 503: {\"error\":\"could not route this question now, try again later\"}",
-      "httpStatus": 503
+      "minerName": "TxLens",
+      "httpStatus": 200,
+      "signalHash": "0x993099eefb0b75c2d16ef9f5a2221a5367862330ccb4e73e9c5f1b76b11e3b27",
+      "epochId": 2037,
+      "resultShape": "intent",
+      "rawResult": {
+        "token": "0xe52bdd1fc98cd6c0cd544c0187129c20d4545c7f",
+        "chain": "ethereum",
+        "holders_count": 64,
+        "token_symbol": "TOMMI"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xa7de7b02476c55f236d96cb176f1ba22e6cabfdab226e73ad06d6a4c1c4b2514"
     },
     {
       "check": "sanctions",
@@ -186,15 +363,15 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 619,
+      "durationMs": 570,
       "attempts": 1,
       "sourceGroup": "13.237.89.59",
       "adapterVersion": "0.3.0",
-      "createdAt": "2026-11-07T21:42:54.128Z",
+      "createdAt": "2026-11-07T21:46:51.371Z",
       "minerId": "78021",
       "minerName": "OFAC SDN Entity Screen",
       "httpStatus": 200,
-      "signalHash": "0xc17a224d7fac563361a2745fda41fe2cbf0db811831b22b50e303335422aa2f9",
+      "signalHash": "0xeca5833a3e188b803d786efd3ba666bc722ad3ecd7ec8efeb818a1493b081e23",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
@@ -204,7 +381,7 @@
         "source": "ofac_sdn_xml"
       },
       "signalStatus": "verified",
-      "receiptHash": "0xf97a5608bdb94882ff8e3b0435ce1928e55b0a4fb4033b1b6906d06296b58282"
+      "receiptHash": "0xfb008982c3a02a48e7ca7fe0981753e66390da331e904fca9fbb502dc8bcb91c"
     },
     {
       "check": "wash_trading",
@@ -213,19 +390,19 @@
       "rail": "escrow",
       "amountUusdc": 10000,
       "billing": "paid",
-      "durationMs": 1285,
+      "durationMs": 1177,
       "attempts": 1,
       "sourceGroup": "margyn.workers.dev",
       "adapterVersion": "0.3.0",
-      "createdAt": "2026-11-07T21:42:54.804Z",
+      "createdAt": "2026-11-07T21:46:51.957Z",
       "minerId": "7378",
       "minerName": "VerifyWire Wash Trading Detection",
       "httpStatus": 200,
-      "signalHash": "0xb8c5b0731f82c1db3e63f08ee946ac4678b056add910f1fdf18cc93935bb628d",
+      "signalHash": "0x91dd6b7cd959f3cf221f6279489817a8724428beaa8e276ee008058baf017e9e",
       "epochId": 2037,
       "resultShape": "raw",
       "rawResult": {
-        "as_of": "2026-11-07T21:42:54.443Z",
+        "as_of": "2026-11-07T21:46:51.616Z",
         "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
         "chain": "ethereum",
         "chain_id": 1,
@@ -240,7 +417,7 @@
         "window_blocks": 600
       },
       "signalStatus": "verified",
-      "receiptHash": "0x6a23f2a88345da6ad31db8ee6a63f5f34dc15cdf023bc915837dcc8379029260"
+      "receiptHash": "0xe270835f50fa5c2fe41f773477c478940681c38658b58937754a105e661afac4"
     }
   ],
   "stored": {
@@ -258,16 +435,19 @@
       {
         "adapterVersion": "0.1.0",
         "check": "holder_count",
-        "confidence": 0,
+        "confidence": 0.7,
         "evidence": {
-          "minerId": "9002"
+          "minerId": "9002",
+          "receiptHash": "0xa7de7b02476c55f236d96cb176f1ba22e6cabfdab226e73ad06d6a4c1c4b2514",
+          "signalHash": "0x993099eefb0b75c2d16ef9f5a2221a5367862330ccb4e73e9c5f1b76b11e3b27"
         },
-        "notes": [
-          "purchase_failed"
-        ],
+        "metric": "holders_count",
+        "notes": [],
         "severity": 0,
         "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
-        "status": "ERROR"
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 64
       },
       {
         "adapterVersion": "0.3.0",
@@ -275,8 +455,8 @@
         "confidence": 0.3,
         "evidence": {
           "minerId": "78021",
-          "receiptHash": "0xf97a5608bdb94882ff8e3b0435ce1928e55b0a4fb4033b1b6906d06296b58282",
-          "signalHash": "0xc17a224d7fac563361a2745fda41fe2cbf0db811831b22b50e303335422aa2f9"
+          "receiptHash": "0xfb008982c3a02a48e7ca7fe0981753e66390da331e904fca9fbb502dc8bcb91c",
+          "signalHash": "0xeca5833a3e188b803d786efd3ba666bc722ad3ecd7ec8efeb818a1493b081e23"
         },
         "notes": [
           "address_matching_unverified",
@@ -292,8 +472,8 @@
         "confidence": 0,
         "evidence": {
           "minerId": "7378",
-          "receiptHash": "0x6a23f2a88345da6ad31db8ee6a63f5f34dc15cdf023bc915837dcc8379029260",
-          "signalHash": "0xb8c5b0731f82c1db3e63f08ee946ac4678b056add910f1fdf18cc93935bb628d"
+          "receiptHash": "0xe270835f50fa5c2fe41f773477c478940681c38658b58937754a105e661afac4",
+          "signalHash": "0x91dd6b7cd959f3cf221f6279489817a8724428beaa8e276ee008058baf017e9e"
         },
         "notes": [
           "no_transfers_in_window"
@@ -305,16 +485,21 @@
       {
         "adapterVersion": "0.4.0",
         "check": "contract_audit",
-        "confidence": 0,
+        "confidence": 0.7,
         "evidence": {
-          "minerId": "200001"
+          "minerId": "200001",
+          "receiptHash": "0x3b013df33049e8784fce53ba7538be5b872441a785e6bdac435b6bc986f136b7",
+          "signalHash": "0x0b74b6d4320c6d507f033457b82e44e836dfef522e486e45b8cc4dda6a779144"
         },
         "notes": [
-          "purchase_failed"
+          "hidden_owner",
+          "is_blacklisted",
+          "is_honeypot",
+          "slippage_modifiable"
         ],
-        "severity": 0,
+        "severity": 3,
         "sourceGroup": "gopluslabs.io",
-        "status": "ERROR"
+        "status": "FAIL"
       },
       {
         "check": "code_review",
@@ -351,18 +536,181 @@
       {
         "check": "contract_audit",
         "adapterVersion": "0.4.0",
+        "rawResult": {
+          "code": 1,
+          "message": "OK",
+          "result": {
+            "0xe52bdd1fc98cd6c0cd544c0187129c20d4545c7f": {
+              "anti_whale_modifiable": "0",
+              "buy_tax": "0",
+              "can_take_back_ownership": "0",
+              "cannot_buy": "0",
+              "creator_address": "0x4bafd8c32d9a8585af0bb6872482a76150f528b7",
+              "creator_balance": "0",
+              "creator_percent": "0.000000",
+              "dex": [
+                {
+                  "liquidity": "0.00000000",
+                  "liquidity_type": "UniV2",
+                  "name": "UniswapV2",
+                  "pair": "0x17ec8923bc576be2587adcdcab8d8de879d11c1d"
+                }
+              ],
+              "external_call": "1",
+              "hidden_owner": "1",
+              "holder_count": "64",
+              "holders": [
+                {
+                  "address": "0x17ec8923bc576be2587adcdcab8d8de879d11c1d",
+                  "balance": "38739354.415484597",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.387393544154845970",
+                  "tag": "UniswapV2"
+                },
+                {
+                  "address": "0xd1f212f438c1ce7dcaf6aee57503569d641add31",
+                  "balance": "4037220.05715752",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.040372200571575200",
+                  "tag": ""
+                },
+                {
+                  "address": "0x195e1a872447dc8250aa777ceba53e70cf1372fd",
+                  "balance": "3193671.327791367",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.031936713277913670",
+                  "tag": ""
+                },
+                {
+                  "address": "0x464fb0431f50a445b031025de77166fb7b6f7aa4",
+                  "balance": "2372652.383186545",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.023726523831865450",
+                  "tag": ""
+                },
+                {
+                  "address": "0x6cda49eda326422548b0432b4daa06861675e816",
+                  "balance": "2184060.382959826",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.021840603829598260",
+                  "tag": ""
+                },
+                {
+                  "address": "0xe37d148356957c490f0a01314b71cf60772a86e0",
+                  "balance": "2069503.466073374",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.020695034660733740",
+                  "tag": ""
+                },
+                {
+                  "address": "0x0deffea757b4057c431985dc29afd8654bae1e17",
+                  "balance": "2034865.370317076",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.020348653703170760",
+                  "tag": ""
+                },
+                {
+                  "address": "0x986e40318c7d52768bee5b20368a7f46fcd7c987",
+                  "balance": "2020745.743026968",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.020207457430269680",
+                  "tag": ""
+                },
+                {
+                  "address": "0x4027f4dabfbb616a8dcb19bb225b3cf17879c9a8",
+                  "balance": "2014455.804349754",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.020144558043497540",
+                  "tag": ""
+                },
+                {
+                  "address": "0xc9662500a5cff3466a1b0025e1bf3ac37f162b7f",
+                  "balance": "1964564.201241948",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.019645642012419480",
+                  "tag": ""
+                }
+              ],
+              "honeypot_with_same_creator": "0",
+              "is_anti_whale": "1",
+              "is_blacklisted": "1",
+              "is_honeypot": "1",
+              "is_in_dex": "1",
+              "is_mintable": "0",
+              "is_open_source": "1",
+              "is_proxy": "0",
+              "is_whitelisted": "1",
+              "lp_holder_count": "2",
+              "lp_holders": [
+                {
+                  "NFT_list": null,
+                  "address": "0x000000000000000000000000000000000000dead",
+                  "balance": "0.387298334620740688",
+                  "is_contract": 0,
+                  "is_locked": 1,
+                  "percent": "0.999999999999997418",
+                  "tag": "",
+                  "value": null
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0x0000000000000000000000000000000000000000",
+                  "balance": "0.000000000000001",
+                  "is_contract": 0,
+                  "is_locked": 1,
+                  "percent": "0.000000000000002581",
+                  "tag": "Null Address",
+                  "value": null
+                }
+              ],
+              "lp_total_supply": "0.387298334620741688",
+              "owner_address": "0x0000000000000000000000000000000000000000",
+              "owner_balance": "0",
+              "owner_change_balance": "0",
+              "owner_percent": "0.0",
+              "personal_slippage_modifiable": "0",
+              "selfdestruct": "0",
+              "sell_tax": "",
+              "slippage_modifiable": "1",
+              "token_name": "Tommi",
+              "token_symbol": "TOMMI",
+              "total_supply": "100000000",
+              "trading_cooldown": "0",
+              "transfer_pausable": "0",
+              "transfer_tax": "0"
+            }
+          }
+        },
         "sourceGroup": "gopluslabs.io",
         "minerId": "200001",
-        "httpStatus": 500,
-        "error": "server_error: HTTP 500: {\"error\":\"miner error 4029: too many requests\",\"intent\":\"SMART_CONTRACT_AUDIT_GENERAL\",\"miner_id\":\"200001\"}"
+        "receiptHash": "0x3b013df33049e8784fce53ba7538be5b872441a785e6bdac435b6bc986f136b7",
+        "signalHash": "0x0b74b6d4320c6d507f033457b82e44e836dfef522e486e45b8cc4dda6a779144",
+        "httpStatus": 200
       },
       {
         "check": "holder_count",
         "adapterVersion": "0.1.0",
+        "rawResult": {
+          "token": "0xe52bdd1fc98cd6c0cd544c0187129c20d4545c7f",
+          "chain": "ethereum",
+          "holders_count": 64,
+          "token_symbol": "TOMMI"
+        },
         "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
         "minerId": "9002",
-        "httpStatus": 503,
-        "error": "server_error: expected 402, got 503: {\"error\":\"could not route this question now, try again later\"}"
+        "receiptHash": "0xa7de7b02476c55f236d96cb176f1ba22e6cabfdab226e73ad06d6a4c1c4b2514",
+        "signalHash": "0x993099eefb0b75c2d16ef9f5a2221a5367862330ccb4e73e9c5f1b76b11e3b27",
+        "httpStatus": 200
       },
       {
         "check": "sanctions",
@@ -375,15 +723,15 @@
         },
         "sourceGroup": "13.237.89.59",
         "minerId": "78021",
-        "receiptHash": "0xf97a5608bdb94882ff8e3b0435ce1928e55b0a4fb4033b1b6906d06296b58282",
-        "signalHash": "0xc17a224d7fac563361a2745fda41fe2cbf0db811831b22b50e303335422aa2f9",
+        "receiptHash": "0xfb008982c3a02a48e7ca7fe0981753e66390da331e904fca9fbb502dc8bcb91c",
+        "signalHash": "0xeca5833a3e188b803d786efd3ba666bc722ad3ecd7ec8efeb818a1493b081e23",
         "httpStatus": 200
       },
       {
         "check": "wash_trading",
         "adapterVersion": "0.3.0",
         "rawResult": {
-          "as_of": "2026-11-07T21:42:54.443Z",
+          "as_of": "2026-11-07T21:46:51.616Z",
           "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
           "chain": "ethereum",
           "chain_id": 1,
@@ -399,8 +747,8 @@
         },
         "sourceGroup": "margyn.workers.dev",
         "minerId": "7378",
-        "receiptHash": "0x6a23f2a88345da6ad31db8ee6a63f5f34dc15cdf023bc915837dcc8379029260",
-        "signalHash": "0xb8c5b0731f82c1db3e63f08ee946ac4678b056add910f1fdf18cc93935bb628d",
+        "receiptHash": "0xe270835f50fa5c2fe41f773477c478940681c38658b58937754a105e661afac4",
+        "signalHash": "0x91dd6b7cd959f3cf221f6279489817a8724428beaa8e276ee008058baf017e9e",
         "httpStatus": 200
       }
     ],
@@ -437,10 +785,12 @@
       }
     ],
     "receipts": [
-      "0xf97a5608bdb94882ff8e3b0435ce1928e55b0a4fb4033b1b6906d06296b58282",
-      "0x6a23f2a88345da6ad31db8ee6a63f5f34dc15cdf023bc915837dcc8379029260"
+      "0x3b013df33049e8784fce53ba7538be5b872441a785e6bdac435b6bc986f136b7",
+      "0xa7de7b02476c55f236d96cb176f1ba22e6cabfdab226e73ad06d6a4c1c4b2514",
+      "0xfb008982c3a02a48e7ca7fe0981753e66390da331e904fca9fbb502dc8bcb91c",
+      "0xe270835f50fa5c2fe41f773477c478940681c38658b58937754a105e661afac4"
     ],
-    "verdictHash": "0x1813103fac434de19847c3356bd81cb9989d96f01019c4cb78ca574a0e6aa29f",
-    "bomRoot": "0xd7649cd14f9c07dd1518b6a045f885edd32fe035893d50a81c49d48a94723e1d"
+    "verdictHash": "0x50abe7c0370432ac1097400e4f4ad2bc67a2aa634e728b063d6f49f408a78faa",
+    "bomRoot": "0x9decd3caa06287edf5bd752551240ff6057a2695d14ea1e8cb67fbf44396c53b"
   }
 }
