@@ -60,6 +60,14 @@ export function createServer(store: Store, cfg: SniperConfig, meta: { rail: stri
     c.header("cache-control", "no-store");
     return c.json(await buildFeed(store, cfg, meta));
   });
+  // Every decided token since a time, for the evaluation's prospective set
+  // (eval-tools prospective): the feed keeps only the latest 100.
+  app.get("/checked.json", async (c) => {
+    const since = Date.parse(c.req.query("since") ?? "");
+    const from = Number.isFinite(since) ? new Date(since) : new Date(Date.now() - 30 * 86_400_000);
+    const rows = await store.checkedSince(from, 5000);
+    return c.json({ since: from.toISOString(), count: rows.length, tokens: rows.map((r) => ({ ...r, change: changeSinceCheck(r) })) });
+  });
   app.get("/", (c) => c.html(dashboard(meta.skeinWeb)));
   return app;
 }

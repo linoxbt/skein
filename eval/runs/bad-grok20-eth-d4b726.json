@@ -1,0 +1,736 @@
+{
+  "caseId": "bad-grok20-eth-d4b726",
+  "policyRef": "dex-list@0.2.0",
+  "wallMs": 4664,
+  "verdict": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 1,
+      "token": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4"
+    },
+    "decision": {
+      "verdict": "ABSTAIN",
+      "verdictCode": 0,
+      "riskBps": 6489,
+      "confidenceBps": 0,
+      "coverageBps": 4700,
+      "reasons": [
+        {
+          "code": "MISSING_REQUIRED_CHECK",
+          "check": "liquidity_depth",
+          "detail": "required check liquidity_depth is UNAVAILABLE"
+        },
+        {
+          "code": "CONTRACT_AUDIT_WARN",
+          "check": "contract_audit",
+          "detail": "contract_audit WARN is_open_source source_not_verified"
+        },
+        {
+          "code": "HOLDER_COUNT_FAIL",
+          "check": "holder_count",
+          "detail": "holders_count=10 < 50"
+        }
+      ],
+      "openRisks": [
+        "liquidity_depth UNAVAILABLE",
+        "wash_trading UNKNOWN",
+        "social_bots UNAVAILABLE",
+        "code_review UNAVAILABLE"
+      ],
+      "conflicts": []
+    },
+    "summary": "Abstained: required check liquidity_depth is UNAVAILABLE (+2 more).",
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0xbe724f5ba97a8a02f6dca5ee10b77bbc7c0bf9b88259b883a423e9e77a8b586e",
+          "signalHash": "0xf13b3fb7d9375787d382fef630d514a7d4163cc57a8a173307c6dc0bafc1c75f"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 10
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0xb17ad76e4d2c86d45c3dfd70d4784a16146481d585839cb781bc261aad446322",
+          "signalHash": "0x6b2888830cd3d39c7cdfac5d298e950ddf61ea1e2c5ccafb1e65229b1378ab49"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x8c7e725e45549ac795b9b73e2729ea25548cd7774f52a7a5bac636a026d9003d",
+          "signalHash": "0x2010d3eb727cc398845a3bed154b4df81995324a1e3a39f9b9c39b0a50bb6b5f"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "contract_audit",
+        "confidence": 0.6,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0xaf553f2a2090f7c42f9015c45f83db6f6937973e586353ec95fa9b3aa84fe4b6",
+          "signalHash": "0xba78f378fd2cdd1b2cc5921509458118e5bc83eb8352bc2f78caf141acfde68c"
+        },
+        "notes": [
+          "is_open_source",
+          "source_not_verified"
+        ],
+        "severity": 2,
+        "sourceGroup": "gopluslabs.io",
+        "status": "WARN"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "notes": [
+          "no_pool_found"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "verdictHash": "0xba7334c2bff69c88b03a2b5dcce03bb99609e1d77569bc4151b810328c26c751",
+    "bom": {
+      "root": "0xc0aac9ea669e5d12306f0f1e7245bea0df9c3840ba71ccf87c41a2d5859e366d",
+      "items": 4
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "intent": "SMART_CONTRACT_AUDIT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 2313,
+      "attempts": 1,
+      "sourceGroup": "gopluslabs.io",
+      "adapterVersion": "0.4.0",
+      "createdAt": "2026-11-07T21:42:33.291Z",
+      "minerId": "200001",
+      "minerName": "GoPlus Security",
+      "httpStatus": 200,
+      "signalHash": "0xba78f378fd2cdd1b2cc5921509458118e5bc83eb8352bc2f78caf141acfde68c",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "code": 1,
+        "message": "OK",
+        "result": {
+          "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4": {
+            "buy_tax": "0",
+            "cannot_buy": "0",
+            "creator_address": "0x6b140e79db4d9bbd80e5b688f42d1fcf8ef97798",
+            "creator_balance": "989586932.343205039930502278",
+            "creator_percent": "0.989587",
+            "dex": [
+              {
+                "liquidity": "0.00000000",
+                "liquidity_type": "UniV2",
+                "name": "UniswapV2",
+                "pair": "0x086edea4c615d38a0f797339d832a802cf017b17"
+              }
+            ],
+            "holder_count": "10",
+            "holders": [
+              {
+                "address": "0x6b140e79db4d9bbd80e5b688f42d1fcf8ef97798",
+                "balance": "989586932.343205039930502278",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.989586932343205039",
+                "tag": ""
+              },
+              {
+                "address": "0x27da5d003bb7339da05571e0d35d78a7b2de66ce",
+                "balance": "3970294.941850612387033453",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.003970294941850612",
+                "tag": ""
+              },
+              {
+                "address": "0x5bcf019401558816914c3e766922a40718bf6744",
+                "balance": "3143900.677326408383869766",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.003143900677326408",
+                "tag": ""
+              },
+              {
+                "address": "0x1497d022059c107a85633999d94664310da8fa22",
+                "balance": "1033790.749070034357130391",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.001033790749070034",
+                "tag": ""
+              },
+              {
+                "address": "0x9f4126cf3884500faca7f615bee074c36f6f4668",
+                "balance": "770077.354166958847097145",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000770077354166958",
+                "tag": ""
+              },
+              {
+                "address": "0xd631e727f5b0f7551e11ec1e98994bfc0835cd8e",
+                "balance": "587312.337272586229830774",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000587312337272586",
+                "tag": ""
+              },
+              {
+                "address": "0x355bda4e34dfeacbab8ecc36baf65ea94f5f1e5d",
+                "balance": "483172.109742090611677038",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000483172109742090",
+                "tag": ""
+              },
+              {
+                "address": "0x2d9fce8db71a03498e81cae27638743d214f762b",
+                "balance": "330617.926743356361042737",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000330617926743356",
+                "tag": ""
+              },
+              {
+                "address": "0x536d4a2e1f06a115d4af7296db6bb4a86a38c0d1",
+                "balance": "93901.560622912889917764",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000093901560622912",
+                "tag": ""
+              },
+              {
+                "address": "0x086edea4c615d38a0f797339d832a802cf017b17",
+                "balance": "0.000000000001898654",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.000000000000000000",
+                "tag": "UniswapV2"
+              }
+            ],
+            "honeypot_with_same_creator": "0",
+            "is_in_dex": "1",
+            "is_open_source": "0",
+            "lp_holder_count": "1",
+            "lp_holders": [
+              {
+                "NFT_list": null,
+                "address": "0x0000000000000000000000000000000000000000",
+                "balance": "0.000000000000001",
+                "is_contract": 0,
+                "is_locked": 1,
+                "percent": "1.000000000000000000",
+                "tag": "Null Address",
+                "value": null
+              }
+            ],
+            "lp_total_supply": "0.000000000000001",
+            "owner_address": "",
+            "sell_tax": "",
+            "token_name": "GROK 2.0",
+            "token_symbol": "GROK2.0",
+            "total_supply": "1000000000",
+            "transfer_tax": ""
+          }
+        }
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xaf553f2a2090f7c42f9015c45f83db6f6937973e586353ec95fa9b3aa84fe4b6"
+    },
+    {
+      "check": "holder_count",
+      "intent": "TOKEN_HOLDER_COUNT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 4343,
+      "attempts": 1,
+      "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+      "adapterVersion": "0.1.0",
+      "createdAt": "2026-11-07T21:42:35.318Z",
+      "minerId": "9002",
+      "minerName": "TxLens",
+      "httpStatus": 200,
+      "signalHash": "0xf13b3fb7d9375787d382fef630d514a7d4163cc57a8a173307c6dc0bafc1c75f",
+      "epochId": 2037,
+      "resultShape": "intent",
+      "rawResult": {
+        "token": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4",
+        "chain": "ethereum",
+        "holders_count": 10,
+        "token_symbol": "GROK2.0"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xbe724f5ba97a8a02f6dca5ee10b77bbc7c0bf9b88259b883a423e9e77a8b586e"
+    },
+    {
+      "check": "sanctions",
+      "intent": "SANCTIONS_SCREENING_MATCH_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 672,
+      "attempts": 1,
+      "sourceGroup": "13.237.89.59",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-07T21:42:31.650Z",
+      "minerId": "78021",
+      "minerName": "OFAC SDN Entity Screen",
+      "httpStatus": 200,
+      "signalHash": "0x6b2888830cd3d39c7cdfac5d298e950ddf61ea1e2c5ccafb1e65229b1378ab49",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "entity": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4",
+        "on_list": 0,
+        "sanctioned": 0,
+        "source": "ofac_sdn_xml"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xb17ad76e4d2c86d45c3dfd70d4784a16146481d585839cb781bc261aad446322"
+    },
+    {
+      "check": "wash_trading",
+      "intent": "WASH_TRADING_DETECTION_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 1223,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-07T21:42:32.220Z",
+      "minerId": "7378",
+      "minerName": "VerifyWire Wash Trading Detection",
+      "httpStatus": 200,
+      "signalHash": "0x2010d3eb727cc398845a3bed154b4df81995324a1e3a39f9b9c39b0a50bb6b5f",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-07T21:42:31.851Z",
+        "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+        "chain": "ethereum",
+        "chain_id": 1,
+        "confidence": 0.5,
+        "contract_address": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4",
+        "intent": "WASH_TRADING_DETECTION",
+        "source": "eth_getLogs Transfer events over public RPC",
+        "summary": "No ERC-20 transfers of GROK2.0 were found in the last 600 blocks on Ethereum, so there is no activity to assess for wash-trading patterns in this window.",
+        "symbol": "GROK2.0",
+        "transfers": 0,
+        "verified": false,
+        "window_blocks": 600
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x8c7e725e45549ac795b9b73e2729ea25548cd7774f52a7a5bac636a026d9003d"
+    }
+  ],
+  "stored": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 1,
+      "token": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4"
+    },
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0xbe724f5ba97a8a02f6dca5ee10b77bbc7c0bf9b88259b883a423e9e77a8b586e",
+          "signalHash": "0xf13b3fb7d9375787d382fef630d514a7d4163cc57a8a173307c6dc0bafc1c75f"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 10
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0xb17ad76e4d2c86d45c3dfd70d4784a16146481d585839cb781bc261aad446322",
+          "signalHash": "0x6b2888830cd3d39c7cdfac5d298e950ddf61ea1e2c5ccafb1e65229b1378ab49"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x8c7e725e45549ac795b9b73e2729ea25548cd7774f52a7a5bac636a026d9003d",
+          "signalHash": "0x2010d3eb727cc398845a3bed154b4df81995324a1e3a39f9b9c39b0a50bb6b5f"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "contract_audit",
+        "confidence": 0.6,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0xaf553f2a2090f7c42f9015c45f83db6f6937973e586353ec95fa9b3aa84fe4b6",
+          "signalHash": "0xba78f378fd2cdd1b2cc5921509458118e5bc83eb8352bc2f78caf141acfde68c"
+        },
+        "notes": [
+          "is_open_source",
+          "source_not_verified"
+        ],
+        "severity": 2,
+        "sourceGroup": "gopluslabs.io",
+        "status": "WARN"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "notes": [
+          "no_pool_found"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "purchases": [
+      {
+        "check": "contract_audit",
+        "adapterVersion": "0.4.0",
+        "rawResult": {
+          "code": 1,
+          "message": "OK",
+          "result": {
+            "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4": {
+              "buy_tax": "0",
+              "cannot_buy": "0",
+              "creator_address": "0x6b140e79db4d9bbd80e5b688f42d1fcf8ef97798",
+              "creator_balance": "989586932.343205039930502278",
+              "creator_percent": "0.989587",
+              "dex": [
+                {
+                  "liquidity": "0.00000000",
+                  "liquidity_type": "UniV2",
+                  "name": "UniswapV2",
+                  "pair": "0x086edea4c615d38a0f797339d832a802cf017b17"
+                }
+              ],
+              "holder_count": "10",
+              "holders": [
+                {
+                  "address": "0x6b140e79db4d9bbd80e5b688f42d1fcf8ef97798",
+                  "balance": "989586932.343205039930502278",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.989586932343205039",
+                  "tag": ""
+                },
+                {
+                  "address": "0x27da5d003bb7339da05571e0d35d78a7b2de66ce",
+                  "balance": "3970294.941850612387033453",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.003970294941850612",
+                  "tag": ""
+                },
+                {
+                  "address": "0x5bcf019401558816914c3e766922a40718bf6744",
+                  "balance": "3143900.677326408383869766",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.003143900677326408",
+                  "tag": ""
+                },
+                {
+                  "address": "0x1497d022059c107a85633999d94664310da8fa22",
+                  "balance": "1033790.749070034357130391",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.001033790749070034",
+                  "tag": ""
+                },
+                {
+                  "address": "0x9f4126cf3884500faca7f615bee074c36f6f4668",
+                  "balance": "770077.354166958847097145",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000770077354166958",
+                  "tag": ""
+                },
+                {
+                  "address": "0xd631e727f5b0f7551e11ec1e98994bfc0835cd8e",
+                  "balance": "587312.337272586229830774",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000587312337272586",
+                  "tag": ""
+                },
+                {
+                  "address": "0x355bda4e34dfeacbab8ecc36baf65ea94f5f1e5d",
+                  "balance": "483172.109742090611677038",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000483172109742090",
+                  "tag": ""
+                },
+                {
+                  "address": "0x2d9fce8db71a03498e81cae27638743d214f762b",
+                  "balance": "330617.926743356361042737",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000330617926743356",
+                  "tag": ""
+                },
+                {
+                  "address": "0x536d4a2e1f06a115d4af7296db6bb4a86a38c0d1",
+                  "balance": "93901.560622912889917764",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000093901560622912",
+                  "tag": ""
+                },
+                {
+                  "address": "0x086edea4c615d38a0f797339d832a802cf017b17",
+                  "balance": "0.000000000001898654",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.000000000000000000",
+                  "tag": "UniswapV2"
+                }
+              ],
+              "honeypot_with_same_creator": "0",
+              "is_in_dex": "1",
+              "is_open_source": "0",
+              "lp_holder_count": "1",
+              "lp_holders": [
+                {
+                  "NFT_list": null,
+                  "address": "0x0000000000000000000000000000000000000000",
+                  "balance": "0.000000000000001",
+                  "is_contract": 0,
+                  "is_locked": 1,
+                  "percent": "1.000000000000000000",
+                  "tag": "Null Address",
+                  "value": null
+                }
+              ],
+              "lp_total_supply": "0.000000000000001",
+              "owner_address": "",
+              "sell_tax": "",
+              "token_name": "GROK 2.0",
+              "token_symbol": "GROK2.0",
+              "total_supply": "1000000000",
+              "transfer_tax": ""
+            }
+          }
+        },
+        "sourceGroup": "gopluslabs.io",
+        "minerId": "200001",
+        "receiptHash": "0xaf553f2a2090f7c42f9015c45f83db6f6937973e586353ec95fa9b3aa84fe4b6",
+        "signalHash": "0xba78f378fd2cdd1b2cc5921509458118e5bc83eb8352bc2f78caf141acfde68c",
+        "httpStatus": 200
+      },
+      {
+        "check": "holder_count",
+        "adapterVersion": "0.1.0",
+        "rawResult": {
+          "token": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4",
+          "chain": "ethereum",
+          "holders_count": 10,
+          "token_symbol": "GROK2.0"
+        },
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "minerId": "9002",
+        "receiptHash": "0xbe724f5ba97a8a02f6dca5ee10b77bbc7c0bf9b88259b883a423e9e77a8b586e",
+        "signalHash": "0xf13b3fb7d9375787d382fef630d514a7d4163cc57a8a173307c6dc0bafc1c75f",
+        "httpStatus": 200
+      },
+      {
+        "check": "sanctions",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "entity": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4",
+          "on_list": 0,
+          "sanctioned": 0,
+          "source": "ofac_sdn_xml"
+        },
+        "sourceGroup": "13.237.89.59",
+        "minerId": "78021",
+        "receiptHash": "0xb17ad76e4d2c86d45c3dfd70d4784a16146481d585839cb781bc261aad446322",
+        "signalHash": "0x6b2888830cd3d39c7cdfac5d298e950ddf61ea1e2c5ccafb1e65229b1378ab49",
+        "httpStatus": 200
+      },
+      {
+        "check": "wash_trading",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "as_of": "2026-11-07T21:42:31.851Z",
+          "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+          "chain": "ethereum",
+          "chain_id": 1,
+          "confidence": 0.5,
+          "contract_address": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4",
+          "intent": "WASH_TRADING_DETECTION",
+          "source": "eth_getLogs Transfer events over public RPC",
+          "summary": "No ERC-20 transfers of GROK2.0 were found in the last 600 blocks on Ethereum, so there is no activity to assess for wash-trading patterns in this window.",
+          "symbol": "GROK2.0",
+          "transfers": 0,
+          "verified": false,
+          "window_blocks": 600
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7378",
+        "receiptHash": "0x8c7e725e45549ac795b9b73e2729ea25548cd7774f52a7a5bac636a026d9003d",
+        "signalHash": "0x2010d3eb727cc398845a3bed154b4df81995324a1e3a39f9b9c39b0a50bb6b5f",
+        "httpStatus": 200
+      }
+    ],
+    "unpurchased": [
+      {
+        "check": "code_review",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_repo_url"
+        ]
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_pool_found"
+        ]
+      },
+      {
+        "check": "social_bots",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_social_handle"
+        ]
+      }
+    ],
+    "receipts": [
+      "0xaf553f2a2090f7c42f9015c45f83db6f6937973e586353ec95fa9b3aa84fe4b6",
+      "0xbe724f5ba97a8a02f6dca5ee10b77bbc7c0bf9b88259b883a423e9e77a8b586e",
+      "0xb17ad76e4d2c86d45c3dfd70d4784a16146481d585839cb781bc261aad446322",
+      "0x8c7e725e45549ac795b9b73e2729ea25548cd7774f52a7a5bac636a026d9003d"
+    ],
+    "verdictHash": "0xba7334c2bff69c88b03a2b5dcce03bb99609e1d77569bc4151b810328c26c751",
+    "bomRoot": "0xc0aac9ea669e5d12306f0f1e7245bea0df9c3840ba71ccf87c41a2d5859e366d"
+  }
+}

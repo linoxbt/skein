@@ -36,6 +36,8 @@ export interface TokenRecord {
   latencyMs?: number | null;
   /** The paper position: entry price at the check, and the latest price. */
   priceAtCheck?: number | null;
+  /** Liquidity when the verdict was bought; liquidityUsd is refreshed on every re-price. */
+  liquidityAtCheck?: number | null;
   priceNow?: number | null;
   priceAt?: string | null;
   note?: string | null;
