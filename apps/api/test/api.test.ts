@@ -27,6 +27,7 @@ const ANSWERS: Record<string, unknown> = {
   "200001": { result: { [TOKEN]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
   "78021": { on_list: false },
   "7373": { liquidity_usd: 4_500_000 },
+  "9002": { holders_count: 120_000 },
   "7302": { holders_count: 120_000 },
   "7378": { verdict: "organic", wash_volume_pct: 3 },
   "7457": { verdict: "human" },

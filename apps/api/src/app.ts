@@ -27,7 +27,8 @@ const contextSchema = z
     deployer: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
     repoUrl: z.string().url().max(300).refine((u) => /^https:\/\/(github\.com|gitlab\.com)\//.test(u), "repoUrl must be on github.com or gitlab.com").optional(),
     socialHandle: z.string().regex(/^@?[A-Za-z0-9_]{1,30}$/).optional(),
-    pool: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+    // A pool address, or a Uniswap v4 pool id.
+    pool: z.string().regex(/^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/).optional(),
   })
   .strict();
 

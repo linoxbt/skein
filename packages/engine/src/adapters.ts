@@ -289,7 +289,7 @@ function answeredPool(raw: unknown): string | undefined {
  * about. A fallback miner's default pool on another chain is not this token's
  * liquidity.
  */
-export const liquidityDepth: Adapter = {
+const liquidityDepthV3: Adapter = {
   ...liquidityDepthV2,
   version: "0.3.0",
   adapt(raw, ctx) {
@@ -299,6 +299,34 @@ export const liquidityDepth: Adapter = {
     }
     const f = liquidityDepthV2.adapt(raw, ctx);
     return { ...f, adapterVersion: "0.3.0" };
+  },
+};
+
+/** As answeredPool, but a Uniswap v4 pool id (32 bytes) is recognised too. */
+function answeredPoolId(raw: unknown): string | undefined {
+  for (const name of ["pool_address", "pool", "address", "id"]) {
+    const v = pick(raw, name);
+    if (typeof v !== "string" || v.length > MAX_STRING) continue;
+    const m = /(?:^|[^0-9a-zA-Z])(0x(?:[0-9a-fA-F]{64}|[0-9a-fA-F]{40}))$/.exec(v.trim());
+    if (m) return m[1]!.toLowerCase();
+  }
+  return undefined;
+}
+
+/**
+ * 0.4.0: pools may be Uniswap v4 pool ids. 0.3.0 recognised only 20-byte
+ * addresses, so an answer naming another v4 pool went unchecked.
+ */
+export const liquidityDepth: Adapter = {
+  ...liquidityDepthV2,
+  version: "0.4.0",
+  adapt(raw, ctx) {
+    const named = isObject(raw) ? answeredPoolId(raw) : undefined;
+    if (named && ctx.pool && named !== ctx.pool.toLowerCase() && !ctx.error) {
+      return unknown({ check: "liquidity_depth", version: "0.4.0", ctx }, "answer_for_other_pool");
+    }
+    const f = liquidityDepthV2.adapt(raw, ctx);
+    return { ...f, adapterVersion: "0.4.0" };
   },
 };
 
@@ -537,6 +565,7 @@ export const contractAudit: Adapter = {
 
 /** Superseded versions stay registered so verdicts stored with them still replay. */
 const SUPERSEDED: readonly Adapter[] = [
+  liquidityDepthV3,
   contractAuditV2,
   washTradingV1,
   contractAuditV1,

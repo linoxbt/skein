@@ -31,7 +31,7 @@ describe("adapter versions", () => {
   const PUBLISHED = [
     "contract_audit@0.1.0", "contract_audit@0.2.0", "contract_audit@0.3.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
     "sanctions@0.1.0", "sanctions@0.2.0", "sanctions@0.3.0", "wash_trading@0.1.0", "wash_trading@0.2.0",
-    "liquidity_depth@0.1.0", "liquidity_depth@0.2.0", "liquidity_depth@0.3.0", "social_bots@0.1.0", "code_review@0.1.0",
+    "liquidity_depth@0.1.0", "liquidity_depth@0.2.0", "liquidity_depth@0.3.0", "liquidity_depth@0.4.0", "social_bots@0.1.0", "code_review@0.1.0",
   ];
   it("every published version is still registered, and each check has exactly one current adapter", () => {
     expect(ALL_ADAPTER_VERSIONS.map((a) => `${a.check}@${a.version}`).sort()).toEqual([...PUBLISHED].sort());
@@ -180,6 +180,14 @@ describe("liquidity on the pool asked about (0.3.0)", () => {
   it("refuses another pool's reserve, accepts its own or an unnamed one", () => {
     expect(liquidityDepth.adapt({ data: { id: "eth_0x3333333333333333333333333333333333333333", attributes: { reserve_in_usd: "5000000" } } }, { ...ctx, pool })).toMatchObject({ status: "UNKNOWN", notes: ["answer_for_other_pool"] });
     expect(liquidityDepth.adapt({ data: { id: `base_${pool}`, attributes: { reserve_in_usd: "5000000" } } }, { ...ctx, pool })).toMatchObject({ status: "PASS", value: 5_000_000 });
-    expect(liquidityDepth.adapt({ liquidity_usd: 120 }, { ...ctx, pool })).toMatchObject({ status: "PASS", value: 120, adapterVersion: "0.3.0" });
+    expect(liquidityDepth.adapt({ liquidity_usd: 120 }, { ...ctx, pool })).toMatchObject({ status: "PASS", value: 120, adapterVersion: "0.4.0" });
+  });
+  it("checks the pool a Uniswap v4 answer names (0.4.0)", () => {
+    const v4 = "0x21f38fe7da45583cde008d5a876be882e515f61819a2ccfc9e657bafb1a20317";
+    const gecko = { data: { id: `base_${v4}`, attributes: { reserve_in_usd: "21220.11" } } };
+    expect(liquidityDepth.adapt(gecko, { ...ctx, pool: v4 })).toMatchObject({ status: "PASS", value: 21220.11 });
+    const other = { ...gecko, data: { ...gecko.data, id: `base_0x${"ab".repeat(32)}` } };
+    expect(liquidityDepth.adapt(other, { ...ctx, pool: v4 }).notes).toEqual(["answer_for_other_pool"]);
+    expect(adapterFor("liquidity_depth", "0.3.0").adapt(other, { ...ctx, pool: v4 }).status).toBe("PASS"); // what 0.3.0 did
   });
 });

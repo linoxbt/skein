@@ -59,6 +59,18 @@ describe("the cache", () => {
   });
 });
 
+describe("context", () => {
+  it("takes a pool address or a Uniswap v4 pool id, and nothing else", async () => {
+    const { post } = client(api);
+    for (const pool of [`0x${"a".repeat(40)}`, `0x${"b".repeat(64)}`]) {
+      expect((await post({ subject: { chainId: 8453, token: tok() }, context: { pool } })).status, pool).not.toBe(400);
+    }
+    for (const pool of [`0x${"c".repeat(50)}`, `0x${"d".repeat(63)}`, "pool"]) {
+      expect((await post({ subject: { chainId: 8453, token: tok() }, context: { pool } })).status, pool).toBe(400);
+    }
+  }, 30_000);
+});
+
 describe("spend caps", () => {
   it("concurrent verdicts cannot spend past the daily cap together", async () => {
     const capped = await simulatedApi({ fast: true, env: {}, config: { dailyCapUusdc: 300_000, perVerdictCapUusdc: 100_000 } });
