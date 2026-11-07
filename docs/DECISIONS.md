@@ -406,3 +406,21 @@ on paper: buying real Base tokens would be real money, and the event is
 testnet. Railway applied the repository-root `railway.json` (the API's
 Dockerfile) to every service from the repo, so the first sniper deploy ran a
 second API; each service now carries its own build settings and the file is gone.
+
+**L24. A paid answer that cannot be used buys the next miner, from what the cap
+has left.** On fresh Base launches (2026-11-07) the sniper's verdicts were
+ABSTAIN because a required check came back paid, receipted and empty: Blockscout
+had no holder count yet for a 3-hour-old token (7302, `holders: null`). Any
+check whose answer adapts to UNKNOWN now tries its next allowlisted miner
+(holder count: TxLens 9002 first, which counted that token, then 7302), but
+only in a second round, once every first answer is in, in plan order, and
+only from the cap the first round left unspent. So a retry never takes
+another check's share, a verdict still never spends past its cap, and a
+check with nothing left to spend on simply stays UNKNOWN. Both answers are
+recorded and receipted; the engine already read one PASS beside one UNKNOWN as
+an answered check. ERROR (a failed or unreceipted purchase) is not retried.
+Miner 900 was dropped from holder count: it was charged for an upstream
+failure (its Etherscan plan does not cover Base). Uniswap v4 pools have a
+32-byte id, not an address; the resolver, the API's `context.pool` and the
+sniper now accept one (7373 and 77081 both answered for a v4 id), and
+`liquidity_depth@0.4.0` checks the v4 pool an answer names.

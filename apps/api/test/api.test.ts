@@ -27,6 +27,7 @@ const ANSWERS: Record<string, unknown> = {
   "200001": { result: { [TOKEN]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
   "78021": { on_list: false },
   "7373": { liquidity_usd: 4_500_000 },
+  "9002": { holders_count: 120_000 },
   "7302": { holders_count: 120_000 },
   "7378": { verdict: "organic", wash_volume_pct: 3 },
   "7457": { verdict: "human" },
@@ -153,7 +154,7 @@ describe("read-only routes", () => {
     expect(s).toMatchObject({ network: "eip155:11155111" });
     expect(s.intents.find((i: { check: string }) => i.check === "holder_concentration")).toMatchObject({ intent: null, activeMiners: 0 });
     const ps = await j(app.request("/v1/policies"));
-    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
+    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "agent-pretrade@0.2.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
     await post(body);
     const l = await j(app.request("/v1/ledger"));
     expect(l).toMatchObject({ verdicts: { APPROVE: 1 }, upstreamSpendUsdc: 0.06, receipts: 6, minersUsed: 6 });

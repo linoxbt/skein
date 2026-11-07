@@ -18,6 +18,7 @@ const CLEAN: Record<string, unknown> = {
   "200001": { code: 1, result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", is_mintable: "0", buy_tax: "0", sell_tax: "0" } } },
   "78021": { on_list: false, entity: "0x1111111111111111111111111111111111111111" },
   "7373": { liquidity_usd: 4_500_000 },
+  "9002": { holders_count: 120_000 },
   "7302": { holders_count: 120_000 },
   "7378": { verdict: "organic", wash_volume_pct: 3 },
   "7457": { verdict: "human" },
@@ -45,7 +46,7 @@ describe("runVerdict, end to end against a fake node", () => {
     expect(run.verdict.decision.verdict).toBe("APPROVE");
     expect(run.purchases.map((p) => [p.check, p.minerId, p.pinned])).toEqual([
       ["contract_audit", "200001", true],
-      ["holder_count", "7302", true],
+      ["holder_count", "9002", true],
       ["liquidity_depth", "7373", true],
       ["sanctions", "78021", true],
       ["social_bots", "7457", true],
@@ -57,7 +58,7 @@ describe("runVerdict, end to end against a fake node", () => {
     expect(run.purchases.reduce((a, p) => a + p.amountUusdc, 0)).toBe(60_000);
     // VerifyWire, ChainWire and TradeWire are one operator: one independence group.
     expect(run.purchases.filter((p) => p.sourceGroup === "margyn.workers.dev").map((p) => p.check)).toEqual([
-      "holder_count", "liquidity_depth", "social_bots", "wash_trading",
+      "liquidity_depth", "social_bots", "wash_trading",
     ]);
     expect(reproduce(run.stored, dex())).toMatchObject({ ok: true });
     expect(events[0]!.type).toBe("plan");
@@ -152,6 +153,41 @@ describe("runVerdict, end to end against a fake node", () => {
   });
 });
 
+describe("a paid answer that cannot be used", () => {
+  it("buys the next allowlisted miner after the first round, and the check is answered", async () => {
+    const { node, deps } = harness({ "9002": { kind: "answer", result: { holders_count: null }, resultShape: "intent" } });
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(run.ok).toBe(true);
+    if (!run.ok) return;
+    expect(run.purchases.filter((p) => p.check === "holder_count").map((p) => p.minerId)).toEqual(["9002", "7302"]);
+    expect(node.charges.map((c) => c.minerId).filter((m) => m === "9002" || m === "7302")).toEqual(["9002", "7302"]);
+    const hc = run.verdict.findings.filter((f) => f.check === "holder_count");
+    expect(hc.map((f) => f.status).sort()).toEqual(["PASS", "UNKNOWN"]);
+    expect(run.verdict.decision.verdict).toBe("APPROVE");
+    expect(run.verdict.bom.items).toBe(7);
+    expect(run.purchases.reduce((a, p) => a + p.amountUusdc, 0)).toBeLessThanOrEqual(run.plan.capUusdc);
+    expect(reproduce(run.stored, dex())).toMatchObject({ ok: true });
+  });
+
+  it("does not retry when the cap has nothing to spare", async () => {
+    const { node, deps } = harness({ "9002": { kind: "answer", result: { holders_count: null }, resultShape: "intent" } });
+    const probe = await runVerdict({ policy: dex(), subject, context }, harness().deps);
+    const exact = probe.ok ? probe.plan.estimateUusdc : 0;
+    const run = await runVerdict({ policy: dex(), subject, context, budgetUusdc: exact }, deps);
+    expect(run.ok).toBe(true);
+    if (!run.ok) return;
+    expect(run.purchases.filter((p) => p.check === "holder_count").map((p) => p.minerId)).toEqual(["9002"]);
+    expect(node.charges.map((c) => c.minerId)).not.toContain("7302");
+    expect(run.verdict.findings.find((f) => f.check === "holder_count")).toMatchObject({ status: "UNKNOWN", notes: ["missing_holders_count"] });
+  });
+
+  it("does not retry an answer that was usable", async () => {
+    const { node, deps } = harness();
+    await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(node.charges).toHaveLength(6);
+  });
+});
+
 describe("runVerdict spend safety", () => {
   it("never lets the 402s spend past the verdict's cap: each ask is capped at its allotment", async () => {
     const { deps } = harness();
@@ -208,7 +244,7 @@ describe("runVerdict spend safety", () => {
     const { node, deps } = harness();
     const ask = deps.client.ask.bind(deps.client);
     deps.client.ask = async (req, opts) => {
-      if (opts.minerId === "7302") throw new Error("signer exploded");
+      if (opts.minerId === "9002") throw new Error("signer exploded");
       return ask(req, opts);
     };
     const run = await runVerdict({ policy: dex(), subject, context }, deps);
@@ -231,7 +267,7 @@ describe("runVerdict spend safety", () => {
     const ask = deps.client.ask.bind(deps.client);
     deps.client.ask = async (req, opts) => {
       const out = await ask(req, opts);
-      return opts.minerId === "7302" && out.ok ? { ...out, receiptProblems: ["receipt payer 0xbb, expected 0xaa"] } : out;
+      return opts.minerId === "9002" && out.ok ? { ...out, receiptProblems: ["receipt payer 0xbb, expected 0xaa"] } : out;
     };
     const run = await runVerdict({ policy: dex(), subject, context }, deps);
     if (!run.ok) throw new Error("plan refused");

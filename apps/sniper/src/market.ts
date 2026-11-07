@@ -11,7 +11,7 @@ export interface Market {
   name: string | null;
   priceUsd: number | null;
   liquidityUsd: number;
-  /** The deepest pair's address, when it is a 0x address (v4 pools are ids). */
+  /** The deepest pair: a pool address, or a Uniswap v4 pool id. */
   pair: string | null;
   dex: string | null;
   url: string | null;
@@ -52,7 +52,8 @@ export function dexScreener(base = "https://api.dexscreener.com"): MarketSource 
             name: p.baseToken.name ?? null,
             priceUsd: p.priceUsd ? Number(p.priceUsd) : null,
             liquidityUsd: liq,
-            pair: /^0x[0-9a-fA-F]{40}$/.test(p.pairAddress) ? p.pairAddress.toLowerCase() : null,
+            // A pool address, or a Uniswap v4 pool id (Skein accepts both since 2026-11-07).
+            pair: /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/.test(p.pairAddress) ? p.pairAddress.toLowerCase() : null,
             dex: p.dexId,
             url: p.url ?? null,
           });

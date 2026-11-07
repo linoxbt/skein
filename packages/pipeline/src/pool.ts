@@ -5,6 +5,9 @@ export interface PoolResolver {
   resolve(chainId: number, token: string): Promise<string | null>;
 }
 
+/** A pool contract address, or a Uniswap v4 pool id (v4 pools live in one PoolManager). */
+export const POOL_ID = /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
+
 const DEXSCREENER_CHAIN: Record<string, string> = { ethereum: "ethereum", base: "base", bsc: "bsc", arbitrum: "arbitrum" };
 
 /**
@@ -26,7 +29,7 @@ export function dexScreenerResolver(fetchImpl: typeof fetch = fetch): PoolResolv
         if (!res.ok) return null;
         const body = (await res.json()) as { pairs?: { chainId?: string; pairAddress?: string; liquidity?: { usd?: number } }[] };
         const pairs = (body.pairs ?? []).filter(
-          (p) => p.chainId === chain && typeof p.pairAddress === "string" && /^0x[0-9a-fA-F]{40}$/.test(p.pairAddress),
+          (p) => p.chainId === chain && typeof p.pairAddress === "string" && POOL_ID.test(p.pairAddress),
         );
         pairs.sort((a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0));
         return pairs[0]?.pairAddress?.toLowerCase() ?? null;

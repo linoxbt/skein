@@ -213,7 +213,7 @@ const washTradingV1 = enumAdapter(
  * round trip, which stands in for wash_volume_pct so the policy threshold
  * grades it. The canonical verdict enum still wins when present.
  */
-export const washTrading: Adapter = {
+const washTradingV2: Adapter = {
   check: "wash_trading",
   version: "0.2.0",
   intent: "WASH_TRADING_DETECTION_GENERAL",
@@ -289,7 +289,7 @@ function answeredPool(raw: unknown): string | undefined {
  * about. A fallback miner's default pool on another chain is not this token's
  * liquidity.
  */
-export const liquidityDepth: Adapter = {
+const liquidityDepthV3: Adapter = {
   ...liquidityDepthV2,
   version: "0.3.0",
   adapt(raw, ctx) {
@@ -299,6 +299,34 @@ export const liquidityDepth: Adapter = {
     }
     const f = liquidityDepthV2.adapt(raw, ctx);
     return { ...f, adapterVersion: "0.3.0" };
+  },
+};
+
+/** As answeredPool, but a Uniswap v4 pool id (32 bytes) is recognised too. */
+function answeredPoolId(raw: unknown): string | undefined {
+  for (const name of ["pool_address", "pool", "address", "id"]) {
+    const v = pick(raw, name);
+    if (typeof v !== "string" || v.length > MAX_STRING) continue;
+    const m = /(?:^|[^0-9a-zA-Z])(0x(?:[0-9a-fA-F]{64}|[0-9a-fA-F]{40}))$/.exec(v.trim());
+    if (m) return m[1]!.toLowerCase();
+  }
+  return undefined;
+}
+
+/**
+ * 0.4.0: pools may be Uniswap v4 pool ids. 0.3.0 recognised only 20-byte
+ * addresses, so an answer naming another v4 pool went unchecked.
+ */
+export const liquidityDepth: Adapter = {
+  ...liquidityDepthV2,
+  version: "0.4.0",
+  adapt(raw, ctx) {
+    const named = isObject(raw) ? answeredPoolId(raw) : undefined;
+    if (named && ctx.pool && named !== ctx.pool.toLowerCase() && !ctx.error) {
+      return unknown({ check: "liquidity_depth", version: "0.4.0", ctx }, "answer_for_other_pool");
+    }
+    const f = liquidityDepthV2.adapt(raw, ctx);
+    return { ...f, adapterVersion: "0.4.0" };
   },
 };
 
@@ -504,7 +532,7 @@ const PRIVILEGE_FLAGS = [
  * six owner-privilege flags; it is then graded on them at lower confidence,
  * noted tax_not_reported. One benign flag on its own is still not an audit.
  */
-export const contractAudit: Adapter = {
+const contractAuditV3: Adapter = {
   check: "contract_audit",
   version: "0.3.0",
   intent: "SMART_CONTRACT_AUDIT_GENERAL",
@@ -535,8 +563,55 @@ export const contractAudit: Adapter = {
   },
 };
 
+/**
+ * 0.4.0: GoPlus cannot analyse a contract whose source is not verified. For
+ * two Base launches on 2026-11-07 it answered is_open_source "0" and no
+ * is_honeypot or tax. That is a finding, not a missing answer: an unverified
+ * contract cannot be checked for a honeypot, so it grades WARN at severity 2
+ * (the flag table's is_open_source rule), noted source_not_verified.
+ */
+export const contractAudit: Adapter = {
+  check: "contract_audit",
+  version: "0.4.0",
+  intent: "SMART_CONTRACT_AUDIT_GENERAL",
+  defaultConfidence: 0.7,
+  adapt(raw, ctx) {
+    const f = contractAuditV3.adapt(raw, ctx);
+    if (f.status === "UNKNOWN" && f.notes.length === 1 && f.notes[0] === "insufficient_flags" && ctx.subject) {
+      const body = entryForToken(raw, ctx.subject.token);
+      if (body !== "other_token" && flag(body, "is_open_source") === "0" && flag(body, "is_honeypot") === undefined) {
+        const b = { check: "contract_audit" as const, version: "0.4.0", ctx };
+        return finding(b, { status: "WARN", severity: 2, confidence: Math.min(confidenceOf(raw, 0.7), 0.6), notes: ["is_open_source", "source_not_verified"] });
+      }
+    }
+    return { ...f, adapterVersion: "0.4.0" };
+  },
+};
+
+/**
+ * 0.3.0: an answer that reports zero transfers in its window (7378 for a
+ * launch nobody traded in 600 blocks) stays UNKNOWN, noted no_transfers_in_window
+ * rather than missing_risk_label: there was nothing to judge.
+ */
+export const washTrading: Adapter = {
+  check: "wash_trading",
+  version: "0.3.0",
+  intent: "WASH_TRADING_DETECTION_GENERAL",
+  defaultConfidence: 0.6,
+  adapt(raw, ctx) {
+    const f = washTradingV2.adapt(raw, ctx);
+    if (f.status === "UNKNOWN" && f.notes[0] === "missing_risk_label" && pickNumber(raw, "transfers", 0, 1e12) === 0) {
+      return { ...f, adapterVersion: "0.3.0", notes: ["no_transfers_in_window"] };
+    }
+    return { ...f, adapterVersion: "0.3.0" };
+  },
+};
+
 /** Superseded versions stay registered so verdicts stored with them still replay. */
 const SUPERSEDED: readonly Adapter[] = [
+  contractAuditV3,
+  washTradingV2,
+  liquidityDepthV3,
   contractAuditV2,
   washTradingV1,
   contractAuditV1,

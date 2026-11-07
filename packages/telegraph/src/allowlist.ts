@@ -56,19 +56,34 @@ export const ALLOWLIST: Readonly<Partial<Record<Check, readonly MinerCandidate[]
       },
     },
   ],
+  // Paid answers for PLINKS (a 3-hour-old Clanker token on Base), 2026-11-07: 9002 counted 4696 holders
+  // (GoPlus said 4973); 7302, 73606 and 73102 returned null (no index yet); 900 failed upstream (its
+  // Etherscan plan does not cover Base) and was charged: not listed.
   holder_count: [
+    { minerId: "9002", name: "TxLens", why: "canonical {token, chain}; counted the holders of a 3-hour-old Base token that Blockscout had not indexed" },
     {
       minerId: "7302",
       name: "ChainWire Token Holder Count",
       why:
-        "chain + ERC-20 address; no BNB. Native form: on 2026-11-06 the node's canonical-to-native mapping sent it an empty chain " +
-        "(422 'predicted to fail'); the node's pre-check also rejects the native ask, which the miner answers when acknowledged",
+        "chain + ERC-20 address, from Blockscout, so fresh tokens can come back null; no BNB. Native form: on 2026-11-06 the node's " +
+        "canonical-to-native mapping sent it an empty chain (422 'predicted to fail'); the node's pre-check also rejects the native ask, " +
+        "which the miner answers when acknowledged",
       native: { method: "GET", endpoint: "/holders", params: { token: "token", chain: "chain" }, acknowledgeWarnings: true },
     },
-    { minerId: "900", name: "OnChain Intel Miner", why: "token-holders endpoint; lists bsc among its chains" },
   ],
   liquidity_depth: [
-    { minerId: "7373", name: "VerifyWire Liquidity Depth", why: "the only live miner that accepts canonical {pool, chain}; same operator as 7378 and 7302" },
+    {
+      minerId: "7373",
+      name: "VerifyWire Liquidity Depth",
+      why: "canonical {pool, chain}, including a Uniswap v4 pool id ($21,220.11 for PLINKS on 2026-11-07, as DEX Screener); same operator as 7378 and 7302",
+    },
+    {
+      minerId: "77081",
+      name: "VerifyWire Exact Pool Liquidity",
+      why:
+        "canonical {pool, chain}: GeckoTerminal's reserve for the exact pool, compared with DEX Screener; gave the same v4 figure as 7373. " +
+        "Same operator and host as 7373, so a fallback, not an independent second source",
+    },
     {
       minerId: "72006",
       name: "GeckoTerminal Pool",
