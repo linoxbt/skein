@@ -714,9 +714,8 @@ export default function TutorialPage() {
               There is no key to request: you need a wallet with test USDC in the Telegraph escrow on Sepolia.
             </P>
             <Note title="Status" tone="knot">
-              Skein&apos;s miner registration on the Telegraph testnet is being completed. Until the <A href="/status">status page</A> lists it
-              as active with its registration id, use a partner key. The code below works unchanged once it is: set{" "}
-              <C>SKEIN_MINER_ID</C> to that id.
+              Skein is live on the Telegraph testnet: miner <C>845301</C> (registration 5137, slug <C>skein-listing-verdict</C>), intent{" "}
+              <C>FRAUD_RISK_GENERAL</C>, 0.25 USDC an answer. Set <C>SKEIN_MINER_ID=845301</C> to pin it.
             </Note>
             <H3>Fund a burner</H3>
             <Block label="shell · Sepolia, with Foundry's cast">{burner}</Block>

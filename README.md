@@ -16,12 +16,18 @@ open, confidence, cost and a verifiable bill of materials.
 > benchmark harness and browser tests. An independent audit on Nov 2 and its
 > fixes are recorded in docs/DECISIONS.md (D14).
 >
-> **Not done yet:** no paid upstream call has been made (the purchaser key and
-> escrow deposit are pending), the miner is not registered, the labelled
-> evaluation set is not curated, and x402 payment on the direct API is not
-> built. See docs/REVIEWER_GUIDE.md for what to try, and
-> [docs/guides](docs/guides/README.md) for the three remaining steps (purchaser
-> wallet, miner registration under plan B, the labelled set).
+> **Live on Telegraph (Nov 7).** Skein is a registered, active miner:
+> registration **5137**, catalogue id **845301**, slug `skein-listing-verdict`,
+> intent `FRAUD_RISK_GENERAL`, 0.25 USDC an answer. Any Telegraph agent can buy
+> a verdict with one paid ask (`POST /engine/v1/ask/845301`), with no account
+> and no key. The first such ask (Nov 7) paid 0.25 USDC, Skein bought its checks
+> from other miners with escrow payments, and the node holds the signal. Verdicts
+> on fresh Base launches now decide (REJECT, ESCALATE) rather than abstain:
+> see docs/DECISIONS.md L24.
+>
+> **Not done yet:** the labelled evaluation set is not curated, and x402
+> payment on the direct API is not built. See docs/REVIEWER_GUIDE.md for what to
+> try, and [docs/guides](docs/guides/README.md) for the remaining step (the labelled set).
 
 ## Use it
 

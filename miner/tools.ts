@@ -8,6 +8,7 @@
 //   npx tsx miner/tools.ts swap-machina <usdc> [--yes]     buy MACHINA (for the registration bond) on the Sepolia pool
 //   npx tsx miner/tools.ts approve-bond <machina> [--yes]  let the Diamond take the MACHINA bond at registration
 //   npx tsx miner/tools.ts register --yaml-url <https://…> --fee-address <0x…> --min-price-usdc <n> --intent <INTENT> [--yes]
+//   npx tsx miner/tools.ts install-key <slug> [--yes]   install MINER_AUTH_KEY with the node, signed by the owner wallet
 //
 // Transactions are simulated first and sent only with --yes. Keys come from
 // the environment (PURCHASER_PRIVATE_KEY for deposits, MINER_REGISTRATION_KEY
@@ -17,11 +18,12 @@
 //
 // Order for a first registration (both keys need Sepolia ETH for gas):
 //   mint-usdc 3 --as registration --yes → swap-machina 2 --yes → approve-bond 5 --yes → register … --yes
+//   → (once /api/miners/<registrationId> is active) install-key skein-listing-verdict --yes
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { networkFromEnv } from "@skein/telegraph";
-import { createPublicClient, createWalletClient, erc20Abi, http, parseAbi, type Hex } from "viem";
+import { createPublicClient, createWalletClient, erc20Abi, http, keccak256, parseAbi, toBytes, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
@@ -198,7 +200,43 @@ switch (cmd) {
     }
     break;
   }
+  case "install-key": {
+    // Telegraph docs, "Installing or rotating your API key": the node is sent the
+    // key's keccak256 fingerprint, the owner wallet signs the challenge it returns
+    // (EIP-191), and the node sandbox-tests the key before storing it. The key is
+    // read from MINER_AUTH_KEY and never printed.
+    const slug = arg;
+    const key = process.env.MINER_AUTH_KEY;
+    if (!slug || !/^[a-z0-9-]+$/.test(slug) || !key) throw new Error("usage: MINER_AUTH_KEY=… install-key <slug> [--yes]");
+    const node = (process.env.TELEGRAPH_NODE_URL ?? "https://devnode.telegraphprotocol.com").replace(/\/$/, "");
+    const owner = account("MINER_REGISTRATION_KEY");
+    const keyHash = keccak256(toBytes(key));
+    const ch = await fetch(`${node}/miner-dispatcher/miners/${slug}/api-key/challenge`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key_hash: keyHash }),
+    });
+    const challenge = (await ch.json().catch(() => ({}))) as { nonce?: string; message?: string };
+    if (!ch.ok || !challenge.nonce || !challenge.message) throw new Error(`challenge refused: HTTP ${ch.status} ${JSON.stringify(challenge).slice(0, 300)}`);
+    // Sign the exact message returned; never rebuild it. It must name this wallet and this key.
+    if (!challenge.message.includes(owner.address) && !challenge.message.toLowerCase().includes(owner.address.toLowerCase())) {
+      throw new Error(`the challenge names another wallet, not ${owner.address}: is this the registering wallet?`);
+    }
+    if (!challenge.message.toLowerCase().includes(keyHash.toLowerCase())) throw new Error("the challenge does not commit to this key's fingerprint");
+    console.log(`challenge for ${slug}, wallet ${owner.address}, key fingerprint ${keyHash.slice(0, 10)}…`);
+    if (!values.yes) {
+      console.log("not sent (add --yes to sign and install)");
+      break;
+    }
+    const signature = await owner.signMessage({ message: challenge.message });
+    const res = await fetch(`${node}/miner-dispatcher/miners/${slug}/api-key`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nonce: challenge.nonce, signature, api_key: key }),
+    });
+    const text = await res.text();
+    // The node's answer is printed without any echo of the key.
+    console.log(`install: HTTP ${res.status} ${text.split(key).join("<key>").slice(0, 600)}`);
+    if (!res.ok) process.exit(1);
+    break;
+  }
   default:
-    console.error("commands: status | check-intent | hash | mint-usdc | deposit | swap-machina | approve-bond | register (see the header of miner/tools.ts)");
+    console.error("commands: status | check-intent | hash | mint-usdc | deposit | swap-machina | approve-bond | register | install-key (see the header of miner/tools.ts)");
     process.exit(64);
 }

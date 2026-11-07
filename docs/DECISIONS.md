@@ -424,3 +424,18 @@ failure (its Etherscan plan does not cover Base). Uniswap v4 pools have a
 32-byte id, not an address; the resolver, the API's `context.pool` and the
 sniper now accept one (7373 and 77081 both answered for a v4 id), and
 `liquidity_depth@0.4.0` checks the v4 pool an answer names.
+
+**L25. Skein registered as a Telegraph miner from a project-held owner wallet.**
+Plan B (`FRAUD_RISK_GENERAL`), registration 5137 on 2026-11-07, catalogue id
+845301, minimum price 0.25 USDC. The owner wallet was generated for this and
+funded from the purchaser burner (0.01 Sepolia ETH, 3 minted test USDC, 2 of
+them swapped for the MACHINA bond); it is also the fee address, and its key
+went to the project owner with the other secrets, since only that wallet can
+update or deregister the miner. Self-exclusion lists both ids
+(`SKEIN_SELF_REGISTRATION_IDS=845301,5137`), because a receipt names a miner by
+its registration id and a pin by its catalogue id (L22's receipt check). The
+API key was installed with an owner-signed challenge (`miner/tools.ts
+install-key`); the node's sandbox probe of `/verdict` returns 404, which it
+counts as a pass, because it calls the exposed path rather than the forwarded
+`/miner/verdict`. The first paid ask to 845301 answered LOW for WETH on Base in
+11.4 s, with a verified receipt and signal.
