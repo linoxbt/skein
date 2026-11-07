@@ -6,6 +6,9 @@
 //       the good group, by rule: listed on two or more of Binance, Coinbase, Kraken
 //       and OKX per CoinGecko, contract on the target chain per CoinGecko, and an
 //       ERC-20 contract at that address on-chain. Basis: current_state.
+//   pnpm --filter @skein/eval eval-tools bad-from-candidates <candidates.json> <out.json>
+//       the bad group from researched incidents: each candidate's address must hold
+//       an ERC-20 contract whose on-chain symbol matches its source. Basis: current_state.
 //   pnpm --filter @skein/eval eval-tools prospective <out.json> [sniper URL] [since ISO]
 //       the prospective set: launches the sniper checked at least 72 hours ago,
 //       labelled by what happened after the verdict (the rule is in labelOutcome).
@@ -17,7 +20,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { casesFileSchema } from "./cases";
-import { labelOutcome, OUTCOME_HOURS, PROSPECTIVE_SINCE, splitFor, type Outcome } from "./label";
+import { decodeSymbol, labelOutcome, OUTCOME_HOURS, PROSPECTIVE_SINCE, splitFor, type Outcome } from "./label";
 
 const CHAINS: Record<string, number> = { ethereum: 1, eth: 1, bsc: 56, bnb: 56, base: 8453, arbitrum: 42161 };
 // Endpoints that serve old block headers (many public ones prune history), first that answers wins.
@@ -105,7 +108,7 @@ if (cmd === "block-at") {
   if (cases.length >= 30 && Math.abs(holdout / cases.length - 1 / 3) > 0.1) warn.push(`holdout is ${holdout} of ${cases.length}; the plan is about one third (30 of 90)`);
   for (const w of warn) console.log(`! ${w}`);
   if (!warn.length) console.log("✓ no warnings");
-} else if (cmd !== "good-from-coingecko" && cmd !== "prospective") {
+} else if (cmd !== "good-from-coingecko" && cmd !== "prospective" && cmd !== "bad-from-candidates") {
   console.error("commands: block-at <chain> <date> | check <cases.json> | good-from-coingecko <candidates.json> <out.json> | prospective <out.json> [sniper URL] [since]");
   process.exit(64);
 }
@@ -257,4 +260,51 @@ if ((cmd as string) === "prospective") {
   const tally = (l: string) => due.filter((t) => labelOutcome({ priceAtCheck: t.priceAtCheck ?? null, priceNow: market.get(t.token.toLowerCase())?.price ?? null, liquidityAtCheck: t.liquidityAtCheck ?? null, liquidityNow: market.get(t.token.toLowerCase())?.liquidity ?? null }).label === l).length;
   const waiting = tokens.filter((t) => t.status === "decided" && t.checkedAt && Date.parse(t.checkedAt) >= Date.parse(since) && now - Date.parse(t.checkedAt) < OUTCOME_HOURS * 3_600_000).length;
   console.log(`${due.length} new prospective cases (bad ${tally("bad")}, ambiguous ${tally("ambiguous")}); ${waiting} more checked since ${since} are not ${OUTCOME_HOURS} h old yet`);
+}
+
+const SHORT: Record<number, string> = { 1: "eth", 56: "bsc", 8453: "base", 42161: "arb" };
+
+if ((cmd as string) === "bad-from-candidates") {
+  if (!a || !b) throw new Error("usage: eval-tools bad-from-candidates <candidates.json> <out.json>");
+  const { candidates } = JSON.parse(readFileSync(resolve(cwd, a), "utf8")) as {
+    candidates: { chainId: number; token: string; symbol: string; type: string; eventAt: string; sourceUrl: string; evidence: string; exclude?: string }[];
+  };
+  const heads: Record<number, number> = {};
+  const cases: unknown[] = [];
+  const dropped: string[] = [];
+  for (const c of candidates) {
+    if (c.exclude) {
+      dropped.push(`${c.symbol} ${c.token}: excluded (${c.exclude})`);
+      continue;
+    }
+    const code = await firstRpc<string>(c.chainId, "eth_getCode", [c.token, "latest"]).catch(() => "0x");
+    const sym = code && code !== "0x" ? decodeSymbol(await firstRpc<string>(c.chainId, "eth_call", [{ to: c.token, data: "0x95d89b41" }, "latest"]).catch(() => "0x")) : null;
+    if (!code || code === "0x") {
+      dropped.push(`${c.symbol} ${c.token}: no contract on chain ${c.chainId}`);
+      continue;
+    }
+    const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!sym || norm(sym) !== norm(c.symbol)) {
+      dropped.push(`${c.symbol} ${c.token}: on-chain symbol is ${sym === null ? "unreadable" : JSON.stringify(sym)}, not ${c.symbol}`);
+      continue;
+    }
+    heads[c.chainId] ??= Number(await firstRpc<string>(c.chainId, "eth_blockNumber", []));
+    const id = `bad-${norm(c.symbol).slice(0, 16) || "token"}-${SHORT[c.chainId]}-${c.token.slice(2, 8)}`;
+    const eventAt = /^\d{4}-\d{2}-\d{2}$/.test(c.eventAt) ? `${c.eventAt}T00:00:00Z` : c.eventAt.replace(/\.\d+Z$/, "Z");
+    cases.push({
+      id,
+      chainId: c.chainId,
+      token: c.token,
+      label: "bad",
+      basis: "current_state",
+      labelSourceUrl: c.sourceUrl,
+      labelEventAt: new Date(eventAt).toISOString(),
+      asOfBlock: heads[c.chainId],
+      split: splitFor(id),
+      notes: `${sym} (${c.type}). ${c.evidence}`.slice(0, 500),
+    });
+  }
+  writeFileSync(resolve(cwd, b), `${JSON.stringify({ kind: "labelled", cases }, null, 1)}\n`);
+  console.log(`${cases.length} bad cases written to ${b}`);
+  if (dropped.length) console.log(`dropped:\n  ${dropped.join("\n  ")}`);
 }

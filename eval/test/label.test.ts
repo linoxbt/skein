@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { labelOutcome, splitFor } from "../src/label";
+import { decodeSymbol, labelOutcome, splitFor } from "../src/label";
 
 const at = { priceAtCheck: 1e-6, liquidityAtCheck: 50_000 };
 
@@ -25,5 +25,14 @@ describe("splits", () => {
     const holdout = ids.filter((i) => splitFor(i) === "holdout").length / ids.length;
     expect(holdout).toBeGreaterThan(0.28);
     expect(holdout).toBeLessThan(0.39);
+  });
+});
+
+describe("symbol()", () => {
+  it("reads an ABI string and an old-style bytes32", () => {
+    const abi = "0x" + "20".padStart(64, "0") + "4".padStart(64, "0") + Buffer.from("BALD").toString("hex").padEnd(64, "0");
+    expect(decodeSymbol(abi)).toBe("BALD");
+    expect(decodeSymbol("0x" + Buffer.from("MKR").toString("hex").padEnd(64, "0"))).toBe("MKR");
+    expect(decodeSymbol("0x")).toBeNull();
   });
 });

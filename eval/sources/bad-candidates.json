@@ -1,0 +1,346 @@
+{
+ "note": "Candidates for the bad group, researched 2026-11-07. Each source URL names the token contract and documents the scam. Every address is checked on-chain (an ERC-20 contract whose symbol matches the source) before it becomes a case. 'exclude' marks a candidate kept for the record but not used. 'Detector-only label' in evidence means the only source that prints the address is the honeypot.is detector.",
+ "candidates": [
+  {
+   "chainId": 1,
+   "token": "0xe0a8ed732658832fac18141aa5ad3542e2eb503b",
+   "name": "PayPal USD",
+   "symbol": "PYUSD",
+   "type": "impersonation",
+   "eventAt": "2023-08-07",
+   "sourceUrl": "https://world.webacy.com/webacy-investigates-whats-really-behind-fraudulent-paypal-usd-tokens",
+   "evidence": "Webacy lists it among fake PYUSD tokens issued after PayPal's launch: oddly low holder count, flagged as blacklisted. eventAt is pair creation (honeypot.is)."
+  },
+  {
+   "chainId": 1,
+   "token": "0xa33ef369a9cc634efa106991290ff8973b31d466",
+   "name": "PayPal USD",
+   "symbol": "PYUSD",
+   "type": "impersonation",
+   "eventAt": "2023-08-07",
+   "sourceUrl": "https://world.webacy.com/webacy-investigates-whats-really-behind-fraudulent-paypal-usd-tokens",
+   "evidence": "Webacy lists it as a fake PYUSD: oddly low holder count, flagged as blacklisted. eventAt is pair creation (honeypot.is)."
+  },
+  {
+   "chainId": 1,
+   "token": "0x64328c17ca6fed43d5b4c24da3792e71598c2685",
+   "name": "PYUSD",
+   "symbol": "PYUSD",
+   "type": "impersonation",
+   "eventAt": "2023-08-07",
+   "sourceUrl": "https://world.webacy.com/webacy-investigates-whats-really-behind-fraudulent-paypal-usd-tokens",
+   "evidence": "Webacy lists it as a fake PYUSD: oddly low holder count, low total supply, flagged as blacklisted. eventAt is pair creation (honeypot.is)."
+  },
+  {
+   "chainId": 1,
+   "token": "0x208996f3bf71f57df92ff0fea7f4e287aa569ea0",
+   "name": "PAYPAL USD",
+   "symbol": "PYUSD",
+   "type": "impersonation",
+   "eventAt": "2023-08-07",
+   "sourceUrl": "https://world.webacy.com/webacy-investigates-whats-really-behind-fraudulent-paypal-usd-tokens",
+   "evidence": "Webacy lists it as a fake PYUSD: oddly low holder count, questionable total supply. eventAt is pair creation (honeypot.is)."
+  },
+  {
+   "chainId": 1,
+   "token": "0x155dc74a005433ec5f496980e0d17259acee361f",
+   "name": "PYUSD",
+   "symbol": "PYUSD",
+   "type": "impersonation",
+   "eventAt": "2023-08-07",
+   "sourceUrl": "https://world.webacy.com/webacy-investigates-whats-really-behind-fraudulent-paypal-usd-tokens",
+   "evidence": "Webacy lists it among false PYUSD contracts its API flagged (total supply 420690000)."
+  },
+  {
+   "chainId": 1,
+   "token": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+   "name": "DanTetherUsdcDAIPierrePaypal1DollarInu",
+   "symbol": "PYUSD",
+   "type": "impersonation",
+   "eventAt": "2023-08-08",
+   "sourceUrl": "https://world.webacy.com/webacy-investigates-whats-really-behind-fraudulent-paypal-usd-tokens",
+   "evidence": "Webacy lists this PYUSD-symbol contract, with signs of centralized contract control, among the false PYUSD tokens."
+  },
+  {
+   "chainId": 1,
+   "token": "0xd4b726c5b5e6f63d16a2050ee3ac4a0f0f81f1d4",
+   "name": "GROK 2.0",
+   "symbol": "GROK2.0",
+   "type": "rug",
+   "eventAt": "2023-11-21",
+   "sourceUrl": "https://research.checkpoint.com/2023/check-point-research-unraveling-the-rug-pull-a-million-dollar-scam-with-a-fake-token-factory/",
+   "evidence": "Check Point names GROK 2.0 as a token from a fake-token factory: volume pumped with wash trades, then liquidity withdrawn (about 40 rug pulls, nearly $1M)."
+  },
+  {
+   "chainId": 1,
+   "token": "0xf716380d87b9f9d25ba749e1735ca8b1e0e3b392",
+   "name": "Gemini",
+   "symbol": "Gemini",
+   "type": "rug",
+   "eventAt": "2024-02-15",
+   "sourceUrl": "https://www.certik.com/blog/bot-driven-wash-trading-in-exit-scams",
+   "evidence": "CertiK lists 'Fake Gemini' as an example of bot-driven wash-trading exit scams that end with the liquidity pool drained."
+  },
+  {
+   "chainId": 1,
+   "token": "0xd403f941ffd6ff30d139b97526ff655e5142ed21",
+   "name": "GROKAI",
+   "symbol": "GROKAI",
+   "type": "rug",
+   "eventAt": "2024-02-15",
+   "sourceUrl": "https://www.certik.com/blog/bot-driven-wash-trading-in-exit-scams",
+   "evidence": "CertiK lists GROKAI among fake tokens used in wash-trading exit scams that end with the pool drained."
+  },
+  {
+   "chainId": 1,
+   "token": "0xfac14acc884840130876e9e047a2c5c7f9be0018",
+   "name": "Mooon",
+   "symbol": "Mooon",
+   "type": "rug",
+   "eventAt": "2024-02-15",
+   "sourceUrl": "https://www.certik.com/blog/bot-driven-wash-trading-in-exit-scams",
+   "evidence": "CertiK lists Mooon Token as a fraudulent exit-scam token and traces its deployer's funding."
+  },
+  {
+   "chainId": 1,
+   "token": "0x064f4a422cc15773f5ce246f278ff090f2075c14",
+   "name": "XDOGE",
+   "symbol": "XDOGE",
+   "type": "rug",
+   "eventAt": "2024-02-15",
+   "sourceUrl": "https://www.certik.com/blog/bot-driven-wash-trading-in-exit-scams",
+   "evidence": "CertiK lists XDoge as one of the fake exit-scam tokens; its deployer links to Tornado Cash-funded wallets running the scheme."
+  },
+  {
+   "chainId": 1,
+   "token": "0xe52bdd1fc98cd6c0cd544c0187129c20d4545c7f",
+   "name": "Tommi",
+   "symbol": "TOMMI",
+   "type": "rug",
+   "eventAt": "2025-01-09",
+   "sourceUrl": "https://www.certik.com/blog/evil-in-the-shadows-unveiling-the-chaos-in-ethereums-token-ecosystem",
+   "evidence": "CertiK: a malicious backdoor in openTrading let the rug puller take tokens from the pool and dump them (about 3.95 ETH). eventAt is the report date; pair created 2024-05-07."
+  },
+  {
+   "chainId": 1,
+   "token": "0x2ae38b2b47bf41ba4ab8f749b092fdd02b00bc1e",
+   "name": "WIZ",
+   "symbol": "WIZ",
+   "type": "other",
+   "eventAt": "2023-12-05",
+   "sourceUrl": "https://research.checkpoint.com/2023/crypto-deception-unveiled-check-point-research-reports-manipulation-of-pool-liquidity-skyrockets-token-price-by-22000/",
+   "evidence": "Check Point: the scammer deployed WIZ, then used a backdoor to burn WIZ in the pool, inflating the price 22,000% and selling for $80,000."
+  },
+  {
+   "chainId": 1,
+   "token": "0xb504035a11e672e12a099f32b1672b9c4a78b22f",
+   "name": "Safereum",
+   "symbol": "SAFEREUM",
+   "type": "rug",
+   "eventAt": "2023-10-23T20:37:46Z",
+   "sourceUrl": "https://x.com/CertiKAlert/status/1716554530010157508",
+   "evidence": "CertiK Alert confirms Safereum conducted an exit scam for about $1.3m: the team unlocked Safereum tokens and sold."
+  },
+  {
+   "chainId": 1,
+   "token": "0x9cb6dd255a6bbe32130ce645ec45c0a3e9d87a4a",
+   "name": "NOVAMIND_",
+   "symbol": "NMD",
+   "type": "rug",
+   "eventAt": "2024-05-02T10:56:08Z",
+   "sourceUrl": "https://x.com/CertiKAlert/status/1785986624897118598",
+   "evidence": "CertiK Alert confirms novamind is an exit scam: socials deleted, token down about 97%."
+  },
+  {
+   "chainId": 1,
+   "token": "0xb0f34ba1617bb7c2528e570070b8770e544b003e",
+   "name": "Ora AI",
+   "symbol": "ORAAI",
+   "type": "rug",
+   "eventAt": "2024-10-29",
+   "sourceUrl": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2024-10/BUBAI_exp.sol",
+   "evidence": "DeFiHackLabs files it under '20241029 BUBAI - Rug pull'; the TenArmor alert it cites lists the ORAAI token as a RugPull on ETH, loss $180k."
+  },
+  {
+   "chainId": 56,
+   "token": "0x8923881e8cae6684c2bb84d69ae88a9bbbec8d5a",
+   "name": "FSL",
+   "symbol": "FSL",
+   "type": "scam-mint",
+   "eventAt": "2023-10-10",
+   "sourceUrl": "https://rekt.news/LSC-FSL-rekt",
+   "evidence": "rekt.news: the deployer minted themself 100M FSL at creation, then 97M were dumped for $1.68M BSC-USD."
+  },
+  {
+   "chainId": 56,
+   "token": "0xca7023ff89cd3dd05dedfeb6720611fdf26dff08",
+   "name": "FSL (relaunched)",
+   "symbol": "FSL",
+   "type": "other",
+   "eventAt": "2023-10-22",
+   "sourceUrl": "https://www.certik.com/ko/blog/finsoul-the-fintoch-fraud-continues",
+   "evidence": "CertiK warns a new FSL contract was deployed by the Fintoch-linked team; a caution, not a documented second rug.",
+   "exclude": "the source is a caution about a relaunch, not a documented scam"
+  },
+  {
+   "chainId": 56,
+   "token": "0x2b3559c3dbdb294cbb71f2b30a693f4c6be6132d",
+   "name": "Lucky star Currency",
+   "symbol": "LSC",
+   "type": "rug",
+   "eventAt": "2023-10-09T06:12:00Z",
+   "sourceUrl": "https://x.com/AegisWeb3/status/1711263223897620483",
+   "evidence": "AegisWeb3: $1.11M exit scam, LSC dropped 97%; PeckShield called it a rugpull and rekt.news describes the deployer draining LSC."
+  },
+  {
+   "chainId": 56,
+   "token": "0x8a2df808ccb0db866c5c152412d1718929143f53",
+   "name": "Narwhal",
+   "symbol": "NRW",
+   "type": "rug",
+   "eventAt": "2024-01-08T14:43:11Z",
+   "sourceUrl": "https://x.com/CertiKAlert/status/1744369159461376048",
+   "evidence": "CertiK Alert: Narwhal announced an exploit, but on-chain links suggest a possible exit scam; CertiK's blog reaches the same conclusion."
+  },
+  {
+   "chainId": 56,
+   "token": "0x205eeb0bb641d4cbface63ba66090701f0b75861",
+   "name": "BlondieCoin",
+   "symbol": "BLONDIE",
+   "type": "rug",
+   "eventAt": "2024-01-16T06:33:59Z",
+   "sourceUrl": "https://x.com/AegisWeb3/status/1747145150961442976",
+   "evidence": "AegisWeb3 rugpull alert: BlondieCoin on BSC rugged, dropped about 99.1%."
+  },
+  {
+   "chainId": 56,
+   "token": "0x35e4efa6f4f00478cb9e391f0894f48a7a02a583",
+   "name": "InsafeToken",
+   "symbol": "INSAFE",
+   "type": "honeypot",
+   "eventAt": "2023-02-04T12:52:48Z",
+   "sourceUrl": "https://x.com/CertiKAlert/status/1621854283179114497",
+   "evidence": "CertiK Alert: one of four probable honeypot scams (about $1.3m in total); the thread names INSAFE."
+  },
+  {
+   "chainId": 56,
+   "token": "0x81058db5c2cf219ab8fecd850b3067d08216467d",
+   "name": "ZeroToken",
+   "symbol": "ZERO",
+   "type": "honeypot",
+   "eventAt": "2023-02-04T12:52:48Z",
+   "sourceUrl": "https://x.com/CertiKAlert/status/1621854283179114497",
+   "evidence": "CertiK Alert: one of four probable honeypot scams; the thread names ZERO."
+  },
+  {
+   "chainId": 56,
+   "token": "0xfddac426a674856f338566d2e75388c2489fd512",
+   "name": "ShieldToken",
+   "symbol": "SHIELD",
+   "type": "honeypot",
+   "eventAt": "2023-02-04T12:52:48Z",
+   "sourceUrl": "https://x.com/CertiKAlert/status/1621854283179114497",
+   "evidence": "CertiK Alert: one of four probable honeypot scams; the thread names SHIELD."
+  },
+  {
+   "chainId": 56,
+   "token": "0xee4af49d4cd8b8ea77875bace4e6787d5cd11d54",
+   "name": "ExtraToken",
+   "symbol": "EXTRA",
+   "type": "honeypot",
+   "eventAt": "2023-02-04T12:52:48Z",
+   "sourceUrl": "https://x.com/CertiKAlert/status/1621854283179114497",
+   "evidence": "CertiK Alert: one of four probable honeypot scams; the thread names EXTRA, promoted by a Telegram group."
+  },
+  {
+   "chainId": 56,
+   "token": "0x746727fc8212ed49510a2cb81ab0486ee6954444",
+   "name": "FIRST BNB IRYS",
+   "symbol": "IRYSAI",
+   "type": "rug",
+   "eventAt": "2025-05-21T02:16:41Z",
+   "sourceUrl": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2025-05/IRYSAI_exp.sol",
+   "evidence": "DeFiHackLabs: '20250520 IRYSAI - rug pull'; the TenArmor alert it cites says the IRYSAI contract had backdoor logic."
+  },
+  {
+   "chainId": 56,
+   "token": "0x7fdff64bf87bad52e6430bda30239bd182389ee3",
+   "name": "Yzi AI",
+   "symbol": "YziAI",
+   "type": "rug",
+   "eventAt": "2025-03-28T07:52:58Z",
+   "sourceUrl": "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/main/src/test/2025-03/YziAIToken_exp.sol",
+   "evidence": "DeFiHackLabs: '20250327 YziAI - Rug Pull'; TenArmor: the owner added 100 BNB of liquidity, then swapped out 376 BNB."
+  },
+  {
+   "chainId": 8453,
+   "token": "0x27d2decb4bfc9c76f0309b8e88dec3a601fe25a8",
+   "name": "Bald",
+   "symbol": "BALD",
+   "type": "rug",
+   "eventAt": "2023-07-31T12:13:00Z",
+   "sourceUrl": "https://cointelegraph.com/news/bald-token-developer-denies-rug-pull-price-falls-post-launch",
+   "evidence": "Cointelegraph: the BALD deployer removed 1,009.41 WETH of liquidity on July 31; rekt.news calls it a $23M rug."
+  },
+  {
+   "chainId": 8453,
+   "token": "0xcb33289e6fc28dbe78716fa44b85d4cf95af3574",
+   "name": "Nude AI",
+   "symbol": "NUDEAI",
+   "type": "honeypot",
+   "eventAt": "2025-01-13",
+   "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xCb33289E6fc28Dbe78716FA44b85D4Cf95af3574&chainID=8453",
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan flags NUDE AI as a Base honeypot but links only its pair, which honeypot.is maps to this token."
+  },
+  {
+   "chainId": 8453,
+   "token": "0x2b3989bd9544e6221fe3696c4bd063bba2b50268",
+   "name": "SKRYPT AI",
+   "symbol": "SAI",
+   "type": "honeypot",
+   "eventAt": "2025-01-13",
+   "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0x2B3989bd9544e6221fE3696c4bD063Bba2B50268&chainID=8453",
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan calls Scrypt AI (SAI) a suspected honeypot and links only its pair."
+  },
+  {
+   "chainId": 8453,
+   "token": "0xc20fd82a30d1d72c9cdd1d57f703e8b522372901",
+   "name": "Make Europe Great Again",
+   "symbol": "MEGA",
+   "type": "honeypot",
+   "eventAt": "2025-01-12",
+   "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xc20fD82a30D1D72c9Cdd1D57f703E8b522372901&chainID=8453",
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan names MEGA in the Base honeypot wave (pair only). eventAt is pair creation."
+  },
+  {
+   "chainId": 8453,
+   "token": "0x8384de070d4417fdf1e28117f244e909c754bcff",
+   "name": "BIGI DAO",
+   "symbol": "BIGI",
+   "type": "honeypot",
+   "eventAt": "2024-09-17",
+   "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0x8384De070d4417fDf1e28117f244E909C754bCFf&chainID=8453",
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. A SlowMist guide reportedly analyses its permit backdoor (page not opened). eventAt is pair creation."
+  },
+  {
+   "chainId": 8453,
+   "token": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
+   "name": "Hash AI",
+   "symbol": "HashAI",
+   "type": "honeypot",
+   "eventAt": "2024-04-06T03:30:17Z",
+   "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xaF80F49809048dB0b84F29E9CCfD039CBae9ddee&chainID=8453",
+   "evidence": "Detector-only label: honeypot.is reports a honeypot (extremely low sell limit). An X post calls HashAI on Base a honeypot with no way to sell, later rugged (pair only)."
+  },
+  {
+   "chainId": 8453,
+   "token": "0x7dade1cad47583e7718ab64a7deb307ac990516a",
+   "name": "Livecaster",
+   "symbol": "LIVECASTER",
+   "type": "scam-mint",
+   "eventAt": "2025-10-30",
+   "sourceUrl": "https://www.soliduslabs.com/post/livecaster-scam-base-analysis",
+   "evidence": "Solidus Labs / Token Sniffer: a hidden allowance bypass let the scammer siphon tokens from 224 victims, about $690K."
+  }
+ ]
+}

@@ -29,3 +29,15 @@ export function labelOutcome(o: Outcome): { label: "bad" | "ambiguous"; why: str
   return { label: "ambiguous", why: "survived the window" };
 }
 
+
+/** An ERC-20 symbol() return: an ABI string, or (older tokens) a bytes32. */
+export function decodeSymbol(hex: string): string | null {
+  const h = hex.replace(/^0x/, "");
+  if (h.length < 64) return null;
+  if (h.length >= 192) {
+    const len = parseInt(h.slice(64, 128), 16);
+    if (Number.isFinite(len) && len > 0 && len <= 64) return Buffer.from(h.slice(128, 128 + len * 2), "hex").toString("utf8");
+  }
+  return Buffer.from(h.slice(0, 64), "hex").toString("utf8").replace(/\0+$/, "") || null;
+}
+
