@@ -29,8 +29,8 @@ describe("adapter versions", () => {
   // Every version ever published. Stored verdicts replay with the version they
   // recorded, so removing one from the registry breaks their reproducibility.
   const PUBLISHED = [
-    "contract_audit@0.1.0", "contract_audit@0.2.0", "contract_audit@0.3.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
-    "sanctions@0.1.0", "sanctions@0.2.0", "sanctions@0.3.0", "wash_trading@0.1.0", "wash_trading@0.2.0",
+    "contract_audit@0.1.0", "contract_audit@0.2.0", "contract_audit@0.3.0", "contract_audit@0.4.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
+    "sanctions@0.1.0", "sanctions@0.2.0", "sanctions@0.3.0", "wash_trading@0.1.0", "wash_trading@0.2.0", "wash_trading@0.3.0",
     "liquidity_depth@0.1.0", "liquidity_depth@0.2.0", "liquidity_depth@0.3.0", "liquidity_depth@0.4.0", "social_bots@0.1.0", "code_review@0.1.0",
   ];
   it("every published version is still registered, and each check has exactly one current adapter", () => {
@@ -83,11 +83,16 @@ describe("wash trading (WASH_TRADING_DETECTION)", () => {
     // Fields from miner 7378's answer for WETH on Base, 2026-11-06.
     const native = { risk_label: "HIGH", risk_score: 0.644, round_trip_volume_share_percent: 76.79, reciprocal_pairs: 12 };
     expect(washTrading.adapt(native, ctx)).toMatchObject({
-      status: "WARN", severity: 2, metric: "wash_volume_pct", value: 76.79, unit: "percent", adapterVersion: "0.2.0", notes: ["risk_high"],
+      status: "WARN", severity: 2, metric: "wash_volume_pct", value: 76.79, unit: "percent", adapterVersion: "0.3.0", notes: ["risk_high"],
     });
     expect(washTrading.adapt({ risk_label: "low", round_trip_volume_share_percent: 3 }, ctx)).toMatchObject({ status: "PASS" });
     expect(washTrading.adapt({ risk_score: 0.2 }, ctx).notes).toEqual(["missing_risk_label"]);
     expect(adapterFor("wash_trading", "0.1.0").adapt(native, ctx).status).toBe("UNKNOWN");
+  });
+  it("says when there was nothing to judge (0.3.0)", () => {
+    const quiet = { transfers: 0, window_blocks: 600, summary: "No ERC-20 transfers were found in the last 600 blocks", confidence: 0.5 };
+    expect(washTrading.adapt(quiet, ctx)).toMatchObject({ status: "UNKNOWN", notes: ["no_transfers_in_window"] });
+    expect(adapterFor("wash_trading", "0.2.0").adapt(quiet, ctx).notes).toEqual(["missing_risk_label"]);
   });
 });
 
@@ -155,12 +160,27 @@ describe("contract audit (GoPlus-style flags)", () => {
       owner_change_balance: "0", selfdestruct: "0", slippage_modifiable: "0", transfer_pausable: "0", transfer_tax: "",
     };
     const f = contractAudit.adapt({ code: 1, message: "OK", result: { [token]: weth } }, ctx);
-    expect(f).toMatchObject({ status: "PASS", adapterVersion: "0.3.0", notes: ["tax_not_reported"] });
+    expect(f).toMatchObject({ status: "PASS", adapterVersion: "0.4.0", notes: ["tax_not_reported"] });
     expect(f.confidence).toBeLessThanOrEqual(0.6);
     expect(contractAudit.adapt({ result: { [token]: { ...weth, hidden_owner: "1" } } }, ctx)).toMatchObject({ status: "FAIL", severity: 2 });
     expect(adapterFor("contract_audit", "0.2.0").adapt({ result: { [token]: weth } }, ctx).notes).toEqual(["insufficient_flags"]);
     // is_honeypot and two owner flags, no tax: still not an audit.
     expect(contractAudit.adapt({ is_honeypot: "0", is_proxy: "0", is_mintable: "0" }, ctx).notes).toEqual(["insufficient_flags"]);
+  });
+  it("grades an unverified contract WARN: GoPlus could not check it for a honeypot (0.4.0)", () => {
+    // GoPlus's answer for Reboot on Base, 2026-11-07 (holders and dex lists dropped).
+    const reboot = {
+      buy_tax: "", cannot_buy: "0", creator_percent: "0.284495", holder_count: "202", honeypot_with_same_creator: "0",
+      is_in_dex: "0", is_open_source: "0", owner_address: "", sell_tax: "", token_name: "Reboot", total_supply: "1000000000",
+    };
+    const f = contractAudit.adapt({ code: 1, message: "OK", result: { [token]: reboot } }, ctx);
+    expect(f).toMatchObject({ status: "WARN", severity: 2, adapterVersion: "0.4.0", notes: ["is_open_source", "source_not_verified"] });
+    expect(f.confidence).toBeLessThanOrEqual(0.6);
+    expect(adapterFor("contract_audit", "0.3.0").adapt({ result: { [token]: reboot } }, ctx).notes).toEqual(["insufficient_flags"]);
+    // Open source but no flags is still not an audit.
+    expect(contractAudit.adapt({ result: { [token]: { ...reboot, is_open_source: "1" } } }, ctx).notes).toEqual(["insufficient_flags"]);
+    // A honeypot flag decides, whatever the source status.
+    expect(contractAudit.adapt({ result: { [token]: { ...reboot, is_honeypot: "1", buy_tax: "0", sell_tax: "0" } } }, ctx).status).toBe("FAIL");
   });
   it("is UNKNOWN when the answer carries no security flags at all", () => {
     expect(contractAudit.adapt({ message: "OK", works: [] }, ctx)).toMatchObject({ status: "UNKNOWN", notes: ["insufficient_flags"] });

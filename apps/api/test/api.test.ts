@@ -154,7 +154,7 @@ describe("read-only routes", () => {
     expect(s).toMatchObject({ network: "eip155:11155111" });
     expect(s.intents.find((i: { check: string }) => i.check === "holder_concentration")).toMatchObject({ intent: null, activeMiners: 0 });
     const ps = await j(app.request("/v1/policies"));
-    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
+    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "agent-pretrade@0.2.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
     await post(body);
     const l = await j(app.request("/v1/ledger"));
     expect(l).toMatchObject({ verdicts: { APPROVE: 1 }, upstreamSpendUsdc: 0.06, receipts: 6, minersUsed: 6 });

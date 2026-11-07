@@ -213,7 +213,7 @@ const washTradingV1 = enumAdapter(
  * round trip, which stands in for wash_volume_pct so the policy threshold
  * grades it. The canonical verdict enum still wins when present.
  */
-export const washTrading: Adapter = {
+const washTradingV2: Adapter = {
   check: "wash_trading",
   version: "0.2.0",
   intent: "WASH_TRADING_DETECTION_GENERAL",
@@ -532,7 +532,7 @@ const PRIVILEGE_FLAGS = [
  * six owner-privilege flags; it is then graded on them at lower confidence,
  * noted tax_not_reported. One benign flag on its own is still not an audit.
  */
-export const contractAudit: Adapter = {
+const contractAuditV3: Adapter = {
   check: "contract_audit",
   version: "0.3.0",
   intent: "SMART_CONTRACT_AUDIT_GENERAL",
@@ -563,8 +563,54 @@ export const contractAudit: Adapter = {
   },
 };
 
+/**
+ * 0.4.0: GoPlus cannot analyse a contract whose source is not verified. For
+ * two Base launches on 2026-11-07 it answered is_open_source "0" and no
+ * is_honeypot or tax. That is a finding, not a missing answer: an unverified
+ * contract cannot be checked for a honeypot, so it grades WARN at severity 2
+ * (the flag table's is_open_source rule), noted source_not_verified.
+ */
+export const contractAudit: Adapter = {
+  check: "contract_audit",
+  version: "0.4.0",
+  intent: "SMART_CONTRACT_AUDIT_GENERAL",
+  defaultConfidence: 0.7,
+  adapt(raw, ctx) {
+    const f = contractAuditV3.adapt(raw, ctx);
+    if (f.status === "UNKNOWN" && f.notes.length === 1 && f.notes[0] === "insufficient_flags" && ctx.subject) {
+      const body = entryForToken(raw, ctx.subject.token);
+      if (body !== "other_token" && flag(body, "is_open_source") === "0" && flag(body, "is_honeypot") === undefined) {
+        const b = { check: "contract_audit" as const, version: "0.4.0", ctx };
+        return finding(b, { status: "WARN", severity: 2, confidence: Math.min(confidenceOf(raw, 0.7), 0.6), notes: ["is_open_source", "source_not_verified"] });
+      }
+    }
+    return { ...f, adapterVersion: "0.4.0" };
+  },
+};
+
+/**
+ * 0.3.0: an answer that reports zero transfers in its window (7378 for a
+ * launch nobody traded in 600 blocks) stays UNKNOWN, noted no_transfers_in_window
+ * rather than missing_risk_label: there was nothing to judge.
+ */
+export const washTrading: Adapter = {
+  check: "wash_trading",
+  version: "0.3.0",
+  intent: "WASH_TRADING_DETECTION_GENERAL",
+  defaultConfidence: 0.6,
+  adapt(raw, ctx) {
+    const f = washTradingV2.adapt(raw, ctx);
+    if (f.status === "UNKNOWN" && f.notes[0] === "missing_risk_label" && pickNumber(raw, "transfers", 0, 1e12) === 0) {
+      return { ...f, adapterVersion: "0.3.0", notes: ["no_transfers_in_window"] };
+    }
+    return { ...f, adapterVersion: "0.3.0" };
+  },
+};
+
 /** Superseded versions stay registered so verdicts stored with them still replay. */
 const SUPERSEDED: readonly Adapter[] = [
+  contractAuditV3,
+  washTradingV2,
   liquidityDepthV3,
   contractAuditV2,
   washTradingV1,

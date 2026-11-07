@@ -40,6 +40,8 @@ const ANSWERS: Record<string, unknown> = {
       },
     },
   },
+  audit_unverified: { code: 1, result: { [TOKEN]: { is_open_source: "0", buy_tax: "", sell_tax: "", holder_count: "202" } } },
+  wash_quiet: { transfers: 0, window_blocks: 600, confidence: 0.5 },
   wash_native: { risk_label: "HIGH", risk_score: 0.644, round_trip_volume_share_percent: 76.79 },
   audit_other_token: { result: { "0x9999999999999999999999999999999999999999": { is_honeypot: "0", sell_tax: "0" } } },
 };
