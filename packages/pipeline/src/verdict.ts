@@ -13,7 +13,7 @@ import {
   type StoredVerdict,
   type Subject,
 } from "@skein/engine";
-import { CHECK_INTENTS, SERVED_INTENTS, type AskOutcome, type SignalStatus, type TelegraphClient } from "@skein/telegraph";
+import { CHECK_INTENTS, SERVED_INTENTS, type AskOutcome, type AskRequest, type SignalStatus, type TelegraphClient } from "@skein/telegraph";
 import { availability, candidates, groupOf, quotes, type Catalogue } from "./catalogue";
 import type { PoolResolver } from "./pool";
 import { buildRequest, forCandidate, type VerdictContext } from "./requests";
@@ -160,34 +160,51 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
     emit({ type: "finding", finding: f });
   };
 
-  const buyOne = async (pp: (typeof p.purchases)[number]): Promise<void> => {
-    const built = buildRequest(pp.check, pp.intent, subject, ctx);
-    if (!built.ok) return skip(pp.check, built.note);
-    const self = new Set(deps.excludeMinerIds ?? []);
-    const cands = pinned ? candidates(deps.catalogue, pp.check, pp.intent).filter((c) => !self.has(c.minerId)) : [];
-    const routed = !pinned || (cands.length === 0 && routedOk.has(pp.check));
-    if (cands.length === 0 && !routed) return skip(pp.check, "no_allowlisted_miner");
+  type Planned = (typeof p.purchases)[number];
+  type Cand = ReturnType<typeof candidates>[number];
+  /** A check whose paid answer could not be used, and the miners still untried for it. */
+  interface Retry { pp: Planned; built: AskRequest; cands: readonly Cand[]; next: number }
+  const retries: Retry[] = [];
 
-    let budget = allotment(pp.quoteUusdc);
+  /**
+   * Asks cands[from..] in order until one gives an outcome other than a free
+   * refusal (incompatible), and records that purchase. Returns the index after
+   * the miner that answered, and the answer's finding.
+   */
+  const attempt = async (
+    pp: Planned,
+    built: AskRequest,
+    cands: readonly Cand[],
+    from: number,
+    routed: boolean,
+    budgetUusdc: number,
+    opts: { recordFailure: boolean },
+  ): Promise<{ next: number; finding: Finding | null; spent: number }> => {
+    let budget = budgetUusdc;
     const hold = deps.spend ? await deps.spend.reserve(budget) : null;
-    if (deps.spend && !hold) return skip(pp.check, "daily_cap_reached");
+    if (deps.spend && !hold) {
+      if (opts.recordFailure) skip(pp.check, "daily_cap_reached");
+      return { next: cands.length, finding: null, spent: 0 };
+    }
 
     // Try allowlisted miners in order; one that refuses before payment
     // (incompatible) costs nothing, so fall through to the next.
     const skipped: string[] = [];
-    let miner: (typeof cands)[number] | null = null;
+    let miner: Cand | null = null;
     let out: AskOutcome | null = null;
     let spent = 0;
+    let i = from;
     try {
-      const attempts = routed ? [null] : cands;
-      for (const cand of attempts) {
+      const attempts: readonly (Cand | null)[] = routed ? [null] : cands;
+      for (; i < attempts.length; i++) {
+        const cand = attempts[i]!;
         const left = deadline - Date.now();
         if (left < 500) {
           out = out ?? { ok: false, kind: "timeout", error: "verdict deadline reached", durationMs: 0, attempts: 0, paidUusdc: 0, billing: "none" };
           break;
         }
         miner = cand;
-        const req = cand ? forCandidate(built.req, cand) : built.req;
+        const req = cand ? forCandidate(built, cand) : built;
         out = await deps.client.ask(req, { timeoutMs: Math.min(pp.timeoutMs, left), maxUusdc: budget, ...(cand ? { minerId: cand.minerId } : {}) });
         const paidNow = out.ok ? out.amountUusdc : out.paidUusdc;
         spent += paidNow;
@@ -202,6 +219,8 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
       await hold?.settle(spent);
     }
     out ??= { ok: false, kind: "incompatible", error: "no candidate accepted the request", durationMs: 0, attempts: 0, paidUusdc: 0, billing: "none" };
+    // A retry that bought nothing leaves no record: the first answer stands.
+    if (!opts.recordFailure && !out.ok && spent === 0) return { next: cands.length, finding: null, spent };
 
     const adapter = adapterFor(pp.check);
     const minerId = out.ok ? out.response.miner_id : miner?.minerId;
@@ -239,7 +258,22 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
     purchases.push(rec);
     await deps.onPurchase?.(rec);
     emit({ type: "purchase", purchase: rec });
-    emit({ type: "finding", finding: adapter.adapt(rec.rawResult, { ...toStoredPurchase(rec), subject }) });
+    const finding = adapter.adapt(rec.rawResult, { ...toStoredPurchase(rec), subject });
+    emit({ type: "finding", finding });
+    return { next: i + 1, finding: out.ok && receiptOk ? finding : null, spent };
+  };
+
+  const buyOne = async (pp: Planned): Promise<void> => {
+    const built = buildRequest(pp.check, pp.intent, subject, ctx);
+    if (!built.ok) return skip(pp.check, built.note);
+    const self = new Set(deps.excludeMinerIds ?? []);
+    const cands = pinned ? candidates(deps.catalogue, pp.check, pp.intent).filter((c) => !self.has(c.minerId)) : [];
+    const routed = !pinned || (cands.length === 0 && routedOk.has(pp.check));
+    if (cands.length === 0 && !routed) return skip(pp.check, "no_allowlisted_miner");
+    const r = await attempt(pp, built.req, cands, 0, routed, allotment(pp.quoteUusdc), { recordFailure: true });
+    // A paid, receipted answer the adapter could not read (a null count, no
+    // activity in the window): the next allowlisted miner may still answer.
+    if (!routed && r.finding?.status === "UNKNOWN" && r.next < cands.length) retries.push({ pp, built: built.req, cands, next: r.next });
   };
 
   const settled = await Promise.allSettled(p.purchases.map(buyOne));
@@ -248,6 +282,21 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
     // onPurchase write. Keep the check visible as an ERROR rather than lose the verdict.
     if (r.status === "rejected" && !purchases.some((x) => x.check === p.purchases[i]!.check)) {
       skip(p.purchases[i]!.check, "internal_error");
+    }
+  }
+
+  // Second round, in plan order: retries share what the cap has left once
+  // every first answer is in, so they can never take another check's share.
+  let spare = p.capUusdc - purchases.reduce((n, x) => n + x.amountUusdc, 0);
+  const order = (r: Retry) => p.purchases.indexOf(r.pp);
+  for (const r of [...retries].sort((a, b) => order(a) - order(b))) {
+    const grant = Math.min(spare, allotment(r.pp.quoteUusdc));
+    if (grant < r.pp.quoteUusdc || deadline - Date.now() < 500) break;
+    try {
+      const out = await attempt(r.pp, r.built, r.cands, r.next, false, grant, { recordFailure: false });
+      spare -= out.spent;
+    } catch {
+      // A failed onPurchase write on a retry: the first answer stands.
     }
   }
 

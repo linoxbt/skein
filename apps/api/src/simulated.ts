@@ -44,6 +44,7 @@ export async function simulatedApi(opts: { env?: Record<string, string | undefin
           return str(params.entity).endsWith("e") ? { kind: "hang" } : answer({ on_list: false, entity: params.entity }, 200, 600);
         case "7373":
           return answer({ liquidity_usd: 3_850_000 + jitter(0, 900_000) });
+        case "9002":
         case "7302":
           return answer({ holders_count: 48_000 + jitter(0, 20_000) });
         case "7378":
