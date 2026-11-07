@@ -2,13 +2,22 @@
 //
 //   pnpm --filter @skein/eval eval-tools block-at <chain> <date>   the last block at or before a UTC time
 //   pnpm --filter @skein/eval eval-tools check <cases.json>        validate the file and show its balance
+//   pnpm --filter @skein/eval eval-tools good-from-coingecko <candidates.json> <out.json>
+//       the good group, by rule: listed on two or more of Binance, Coinbase, Kraken
+//       and OKX per CoinGecko, contract on the target chain per CoinGecko, and an
+//       ERC-20 contract at that address on-chain. Basis: current_state.
+//   pnpm --filter @skein/eval eval-tools prospective <out.json> [sniper URL] [since ISO]
+//       the prospective set: launches the sniper checked at least 72 hours ago,
+//       labelled by what happened after the verdict (the rule is in labelOutcome).
+//       Existing cases are never changed; new ones are appended.
 //
 // <chain> is ethereum, bsc, base, arbitrum or a chain id; <date> is ISO 8601
 // (2024-03-01 or 2024-03-01T12:00:00Z). Public RPCs are used unless
 // RPC_URL_<chainId> is set (e.g. RPC_URL_1).
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { casesFileSchema } from "./cases";
+import { labelOutcome, OUTCOME_HOURS, PROSPECTIVE_SINCE, splitFor, type Outcome } from "./label";
 
 const CHAINS: Record<string, number> = { ethereum: 1, eth: 1, bsc: 56, bnb: 56, base: 8453, arbitrum: 42161 };
 // Endpoints that serve old block headers (many public ones prune history), first that answers wins.
@@ -96,7 +105,156 @@ if (cmd === "block-at") {
   if (cases.length >= 30 && Math.abs(holdout / cases.length - 1 / 3) > 0.1) warn.push(`holdout is ${holdout} of ${cases.length}; the plan is about one third (30 of 90)`);
   for (const w of warn) console.log(`! ${w}`);
   if (!warn.length) console.log("✓ no warnings");
-} else {
-  console.error("commands: block-at <chain> <date> | check <cases.json>");
+} else if (cmd !== "good-from-coingecko" && cmd !== "prospective") {
+  console.error("commands: block-at <chain> <date> | check <cases.json> | good-from-coingecko <candidates.json> <out.json> | prospective <out.json> [sniper URL] [since]");
   process.exit(64);
+}
+
+const PLATFORMS: Record<string, { chainId: number; short: string }> = {
+  ethereum: { chainId: 1, short: "eth" },
+  "binance-smart-chain": { chainId: 56, short: "bsc" },
+  base: { chainId: 8453, short: "base" },
+  "arbitrum-one": { chainId: 42161, short: "arb" },
+};
+const MAJORS = ["binance", "gdax", "kraken", "okex"] as const;
+const MAJOR_NAME: Record<string, string> = { binance: "Binance", gdax: "Coinbase", kraken: "Kraken", okex: "OKX" };
+
+
+async function firstRpc<T>(chainId: number, method: string, params: unknown[]): Promise<T> {
+  const urls = process.env[`RPC_URL_${chainId}`] ? [process.env[`RPC_URL_${chainId}`]!] : RPC[chainId]!;
+  let last: unknown;
+  for (const u of urls) {
+    try {
+      return await rpc<T>(u, method, params);
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last;
+}
+
+async function cg<T>(path: string): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`https://api.coingecko.com/api/v3${path}`, { headers: { accept: "application/json" } });
+    if (res.status === 429 && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 20_000 * (attempt + 1)));
+      continue;
+    }
+    if (!res.ok) throw new Error(`coingecko ${path}: HTTP ${res.status}`);
+    return (await res.json()) as T;
+  }
+}
+
+if ((cmd as string) === "good-from-coingecko") {
+  if (!a || !b) throw new Error("usage: eval-tools good-from-coingecko <candidates.json> <out.json>");
+  const { candidates } = JSON.parse(readFileSync(resolve(cwd, a), "utf8")) as { candidates: { id: string; chains: string[] }[] };
+  const collected = new Date().toISOString();
+  const heads: Record<number, number> = {};
+  const cases: unknown[] = [];
+  const dropped: string[] = [];
+  for (const c of candidates) {
+    const coin = await cg<{ id: string; symbol: string; name: string; platforms: Record<string, string> }>(
+      `/coins/${c.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false`,
+    );
+    await new Promise((r) => setTimeout(r, 2500));
+    const t = await cg<{ tickers: { market: { identifier: string } }[] }>(`/coins/${c.id}/tickers?exchange_ids=${MAJORS.join(",")}`);
+    await new Promise((r) => setTimeout(r, 2500));
+    const majors = MAJORS.filter((m) => t.tickers.some((x) => x.market.identifier === m));
+    if (majors.length < 2) {
+      dropped.push(`${c.id}: on ${majors.map((m) => MAJOR_NAME[m]).join(", ") || "no"} major exchange(s)`);
+      continue;
+    }
+    for (const platform of c.chains) {
+      const chain = PLATFORMS[platform];
+      const token = coin.platforms[platform]?.toLowerCase();
+      if (!chain || !token || !/^0x[0-9a-f]{40}$/.test(token)) {
+        dropped.push(`${c.id} on ${platform}: CoinGecko gives no contract there`);
+        continue;
+      }
+      const code = await firstRpc<string>(chain.chainId, "eth_getCode", [token, "latest"]);
+      const sym = code && code !== "0x" ? await firstRpc<string>(chain.chainId, "eth_call", [{ to: token, data: "0x95d89b41" }, "latest"]).catch(() => "0x") : "0x";
+      if (!code || code === "0x" || sym === "0x") {
+        dropped.push(`${c.id} on ${platform}: no ERC-20 contract at ${token}`);
+        continue;
+      }
+      heads[chain.chainId] ??= Number(await firstRpc<string>(chain.chainId, "eth_blockNumber", []));
+      const id = `good-${c.id}-${chain.short}`.replace(/[^a-z0-9-]/g, "-").slice(0, 64);
+      cases.push({
+        id,
+        chainId: chain.chainId,
+        token,
+        label: "good",
+        basis: "current_state",
+        labelSourceUrl: `https://www.coingecko.com/en/coins/${coin.id}`,
+        asOfBlock: heads[chain.chainId],
+        split: splitFor(id),
+        notes: `${coin.name} (${coin.symbol.toUpperCase()}). Markets on ${majors.map((m) => MAJOR_NAME[m]).join(", ")} per CoinGecko, ${collected.slice(0, 10)}; contract from CoinGecko's ${platform} entry.`,
+      });
+    }
+  }
+  writeFileSync(resolve(cwd, b), `${JSON.stringify({ kind: "labelled", cases }, null, 1)}\n`);
+  console.log(`${cases.length} good cases written to ${b}`);
+  if (dropped.length) console.log(`dropped:\n  ${dropped.join("\n  ")}`);
+}
+
+if ((cmd as string) === "prospective") {
+  if (!a) throw new Error("usage: eval-tools prospective <out.json> [sniper URL] [since ISO]");
+  const sniper = (b ?? "https://sniper-production-bea6.up.railway.app").replace(/\/$/, "");
+  const since = process.argv[5] ?? PROSPECTIVE_SINCE;
+  const out = resolve(cwd, a);
+  const file = existsSync(out) ? (JSON.parse(readFileSync(out, "utf8")) as { kind: string; cases: { id: string; token: string }[] }) : { kind: "labelled", cases: [] };
+  const known = new Set(file.cases.map((c) => c.token.toLowerCase()));
+  const now = Date.now();
+  const res = await fetch(`${sniper}/checked.json?since=${encodeURIComponent(since)}`);
+  if (!res.ok) throw new Error(`${sniper}/checked.json: HTTP ${res.status}`);
+  const { tokens } = (await res.json()) as {
+    tokens: { token: string; status: string; verdictId?: string | null; verdict?: string | null; checkedAt?: string | null; priceAtCheck?: number | null; liquidityAtCheck?: number | null; marketUrl?: string | null; symbol?: string | null }[];
+  };
+  const due = tokens.filter(
+    (t) => t.status === "decided" && t.verdictId && t.checkedAt && Date.parse(t.checkedAt) >= Date.parse(since) && now - Date.parse(t.checkedAt) >= OUTCOME_HOURS * 3_600_000 && !known.has(t.token.toLowerCase()),
+  );
+  // Market data now, from DEX Screener (30 tokens a call); the deepest Base pair per token.
+  const market = new Map<string, { price: number | null; liquidity: number; url: string | null }>();
+  for (let i = 0; i < due.length; i += 30) {
+    const batch = due.slice(i, i + 30).map((t) => t.token.toLowerCase());
+    const r = await fetch(`https://api.dexscreener.com/tokens/v1/base/${batch.join(",")}`);
+    if (!r.ok) throw new Error(`dexscreener: HTTP ${r.status}`);
+    for (const p of (await r.json()) as { baseToken: { address: string }; priceUsd?: string; liquidity?: { usd?: number }; url?: string }[]) {
+      const t = p.baseToken.address.toLowerCase();
+      if (!batch.includes(t)) continue;
+      const liq = p.liquidity?.usd ?? 0;
+      if ((market.get(t)?.liquidity ?? -1) >= liq) continue;
+      market.set(t, { price: p.priceUsd ? Number(p.priceUsd) : null, liquidity: liq, url: p.url ?? null });
+    }
+  }
+  const labelledAt = new Date(now).toISOString();
+  const urls = process.env.RPC_URL_8453 ? [process.env.RPC_URL_8453] : RPC[8453]!;
+  for (const t of due) {
+    const token = t.token.toLowerCase();
+    const m = market.get(token);
+    const o: Outcome = { priceAtCheck: t.priceAtCheck ?? null, priceNow: m?.price ?? null, liquidityAtCheck: t.liquidityAtCheck ?? null, liquidityNow: m ? m.liquidity : null };
+    const { label, why } = labelOutcome(o);
+    const blk = await blockAt(urls[0]!, Math.floor(Date.parse(t.checkedAt!) / 1000));
+    const id = `pro-${token.slice(2, 14)}`;
+    const fmt = (v: number | null) => (v === null ? "none" : String(Number(v.toPrecision(4))));
+    file.cases.push({
+      id,
+      chainId: 8453,
+      token,
+      label,
+      basis: "prospective",
+      labelSourceUrl: t.marketUrl?.startsWith("https://") ? t.marketUrl : `https://dexscreener.com/base/${token}`,
+      labelEventAt: labelledAt,
+      asOfBlock: blk.number,
+      split: splitFor(id),
+      verdictId: t.verdictId!,
+      notes:
+        `${t.symbol ?? "?"}: verdict ${t.verdict ?? "?"} bought ${t.checkedAt} by the sniper. At labelling (${labelledAt.slice(0, 16)}Z): ` +
+        `price ${fmt(o.priceAtCheck)} -> ${fmt(o.priceNow)}, liquidity ${fmt(o.liquidityAtCheck)} -> ${fmt(o.liquidityNow)} USD. ${label}: ${why}.`,
+    } as unknown as { id: string; token: string });
+  }
+  writeFileSync(out, `${JSON.stringify(file, null, 1)}\n`);
+  const tally = (l: string) => due.filter((t) => labelOutcome({ priceAtCheck: t.priceAtCheck ?? null, priceNow: market.get(t.token.toLowerCase())?.price ?? null, liquidityAtCheck: t.liquidityAtCheck ?? null, liquidityNow: market.get(t.token.toLowerCase())?.liquidity ?? null }).label === l).length;
+  const waiting = tokens.filter((t) => t.status === "decided" && t.checkedAt && Date.parse(t.checkedAt) >= Date.parse(since) && now - Date.parse(t.checkedAt) < OUTCOME_HOURS * 3_600_000).length;
+  console.log(`${due.length} new prospective cases (bad ${tally("bad")}, ambiguous ${tally("ambiguous")}); ${waiting} more checked since ${since} are not ${OUTCOME_HOURS} h old yet`);
 }

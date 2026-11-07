@@ -10,12 +10,21 @@ export const caseSchema = z
     chainId: z.union([z.literal(1), z.literal(56), z.literal(8453), z.literal(42161)]),
     token: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
     label: z.enum(["good", "bad", "ambiguous"]),
+    /**
+     * current_state: the token as it is when the verdict is bought (the miners
+     * read only current state), so a long-drained rug fails liquidity trivially.
+     * prospective: the verdict was bought before the outcome, and the label comes
+     * from what happened after. Reported separately (DECISIONS L26).
+     */
+    basis: z.enum(["current_state", "prospective"]).default("current_state"),
     labelSourceUrl: z.string().url().startsWith("https://"),
     labelEventAt: z.string().datetime().optional(),
     asOfBlock: z.number().int().positive(),
     split: z.enum(["tune", "holdout"]),
     context: z.object({ deployer: z.string().optional(), socialHandle: z.string().optional(), repoUrl: z.string().optional() }).strict().default({}),
     notes: z.string().max(500).optional(),
+    /** Prospective cases: the verdict bought before the outcome. `eval import` scores that verdict, never a new one. */
+    verdictId: z.string().regex(/^vrd_[a-z0-9]+$/).optional(),
   })
   .strict();
 
