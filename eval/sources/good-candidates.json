@@ -1,39 +1,259 @@
 {
-  "note": "Candidates for the good group. A candidate becomes a case only if CoinGecko lists it on two or more of Binance, Coinbase (gdax), Kraken and OKX, gives its contract on the target chain, and that address holds an ERC-20 contract. Run: pnpm --filter @skein/eval eval-tools good-from-coingecko eval/sources/good-candidates.json eval/sources/good.json",
-  "candidates": [
-    { "id": "chainlink", "chains": ["ethereum", "binance-smart-chain", "base", "arbitrum-one"] },
-    { "id": "uniswap", "chains": ["ethereum", "arbitrum-one"] },
-    { "id": "aave", "chains": ["ethereum"] },
-    { "id": "lido-dao", "chains": ["ethereum"] },
-    { "id": "the-graph", "chains": ["ethereum", "arbitrum-one"] },
-    { "id": "curve-dao-token", "chains": ["ethereum"] },
-    { "id": "compound-governance-token", "chains": ["ethereum"] },
-    { "id": "ethena", "chains": ["ethereum"] },
-    { "id": "pepe", "chains": ["ethereum"] },
-    { "id": "shiba-inu", "chains": ["ethereum"] },
-    { "id": "ondo-finance", "chains": ["ethereum"] },
-    { "id": "render-token", "chains": ["ethereum"] },
-    { "id": "1inch", "chains": ["ethereum"] },
-    { "id": "ethereum-name-service", "chains": ["ethereum"] },
-    { "id": "pancakeswap-token", "chains": ["binance-smart-chain"] },
-    { "id": "trust-wallet-token", "chains": ["binance-smart-chain"] },
-    { "id": "venus", "chains": ["binance-smart-chain"] },
-    { "id": "floki", "chains": ["binance-smart-chain"] },
-    { "id": "baby-doge-coin", "chains": ["binance-smart-chain"] },
-    { "id": "usd-coin", "chains": ["binance-smart-chain", "base", "arbitrum-one"] },
-    { "id": "tether", "chains": ["ethereum", "binance-smart-chain"] },
-    { "id": "dogecoin", "chains": ["binance-smart-chain"] },
-    { "id": "aerodrome-finance", "chains": ["base"] },
-    { "id": "degen-base", "chains": ["base"] },
-    { "id": "brett", "chains": ["base"] },
-    { "id": "toshi", "chains": ["base"] },
-    { "id": "virtual-protocol", "chains": ["base"] },
-    { "id": "coinbase-wrapped-btc", "chains": ["base"] },
-    { "id": "coinbase-wrapped-staked-eth", "chains": ["base"] },
-    { "id": "morpho", "chains": ["base"] },
-    { "id": "arbitrum", "chains": ["arbitrum-one"] },
-    { "id": "gmx", "chains": ["arbitrum-one"] },
-    { "id": "pendle", "chains": ["arbitrum-one"] },
-    { "id": "magic", "chains": ["arbitrum-one"] }
-  ]
+ "note": "Candidates for the good group. A candidate becomes a case only if CoinGecko lists it on two or more of Binance, Coinbase (gdax), Kraken and OKX, gives its contract on the target chain, and that address holds an ERC-20 contract. Run: pnpm --filter @skein/eval eval-tools good-from-coingecko eval/sources/good-candidates.json eval/sources/good.json",
+ "candidates": [
+  {
+   "id": "chainlink",
+   "chains": [
+    "ethereum",
+    "binance-smart-chain",
+    "base",
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "uniswap",
+   "chains": [
+    "ethereum",
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "aave",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "lido-dao",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "the-graph",
+   "chains": [
+    "ethereum",
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "curve-dao-token",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "compound-governance-token",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "ethena",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "pepe",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "shiba-inu",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "ondo-finance",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "render-token",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "1inch",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "ethereum-name-service",
+   "chains": [
+    "ethereum"
+   ]
+  },
+  {
+   "id": "pancakeswap-token",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "trust-wallet-token",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "venus",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "floki",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "baby-doge-coin",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "usd-coin",
+   "chains": [
+    "binance-smart-chain",
+    "base",
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "tether",
+   "chains": [
+    "ethereum",
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "dogecoin",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "aerodrome-finance",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "degen-base",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "brett",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "toshi",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "virtual-protocol",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "coinbase-wrapped-btc",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "coinbase-wrapped-staked-eth",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "morpho",
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "id": "arbitrum",
+   "chains": [
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "gmx",
+   "chains": [
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "pendle",
+   "chains": [
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "magic",
+   "chains": [
+    "arbitrum-one"
+   ]
+  },
+  {
+   "id": "safepal",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "space-id",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "hooked-protocol",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "alpaca-finance",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "polyhedra-network",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "lista",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  },
+  {
+   "id": "bakerytoken",
+   "chains": [
+    "binance-smart-chain"
+   ]
+  }
+ ]
 }
