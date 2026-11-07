@@ -1,0 +1,465 @@
+{
+  "caseId": "bad-hashai-base-af80f4",
+  "policyRef": "dex-list@0.2.0",
+  "wallMs": 4684,
+  "verdict": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 8453,
+      "token": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee"
+    },
+    "decision": {
+      "verdict": "ABSTAIN",
+      "verdictCode": 0,
+      "riskBps": 0,
+      "confidenceBps": 0,
+      "coverageBps": 1400,
+      "reasons": [
+        {
+          "code": "MISSING_REQUIRED_CHECK",
+          "check": "contract_audit",
+          "detail": "required check contract_audit is ERROR"
+        },
+        {
+          "code": "MISSING_REQUIRED_CHECK",
+          "check": "liquidity_depth",
+          "detail": "required check liquidity_depth is UNAVAILABLE"
+        }
+      ],
+      "openRisks": [
+        "contract_audit ERROR",
+        "liquidity_depth UNAVAILABLE",
+        "wash_trading UNKNOWN",
+        "social_bots UNAVAILABLE",
+        "code_review UNAVAILABLE"
+      ],
+      "conflicts": []
+    },
+    "summary": "Abstained: required check contract_audit is ERROR (+1 more).",
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0xdb80a0b04986ac8d03476bc51f97ed2b53fa8c707de73efdf0bed6202f9fa84c",
+          "signalHash": "0x191b24a70b00263f99ed7e7a035c7777eeaefa04c225e4ed021e061054088511"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 522
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0x0a32aedbfadbe3c8f132a8919ddaa033e166dccd1ca435042a727637f086242f",
+          "signalHash": "0x21add914da60cd43bd0c3a291ec6c14e6ee8ffa23daf2ab84301f2f27a707ee3"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x540ada65d94d5f3dc0c6030d55a989459a2ccdf529587dacecb7017df13fcb42",
+          "signalHash": "0xa0fe3ebe03edadd205888b2715aaa81d4bd4c2495e3a23e85f0caadfd3ea55e7"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "contract_audit",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "200001"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "severity": 0,
+        "sourceGroup": "gopluslabs.io",
+        "status": "ERROR"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "notes": [
+          "no_pool_found"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "verdictHash": "0x05840bf1ce25dd0c774be97a2c614281546ed63eaa788f0cf64fec49691df491",
+    "bom": {
+      "root": "0xa8d02b00bd9733e9aeb0a4dca8e6d4d052dc7902082aaf74a7c6c02a8c563d6d",
+      "items": 3
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "intent": "SMART_CONTRACT_AUDIT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "unknown",
+      "durationMs": 1960,
+      "attempts": 1,
+      "sourceGroup": "gopluslabs.io",
+      "adapterVersion": "0.4.0",
+      "createdAt": "2026-11-07T21:43:53.773Z",
+      "minerId": "200001",
+      "error": "server_error: HTTP 500: {\"error\":\"miner error 4029: too many requests\",\"intent\":\"SMART_CONTRACT_AUDIT_GENERAL\",\"miner_id\":\"200001\"}",
+      "httpStatus": 500
+    },
+    {
+      "check": "holder_count",
+      "intent": "TOKEN_HOLDER_COUNT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 4363,
+      "attempts": 1,
+      "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+      "adapterVersion": "0.1.0",
+      "createdAt": "2026-11-07T21:43:56.401Z",
+      "minerId": "9002",
+      "minerName": "TxLens",
+      "httpStatus": 200,
+      "signalHash": "0x191b24a70b00263f99ed7e7a035c7777eeaefa04c225e4ed021e061054088511",
+      "epochId": 2037,
+      "resultShape": "intent",
+      "rawResult": {
+        "token": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
+        "chain": "base",
+        "holders_count": 522,
+        "token_symbol": null
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xdb80a0b04986ac8d03476bc51f97ed2b53fa8c707de73efdf0bed6202f9fa84c"
+    },
+    {
+      "check": "sanctions",
+      "intent": "SANCTIONS_SCREENING_MATCH_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 574,
+      "attempts": 1,
+      "sourceGroup": "13.237.89.59",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-07T21:43:52.615Z",
+      "minerId": "78021",
+      "minerName": "OFAC SDN Entity Screen",
+      "httpStatus": 200,
+      "signalHash": "0x21add914da60cd43bd0c3a291ec6c14e6ee8ffa23daf2ab84301f2f27a707ee3",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "entity": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
+        "on_list": 0,
+        "sanctioned": 0,
+        "source": "ofac_sdn_xml"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x0a32aedbfadbe3c8f132a8919ddaa033e166dccd1ca435042a727637f086242f"
+    },
+    {
+      "check": "wash_trading",
+      "intent": "WASH_TRADING_DETECTION_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 2040,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-07T21:43:54.079Z",
+      "minerId": "7378",
+      "minerName": "VerifyWire Wash Trading Detection",
+      "httpStatus": 200,
+      "signalHash": "0xa0fe3ebe03edadd205888b2715aaa81d4bd4c2495e3a23e85f0caadfd3ea55e7",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-07T21:43:53.732Z",
+        "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+        "chain": "base",
+        "chain_id": 8453,
+        "confidence": 0.5,
+        "contract_address": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
+        "intent": "WASH_TRADING_DETECTION",
+        "source": "eth_getLogs Transfer events over public RPC",
+        "summary": "No ERC-20 transfers of HashAI were found in the last 8 blocks on Base, so there is no activity to assess for wash-trading patterns in this window.",
+        "symbol": "HashAI",
+        "transfers": 0,
+        "verified": false,
+        "window_blocks": 8
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x540ada65d94d5f3dc0c6030d55a989459a2ccdf529587dacecb7017df13fcb42"
+    }
+  ],
+  "stored": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 8453,
+      "token": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee"
+    },
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0xdb80a0b04986ac8d03476bc51f97ed2b53fa8c707de73efdf0bed6202f9fa84c",
+          "signalHash": "0x191b24a70b00263f99ed7e7a035c7777eeaefa04c225e4ed021e061054088511"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 522
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0x0a32aedbfadbe3c8f132a8919ddaa033e166dccd1ca435042a727637f086242f",
+          "signalHash": "0x21add914da60cd43bd0c3a291ec6c14e6ee8ffa23daf2ab84301f2f27a707ee3"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x540ada65d94d5f3dc0c6030d55a989459a2ccdf529587dacecb7017df13fcb42",
+          "signalHash": "0xa0fe3ebe03edadd205888b2715aaa81d4bd4c2495e3a23e85f0caadfd3ea55e7"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "contract_audit",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "200001"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "severity": 0,
+        "sourceGroup": "gopluslabs.io",
+        "status": "ERROR"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "notes": [
+          "no_pool_found"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "purchases": [
+      {
+        "check": "contract_audit",
+        "adapterVersion": "0.4.0",
+        "sourceGroup": "gopluslabs.io",
+        "minerId": "200001",
+        "httpStatus": 500,
+        "error": "server_error: HTTP 500: {\"error\":\"miner error 4029: too many requests\",\"intent\":\"SMART_CONTRACT_AUDIT_GENERAL\",\"miner_id\":\"200001\"}"
+      },
+      {
+        "check": "holder_count",
+        "adapterVersion": "0.1.0",
+        "rawResult": {
+          "token": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
+          "chain": "base",
+          "holders_count": 522,
+          "token_symbol": null
+        },
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "minerId": "9002",
+        "receiptHash": "0xdb80a0b04986ac8d03476bc51f97ed2b53fa8c707de73efdf0bed6202f9fa84c",
+        "signalHash": "0x191b24a70b00263f99ed7e7a035c7777eeaefa04c225e4ed021e061054088511",
+        "httpStatus": 200
+      },
+      {
+        "check": "sanctions",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "entity": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
+          "on_list": 0,
+          "sanctioned": 0,
+          "source": "ofac_sdn_xml"
+        },
+        "sourceGroup": "13.237.89.59",
+        "minerId": "78021",
+        "receiptHash": "0x0a32aedbfadbe3c8f132a8919ddaa033e166dccd1ca435042a727637f086242f",
+        "signalHash": "0x21add914da60cd43bd0c3a291ec6c14e6ee8ffa23daf2ab84301f2f27a707ee3",
+        "httpStatus": 200
+      },
+      {
+        "check": "wash_trading",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "as_of": "2026-11-07T21:43:53.732Z",
+          "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+          "chain": "base",
+          "chain_id": 8453,
+          "confidence": 0.5,
+          "contract_address": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
+          "intent": "WASH_TRADING_DETECTION",
+          "source": "eth_getLogs Transfer events over public RPC",
+          "summary": "No ERC-20 transfers of HashAI were found in the last 8 blocks on Base, so there is no activity to assess for wash-trading patterns in this window.",
+          "symbol": "HashAI",
+          "transfers": 0,
+          "verified": false,
+          "window_blocks": 8
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7378",
+        "receiptHash": "0x540ada65d94d5f3dc0c6030d55a989459a2ccdf529587dacecb7017df13fcb42",
+        "signalHash": "0xa0fe3ebe03edadd205888b2715aaa81d4bd4c2495e3a23e85f0caadfd3ea55e7",
+        "httpStatus": 200
+      }
+    ],
+    "unpurchased": [
+      {
+        "check": "code_review",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_repo_url"
+        ]
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_pool_found"
+        ]
+      },
+      {
+        "check": "social_bots",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_social_handle"
+        ]
+      }
+    ],
+    "receipts": [
+      "0xdb80a0b04986ac8d03476bc51f97ed2b53fa8c707de73efdf0bed6202f9fa84c",
+      "0x0a32aedbfadbe3c8f132a8919ddaa033e166dccd1ca435042a727637f086242f",
+      "0x540ada65d94d5f3dc0c6030d55a989459a2ccdf529587dacecb7017df13fcb42"
+    ],
+    "verdictHash": "0x05840bf1ce25dd0c774be97a2c614281546ed63eaa788f0cf64fec49691df491",
+    "bomRoot": "0xa8d02b00bd9733e9aeb0a4dca8e6d4d052dc7902082aaf74a7c6c02a8c563d6d"
+  }
+}

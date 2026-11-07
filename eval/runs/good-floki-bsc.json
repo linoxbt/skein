@@ -1,0 +1,1810 @@
+{
+  "caseId": "good-floki-bsc",
+  "policyRef": "dex-list@0.2.0",
+  "wallMs": 4684,
+  "verdict": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 56,
+      "token": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e"
+    },
+    "decision": {
+      "verdict": "ABSTAIN",
+      "verdictCode": 0,
+      "riskBps": 0,
+      "confidenceBps": 0,
+      "coverageBps": 5600,
+      "reasons": [
+        {
+          "code": "MISSING_REQUIRED_CHECK",
+          "check": "holder_count",
+          "detail": "required check holder_count is UNKNOWN"
+        }
+      ],
+      "openRisks": [
+        "holder_count UNKNOWN",
+        "wash_trading UNKNOWN",
+        "social_bots UNAVAILABLE",
+        "code_review UNAVAILABLE"
+      ],
+      "conflicts": []
+    },
+    "summary": "Abstained: required check holder_count is UNKNOWN.",
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7302",
+          "receiptHash": "0xec7af20ded69e9a089fb7140d8ff41425c1ede645c011c0206ec275f2accd1ce",
+          "signalHash": "0x99ae72c93e1045436685c2b09f72e099e206abb8765495254e063be2582e43fc"
+        },
+        "notes": [
+          "missing_holders_count"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0x1f189a3c33b517d7cddbc6928a0145e002dda4ad85be6e304bfdede85fd5af25",
+          "signalHash": "0x4e8c9adc303ca459aeb75d09fb0978742300d1b7b205f95684fecc29e3bd9fed"
+        },
+        "notes": [
+          "missing_holders_count"
+        ],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0xe549181b3f028278edeb6e0da45242753ad4792936f07f95cfa6311ad87748cd",
+          "signalHash": "0x19ee2d7a462814a850fb12eb4a2cc5a4e5e57116c901807e2bc63562c8200fd2"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x7fe6a7e9adf85d43cdab899f6715d8a29183270d81fc7187db6c24d9b447c936",
+          "signalHash": "0x4f44f67fccbeba2813c739bfb8e70e187b091940b6329eed02ecd4583fb03ac8"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x62e9a35c84984ff01bec4e908a13ec87195a9e7055feab65aeef1c44e70cfe71",
+          "signalHash": "0x4404c515d2cdd2a9acd63cfa91e3531b9d34adb7227b56345e55d88cc074090a"
+        },
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "gopluslabs.io",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "liquidity_depth",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "7373",
+          "receiptHash": "0x90eca081d524ca98055ed554507925f016541cb3d62e5bb85fbfcb6e379a9ad1",
+          "signalHash": "0x40e976f9cc4d288a3bd12dd001ef5c0af477957f779c4a9972b3d21ed36a5d5a"
+        },
+        "metric": "liquidity_usd",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "USD",
+        "value": 8187607.62
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "verdictHash": "0x2d9b401f51a7b5ca651815d799dd72f7d6edf534b45623371a8520ba8894af9a",
+    "bom": {
+      "root": "0xae7891338bce460963b7e1c637be200e96df1a86200de1a939fdd7e3cae9d840",
+      "items": 6
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "intent": "SMART_CONTRACT_AUDIT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 2324,
+      "attempts": 1,
+      "sourceGroup": "gopluslabs.io",
+      "adapterVersion": "0.4.0",
+      "createdAt": "2026-11-07T21:41:32.603Z",
+      "minerId": "200001",
+      "minerName": "GoPlus Security",
+      "httpStatus": 200,
+      "signalHash": "0x4404c515d2cdd2a9acd63cfa91e3531b9d34adb7227b56345e55d88cc074090a",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "code": 1,
+        "message": "OK",
+        "result": {
+          "0xfb5b838b6cfeedc2873ab27866079ac55363d37e": {
+            "anti_whale_modifiable": "0",
+            "buy_tax": "0.003",
+            "can_take_back_ownership": "0",
+            "cannot_buy": "0",
+            "cannot_sell_all": "0",
+            "creator_address": "0xa99c602037f8e85a44bbe88f3c0ee3af60345b9b",
+            "creator_balance": "404516.584897447",
+            "creator_percent": "0.000000",
+            "dex": [
+              {
+                "liquidity": "4086134.84851267",
+                "liquidity_type": "UniV2",
+                "name": "PancakeV2",
+                "pair": "0x231d9e7181e8479a8b40930961e93e7ed798542c",
+                "pool_fee": "0.0025"
+              },
+              {
+                "liquidity": "183303.54295630",
+                "liquidity_type": "UniV2",
+                "name": "Ape",
+                "pair": "0xacc22e0ff64e788e6ad569a57d130b9d957494dc",
+                "pool_fee": "0.0020"
+              },
+              {
+                "liquidity": "142487.86640870",
+                "liquidity_type": "UniV2",
+                "name": "Biswap",
+                "pair": "0xadbfe34e35edb3d31f4bd1af5a513f4c57cdc5e9",
+                "pool_fee": "0.0020"
+              },
+              {
+                "liquidity": "666.679135913773190619612912000000",
+                "liquidity_type": "UniV3",
+                "name": "PancakeV3",
+                "pair": "0xc7c78f4eb03db672d379e96e9fcf89a6ff0eb8f2",
+                "pool_fee": "0.01"
+              },
+              {
+                "liquidity": "104.30314059",
+                "liquidity_type": "UniV2",
+                "name": "ThenaV2",
+                "pair": "0x537672472bec1246ee9419e1716e221c9d0c04f6"
+              },
+              {
+                "liquidity": "57.33905793",
+                "liquidity_type": "UniV2",
+                "name": "PancakeV2",
+                "pair": "0xc2096eeca6429b44fdfbd9fe5c8fc298b6602326",
+                "pool_fee": "0.0025"
+              },
+              {
+                "liquidity": "27.060710548635308907240000000000",
+                "liquidity_type": "UniV3",
+                "name": "PancakeV3",
+                "pair": "0x82b13a3fa0f5c6f5baa68605e5d33a757bcdebbe",
+                "pool_fee": "0.01"
+              },
+              {
+                "liquidity": "18.936362417206061289810164000000",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x434781c041361959ceb62bba560ff2324b0ef0deb074977121dc2454dba40cc8",
+                "pool_fee": "0.8",
+                "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+              },
+              {
+                "liquidity": "7.42698053",
+                "liquidity_type": "UniV2",
+                "name": "PancakeV2",
+                "pair": "0x8f7a63fbb212f970efa2b12fb49d3a3fc8dee975",
+                "pool_fee": "0.0025"
+              },
+              {
+                "liquidity": "4.57309565",
+                "liquidity_type": "UniV2",
+                "name": "PancakeV2",
+                "pair": "0x9d4f0204441beec5a43d457a87c307da51650f6c",
+                "pool_fee": "0.0025"
+              },
+              {
+                "liquidity": "0.71529941",
+                "liquidity_type": "UniV2",
+                "name": "PancakeV2",
+                "pair": "0x9668a53698894c69bded10bd59db17f04aa8c211",
+                "pool_fee": "0.0025"
+              },
+              {
+                "liquidity": "0.550002411112759228526375",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x7637ae681e198b8798f88452d64e93e7ed1922f85f509a32623444f9cadbefec",
+                "pool_fee": "0.0021",
+                "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+              },
+              {
+                "liquidity": "0.498977278853138329616818",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x531e3bc02289808be40331df7ea1b73cf64ba8f6911fff05fa41be56f40835ca",
+                "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+              },
+              {
+                "liquidity": "0.473740685354134252578624",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x9c0cf552ccc6b996f31ebefa88da7f1f6348d4fafb407d46b89963cb19a9e5a5",
+                "pool_fee": "0.86",
+                "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+              },
+              {
+                "liquidity": "0.100002912972821334754409",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x43c2e30d87dc16740f59a3a53bd858421c084cf8c6f5b6db4855dd963336eb0f",
+                "pool_fee": "0.95",
+                "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+              },
+              {
+                "liquidity": "0.089876069999999889152847",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x2f8712199fad55802ed6becc2342929bb03c839d8d25382647eb5508df27bd55",
+                "pool_fee": "0.969879",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.05211897720867744934",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x64f7e7c2e7dd542d76b2d9d7864760eb7b70d9505ec408f6f30f07a24caa400b",
+                "pool_fee": "0.926606",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.045482236325701227505778",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xe555bdc196b7b2e87a8d42d754ffc871a04304a2969fde433c98c6a6f3830cd8",
+                "pool_fee": "0.979919",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.042954209547454581856915",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x7176d66aa5015d314a5d359b0b3448206cac3ab058383fb048a0f1d973295ef3",
+                "pool_fee": "0.989859",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.028801101944846282873441",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x33646dd6d01eef24e312f78a388c685509827e3fb0f6574aed469bc6c21f19a9",
+                "pool_fee": "0.829116",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.023536246366919834879956",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x031905a4254548e47e13bfa738b5bd95bdfd104b57cac953f4b1718489fb0039",
+                "pool_fee": "0.974397",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.014865718661044674944819",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x5a13aa036b74c1254f766f40b3ec703da309f8f77546740dd244389ed922b8c4",
+                "pool_fee": "0.992971",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.011322092006721321374517",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x9cb6bc5c40729e7e1b76f3443a201fa2431a54ff91c14d36b11b28295d1b3fe2",
+                "pool_fee": "0.7001",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.01112557919152943874057",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xde5e297f0b916d90eca6057b6d7de4c6ab33d96f469f4ee8911a5750aa8da29d",
+                "pool_fee": "0.987598",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.0098576491332516252",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xae3a663340171c38ebf366cc572c60d5c4769fed0d8ff30604f327fa416e90ee",
+                "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+              },
+              {
+                "liquidity": "0.005137141635706009945939",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x3a5ed257ff4ed9906b65f2198f8cb343a7aca7d8576867c23c8b43d7b86cc324",
+                "pool_fee": "0.986297",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.004305140225828906303862",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xb20084673813a2ba8fe86dfcd976bfed37fdc0fcb98ad269b93e1e9020e7130d",
+                "pool_fee": "0.968428",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.003326720756803583645804",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xa7e06cad78465ae9222c9e59332aed8fa8bd73455d0248e66f6c06a2ad406cae",
+                "pool_fee": "0.980923",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.003305354575229359860000000000",
+                "liquidity_type": "UniV3",
+                "name": "UniswapV3",
+                "pair": "0xa68a949680adc96f8e7aef1cc81c06119b2e132a",
+                "pool_fee": "0.003"
+              },
+              {
+                "liquidity": "0.002656038632686600342955",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xea312422db084af7c05914e4b5899542ee4b2f844ad7b4a9393f81c3ba00bf95",
+                "pool_fee": "0.9875",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.00254720094367561881339",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xb22ac2e372e4d0138566f87022cc9121a455cd0c0260db40c69deb107ca3f06b",
+                "pool_fee": "0.977589",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.002480240468773944141568",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x033191f931211145311ac97cea4f8dc9bccbe08d9aca058ba4f4901253e4993d",
+                "pool_fee": "0.975156",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.002291803237592954655563",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xae9d06e5acd629a491e680ee4ec27e57c52b691db37fff52378667422d3ccc72",
+                "pool_fee": "0.972347",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.001130502194510272713850",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x29851ac7720911c82537f94ab2adeb7dfcd4293a280e47a386d77d78b9998ccb",
+                "pool_fee": "0.984482",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000776877849785370670181",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xd153a5a4e9d4539168e186bb231f345632fe60c2ce60f390bcf7feac62a249e2",
+                "pool_fee": "0.982387",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000046080233759659780072000000",
+                "liquidity_type": "UniV3",
+                "name": "ThenaV3",
+                "pair": "0x5135c813d5f9d3624221b3bdbac805339fa5a591",
+                "pool_fee": "0.002787"
+              },
+              {
+                "liquidity": "0.000030144361589906960667",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xdf5818d4469a893037609ba96c5aecae059beea09e9db54dc8b9ba91d29a78a5",
+                "pool_fee": "0.983188",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.00002660031743737382356",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x288473c6690cdab0d387d9f20b716f38b01c1fa4d593bf46e9d94f0331336c90",
+                "pool_fee": "0.928971",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000013516569098878181198",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x8dd73e1d47e742cb72a1dd07d702203747610272b0af2043c8e8e916075fbbd2",
+                "pool_fee": "0.899598",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.00000108962655217061464",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xfdbd1e35ed6ac089d6477efd9046889d8931fbcf86d74f208b42456cc2cb447f",
+                "pool_fee": "0.919578",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000000368968107085145341",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x22d546f2f74cd8f9355b9f9527b39ac42c5be91624ef3e622aa8a98c3c63b449",
+                "pool_fee": "0.984437",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000000139861549790719838",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xdcda5d985eb2fe735668977ba2d91dbab3a3a24c531ba67cfbf229a671d007c9",
+                "pool_fee": "0.774598",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000000139226556410294282",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xb5f0db9ddf53145866f9f922aeda56ba9f1d5021cdbd32bf72bfe663cb09ed75",
+                "pool_fee": "0.92817",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000000054416048333662308",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x435be82275fbe252d902bda14172cd454cd133d525bd3177f526c6b195a4248a",
+                "pool_fee": "0.965863",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.000000029692584071099692000000",
+                "liquidity_type": "UniV3",
+                "name": "UniswapV3",
+                "pair": "0x0ea545a0e601c70a3b65224ff6033e7b9e821545",
+                "pool_fee": "0.01"
+              },
+              {
+                "liquidity": "0.000000000485569111040544",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0x01970f8f33fb233f5d680dafdec340860f71cf953f3e30024c28af5ecf434c9e",
+                "pool_fee": "0.978397",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              },
+              {
+                "liquidity": "0.00000000000641797165218",
+                "liquidity_type": "UniV4",
+                "name": "Pancake Infinity CL",
+                "pair": "0xe8ade78a7e2f7bb84a064659bc9961ec7475dde1548aa46337b0ed41b31d6d8c",
+                "pool_fee": "0.958421",
+                "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+              }
+            ],
+            "external_call": "1",
+            "hidden_owner": "0",
+            "holder_count": "445723",
+            "holders": [
+              {
+                "address": "0x000000000000000000000000000000000000dead",
+                "balance": "5897761688101.482679459",
+                "is_contract": 0,
+                "is_locked": 1,
+                "percent": "0.589776168810148267",
+                "tag": ""
+              },
+              {
+                "address": "0xf977814e90da44bfa03b6295a0616a897441acec",
+                "balance": "911455843441.46598706",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.091145584344146598",
+                "tag": ""
+              },
+              {
+                "address": "0xb8d2471e35ee033db509e0456c8efc4135f4ee43",
+                "balance": "730960061751.130899998",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.073096006175113089",
+                "tag": ""
+              },
+              {
+                "address": "0x5a52e96bacdabb82fd05763e25335261b270efcb",
+                "balance": "435327400033.468",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.043532740003346800",
+                "tag": ""
+              },
+              {
+                "address": "0x231d9e7181e8479a8b40930961e93e7ed798542c",
+                "balance": "192122341553.75118837",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.019212234155375118",
+                "tag": "PancakeV2"
+              },
+              {
+                "address": "0x87502434be965e609c4fedf4d5b1deaccd4ff59b",
+                "balance": "165649862912.816289849",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.016564986291281628",
+                "tag": ""
+              },
+              {
+                "address": "0x611f7bf868a6212f871e89f7e44684045ddfb09d",
+                "balance": "150753343374.993259",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.015075334337499325",
+                "tag": ""
+              },
+              {
+                "address": "0x17e98a24f992bb7bcd62d6722d714a3c74814b94",
+                "balance": "74691416325.268170783",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.007469141632526817",
+                "tag": ""
+              },
+              {
+                "address": "0xff90e8b1580ffe3eb8d3ff028ea640cce6bcc351",
+                "balance": "36731504128.473233958",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.003673150412847323",
+                "tag": ""
+              },
+              {
+                "address": "0x98adef6f2ac8572ec48965509d69a8dd5e8bba9d",
+                "balance": "32724685290.060310777",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.003272468529006031",
+                "tag": ""
+              }
+            ],
+            "honeypot_with_same_creator": "0",
+            "is_anti_whale": "0",
+            "is_blacklisted": "0",
+            "is_honeypot": "0",
+            "is_in_cex": {
+              "cex_list": [
+                "Binance"
+              ],
+              "listed": "1"
+            },
+            "is_in_dex": "1",
+            "is_mintable": "0",
+            "is_open_source": "1",
+            "is_proxy": "0",
+            "is_whitelisted": "0",
+            "lp_holder_count": "66",
+            "lp_holders": [
+              {
+                "NFT_list": null,
+                "address": "0xc765bddb93b0d1c1a88282ba0fa6b2d00e3e0c83",
+                "balance": "698.151175448296203678",
+                "is_contract": 1,
+                "is_locked": 1,
+                "locked_detail": [
+                  {
+                    "amount": "698.151175448296203678",
+                    "end_time": "2286-11-20T17:46:39+00:00",
+                    "opt_time": "2022-01-25T20:24:06+00:00"
+                  }
+                ],
+                "percent": "0.841722760837232303",
+                "tag": "UNCX",
+                "value": "3439392.705843313794398265"
+              },
+              {
+                "NFT_list": null,
+                "address": "0x17e98a24f992bb7bcd62d6722d714a3c74814b94",
+                "balance": "77.491723987173157338",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.093427541412698986",
+                "tag": "",
+                "value": "381757.532777290331196079"
+              },
+              {
+                "NFT_list": null,
+                "address": "0x44277c73295149b7a28776d0de9d0ee1fafde6f8",
+                "balance": "53.5111",
+                "is_contract": 1,
+                "is_locked": 1,
+                "locked_detail": [
+                  {
+                    "amount": "53.5111",
+                    "end_time": "9999-99-99 99:99:99",
+                    "opt_time": "2022-10-29T15:20:23+00:00"
+                  }
+                ],
+                "percent": "0.064515412150549209",
+                "tag": "OnlyMoons Lock",
+                "value": "263618.673854517108097421"
+              },
+              {
+                "NFT_list": null,
+                "address": "0x660546de02aac7fc6289f10691bf11d8719f16c0",
+                "balance": "0.141586634383916046",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000170703275998577",
+                "tag": "",
+                "value": "697.516604813063494283"
+              },
+              {
+                "NFT_list": null,
+                "address": "0xf558eb4b68547b0ea2070a2341bb5bd0e9a87520",
+                "balance": "0.059959018067306363",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000072289314978658",
+                "tag": "",
+                "value": "295.383889109405989071"
+              },
+              {
+                "NFT_list": null,
+                "address": "0x2a90acf813b06f8454b5b3b4a5b92703fff55e5a",
+                "balance": "0.015642393547343809",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000018859179996822",
+                "tag": "",
+                "value": "77.061152599390229338"
+              },
+              {
+                "NFT_list": null,
+                "address": "0xf61030d320e71256a43ec22839db345d80ac84b3",
+                "balance": "0.014425877928648535",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.000017392493523778",
+                "tag": "",
+                "value": "71.068073890042906415"
+              },
+              {
+                "NFT_list": null,
+                "address": "0x0ed943ce24baebf257488771759f9bf482c39706",
+                "balance": "0.008516754555716097",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.000010268186046392",
+                "tag": "",
+                "value": "41.957192835174282143"
+              },
+              {
+                "NFT_list": null,
+                "address": "0xd634b7a48aedcab75d5879c7465adf7eb97ecc73",
+                "balance": "0.008200211837340703",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000009886547770609",
+                "tag": "",
+                "value": "40.397767376971680245"
+              },
+              {
+                "NFT_list": null,
+                "address": "0x47b1796a0d4d7f07e46acb460d4a14ff232b6273",
+                "balance": "0.005484159099596212",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000006611951251415",
+                "tag": "",
+                "value": "27.017324425076965665"
+              }
+            ],
+            "lp_total_supply": "829.431266363605938496",
+            "owner_address": "0x000000000000000000000000000000000000dead",
+            "owner_balance": "5897761688101.482",
+            "owner_change_balance": "0",
+            "owner_percent": "0.589776",
+            "personal_slippage_modifiable": "0",
+            "selfdestruct": "0",
+            "sell_tax": "0.003",
+            "slippage_modifiable": "0",
+            "token_name": "FLOKI",
+            "token_symbol": "FLOKI",
+            "total_supply": "10000000000000",
+            "trading_cooldown": "0",
+            "transfer_pausable": "0",
+            "transfer_tax": "0"
+          }
+        }
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x62e9a35c84984ff01bec4e908a13ec87195a9e7055feab65aeef1c44e70cfe71"
+    },
+    {
+      "check": "holder_count",
+      "intent": "TOKEN_HOLDER_COUNT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 3075,
+      "attempts": 1,
+      "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+      "adapterVersion": "0.1.0",
+      "createdAt": "2026-11-07T21:41:33.145Z",
+      "minerId": "9002",
+      "minerName": "TxLens",
+      "httpStatus": 200,
+      "signalHash": "0x4e8c9adc303ca459aeb75d09fb0978742300d1b7b205f95684fecc29e3bd9fed",
+      "epochId": 2037,
+      "resultShape": "intent",
+      "rawResult": {
+        "token": null,
+        "chain": "bsc",
+        "holders_count": null,
+        "token_symbol": null
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x1f189a3c33b517d7cddbc6928a0145e002dda4ad85be6e304bfdede85fd5af25"
+    },
+    {
+      "check": "holder_count",
+      "intent": "TOKEN_HOLDER_COUNT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 505,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.1.0",
+      "createdAt": "2026-11-07T21:41:34.486Z",
+      "minerId": "7302",
+      "minerName": "ChainWire Token Holder Count",
+      "httpStatus": 200,
+      "signalHash": "0x99ae72c93e1045436685c2b09f72e099e206abb8765495254e063be2582e43fc",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-07T21:41:34.134Z",
+        "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+        "chain": "bsc",
+        "confidence": 0.4,
+        "holders": null,
+        "intent": "TOKEN_HOLDER_COUNT",
+        "summary": "A holder count is not served for bsc. This miner covers ethereum, base, arbitrum, polygon, where a public index of transfer events exists.",
+        "supported": false
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xec7af20ded69e9a089fb7140d8ff41425c1ede645c011c0206ec275f2accd1ce"
+    },
+    {
+      "check": "liquidity_depth",
+      "intent": "LIQUIDITY_DEPTH_VERIFY_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 3673,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.4.0",
+      "createdAt": "2026-11-07T21:41:33.746Z",
+      "minerId": "7373",
+      "pool": "0x231d9e7181e8479a8b40930961e93e7ed798542c",
+      "minerName": "VerifyWire Liquidity Depth",
+      "httpStatus": 200,
+      "signalHash": "0x40e976f9cc4d288a3bd12dd001ef5c0af477957f779c4a9972b3d21ed36a5d5a",
+      "epochId": 2037,
+      "resultShape": "intent",
+      "rawResult": {
+        "liquidity_usd": 8187607.62
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x90eca081d524ca98055ed554507925f016541cb3d62e5bb85fbfcb6e379a9ad1"
+    },
+    {
+      "check": "sanctions",
+      "intent": "SANCTIONS_SCREENING_MATCH_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 546,
+      "attempts": 1,
+      "sourceGroup": "13.237.89.59",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-07T21:41:30.620Z",
+      "minerId": "78021",
+      "minerName": "OFAC SDN Entity Screen",
+      "httpStatus": 200,
+      "signalHash": "0x19ee2d7a462814a850fb12eb4a2cc5a4e5e57116c901807e2bc63562c8200fd2",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "entity": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e",
+        "on_list": 0,
+        "sanctioned": 0,
+        "source": "ofac_sdn_xml"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xe549181b3f028278edeb6e0da45242753ad4792936f07f95cfa6311ad87748cd"
+    },
+    {
+      "check": "wash_trading",
+      "intent": "WASH_TRADING_DETECTION_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 1200,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-07T21:41:31.279Z",
+      "minerId": "7378",
+      "minerName": "VerifyWire Wash Trading Detection",
+      "httpStatus": 200,
+      "signalHash": "0x4f44f67fccbeba2813c739bfb8e70e187b091940b6329eed02ecd4583fb03ac8",
+      "epochId": 2037,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-07T21:41:30.869Z",
+        "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+        "chain": "ethereum",
+        "chain_id": 1,
+        "confidence": 0.5,
+        "contract_address": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e",
+        "intent": "WASH_TRADING_DETECTION",
+        "source": "eth_getLogs Transfer events over public RPC",
+        "summary": "No ERC-20 transfers of the token were found in the last 600 blocks on Ethereum, so there is no activity to assess for wash-trading patterns in this window.",
+        "symbol": "the token",
+        "transfers": 0,
+        "verified": false,
+        "window_blocks": 600
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x7fe6a7e9adf85d43cdab899f6715d8a29183270d81fc7187db6c24d9b447c936"
+    }
+  ],
+  "stored": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 56,
+      "token": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e"
+    },
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7302",
+          "receiptHash": "0xec7af20ded69e9a089fb7140d8ff41425c1ede645c011c0206ec275f2accd1ce",
+          "signalHash": "0x99ae72c93e1045436685c2b09f72e099e206abb8765495254e063be2582e43fc"
+        },
+        "notes": [
+          "missing_holders_count"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0x1f189a3c33b517d7cddbc6928a0145e002dda4ad85be6e304bfdede85fd5af25",
+          "signalHash": "0x4e8c9adc303ca459aeb75d09fb0978742300d1b7b205f95684fecc29e3bd9fed"
+        },
+        "notes": [
+          "missing_holders_count"
+        ],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0xe549181b3f028278edeb6e0da45242753ad4792936f07f95cfa6311ad87748cd",
+          "signalHash": "0x19ee2d7a462814a850fb12eb4a2cc5a4e5e57116c901807e2bc63562c8200fd2"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x7fe6a7e9adf85d43cdab899f6715d8a29183270d81fc7187db6c24d9b447c936",
+          "signalHash": "0x4f44f67fccbeba2813c739bfb8e70e187b091940b6329eed02ecd4583fb03ac8"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x62e9a35c84984ff01bec4e908a13ec87195a9e7055feab65aeef1c44e70cfe71",
+          "signalHash": "0x4404c515d2cdd2a9acd63cfa91e3531b9d34adb7227b56345e55d88cc074090a"
+        },
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "gopluslabs.io",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "liquidity_depth",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "7373",
+          "receiptHash": "0x90eca081d524ca98055ed554507925f016541cb3d62e5bb85fbfcb6e379a9ad1",
+          "signalHash": "0x40e976f9cc4d288a3bd12dd001ef5c0af477957f779c4a9972b3d21ed36a5d5a"
+        },
+        "metric": "liquidity_usd",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "USD",
+        "value": 8187607.62
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "purchases": [
+      {
+        "check": "contract_audit",
+        "adapterVersion": "0.4.0",
+        "rawResult": {
+          "code": 1,
+          "message": "OK",
+          "result": {
+            "0xfb5b838b6cfeedc2873ab27866079ac55363d37e": {
+              "anti_whale_modifiable": "0",
+              "buy_tax": "0.003",
+              "can_take_back_ownership": "0",
+              "cannot_buy": "0",
+              "cannot_sell_all": "0",
+              "creator_address": "0xa99c602037f8e85a44bbe88f3c0ee3af60345b9b",
+              "creator_balance": "404516.584897447",
+              "creator_percent": "0.000000",
+              "dex": [
+                {
+                  "liquidity": "4086134.84851267",
+                  "liquidity_type": "UniV2",
+                  "name": "PancakeV2",
+                  "pair": "0x231d9e7181e8479a8b40930961e93e7ed798542c",
+                  "pool_fee": "0.0025"
+                },
+                {
+                  "liquidity": "183303.54295630",
+                  "liquidity_type": "UniV2",
+                  "name": "Ape",
+                  "pair": "0xacc22e0ff64e788e6ad569a57d130b9d957494dc",
+                  "pool_fee": "0.0020"
+                },
+                {
+                  "liquidity": "142487.86640870",
+                  "liquidity_type": "UniV2",
+                  "name": "Biswap",
+                  "pair": "0xadbfe34e35edb3d31f4bd1af5a513f4c57cdc5e9",
+                  "pool_fee": "0.0020"
+                },
+                {
+                  "liquidity": "666.679135913773190619612912000000",
+                  "liquidity_type": "UniV3",
+                  "name": "PancakeV3",
+                  "pair": "0xc7c78f4eb03db672d379e96e9fcf89a6ff0eb8f2",
+                  "pool_fee": "0.01"
+                },
+                {
+                  "liquidity": "104.30314059",
+                  "liquidity_type": "UniV2",
+                  "name": "ThenaV2",
+                  "pair": "0x537672472bec1246ee9419e1716e221c9d0c04f6"
+                },
+                {
+                  "liquidity": "57.33905793",
+                  "liquidity_type": "UniV2",
+                  "name": "PancakeV2",
+                  "pair": "0xc2096eeca6429b44fdfbd9fe5c8fc298b6602326",
+                  "pool_fee": "0.0025"
+                },
+                {
+                  "liquidity": "27.060710548635308907240000000000",
+                  "liquidity_type": "UniV3",
+                  "name": "PancakeV3",
+                  "pair": "0x82b13a3fa0f5c6f5baa68605e5d33a757bcdebbe",
+                  "pool_fee": "0.01"
+                },
+                {
+                  "liquidity": "18.936362417206061289810164000000",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x434781c041361959ceb62bba560ff2324b0ef0deb074977121dc2454dba40cc8",
+                  "pool_fee": "0.8",
+                  "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+                },
+                {
+                  "liquidity": "7.42698053",
+                  "liquidity_type": "UniV2",
+                  "name": "PancakeV2",
+                  "pair": "0x8f7a63fbb212f970efa2b12fb49d3a3fc8dee975",
+                  "pool_fee": "0.0025"
+                },
+                {
+                  "liquidity": "4.57309565",
+                  "liquidity_type": "UniV2",
+                  "name": "PancakeV2",
+                  "pair": "0x9d4f0204441beec5a43d457a87c307da51650f6c",
+                  "pool_fee": "0.0025"
+                },
+                {
+                  "liquidity": "0.71529941",
+                  "liquidity_type": "UniV2",
+                  "name": "PancakeV2",
+                  "pair": "0x9668a53698894c69bded10bd59db17f04aa8c211",
+                  "pool_fee": "0.0025"
+                },
+                {
+                  "liquidity": "0.550002411112759228526375",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x7637ae681e198b8798f88452d64e93e7ed1922f85f509a32623444f9cadbefec",
+                  "pool_fee": "0.0021",
+                  "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+                },
+                {
+                  "liquidity": "0.498977278853138329616818",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x531e3bc02289808be40331df7ea1b73cf64ba8f6911fff05fa41be56f40835ca",
+                  "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+                },
+                {
+                  "liquidity": "0.473740685354134252578624",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x9c0cf552ccc6b996f31ebefa88da7f1f6348d4fafb407d46b89963cb19a9e5a5",
+                  "pool_fee": "0.86",
+                  "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+                },
+                {
+                  "liquidity": "0.100002912972821334754409",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x43c2e30d87dc16740f59a3a53bd858421c084cf8c6f5b6db4855dd963336eb0f",
+                  "pool_fee": "0.95",
+                  "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+                },
+                {
+                  "liquidity": "0.089876069999999889152847",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x2f8712199fad55802ed6becc2342929bb03c839d8d25382647eb5508df27bd55",
+                  "pool_fee": "0.969879",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.05211897720867744934",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x64f7e7c2e7dd542d76b2d9d7864760eb7b70d9505ec408f6f30f07a24caa400b",
+                  "pool_fee": "0.926606",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.045482236325701227505778",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xe555bdc196b7b2e87a8d42d754ffc871a04304a2969fde433c98c6a6f3830cd8",
+                  "pool_fee": "0.979919",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.042954209547454581856915",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x7176d66aa5015d314a5d359b0b3448206cac3ab058383fb048a0f1d973295ef3",
+                  "pool_fee": "0.989859",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.028801101944846282873441",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x33646dd6d01eef24e312f78a388c685509827e3fb0f6574aed469bc6c21f19a9",
+                  "pool_fee": "0.829116",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.023536246366919834879956",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x031905a4254548e47e13bfa738b5bd95bdfd104b57cac953f4b1718489fb0039",
+                  "pool_fee": "0.974397",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.014865718661044674944819",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x5a13aa036b74c1254f766f40b3ec703da309f8f77546740dd244389ed922b8c4",
+                  "pool_fee": "0.992971",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.011322092006721321374517",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x9cb6bc5c40729e7e1b76f3443a201fa2431a54ff91c14d36b11b28295d1b3fe2",
+                  "pool_fee": "0.7001",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.01112557919152943874057",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xde5e297f0b916d90eca6057b6d7de4c6ab33d96f469f4ee8911a5750aa8da29d",
+                  "pool_fee": "0.987598",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.0098576491332516252",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xae3a663340171c38ebf366cc572c60d5c4769fed0d8ff30604f327fa416e90ee",
+                  "pool_manager": "0x28e2ea090877bf75740558f6bfb36a5ffee9e9df"
+                },
+                {
+                  "liquidity": "0.005137141635706009945939",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x3a5ed257ff4ed9906b65f2198f8cb343a7aca7d8576867c23c8b43d7b86cc324",
+                  "pool_fee": "0.986297",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.004305140225828906303862",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xb20084673813a2ba8fe86dfcd976bfed37fdc0fcb98ad269b93e1e9020e7130d",
+                  "pool_fee": "0.968428",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.003326720756803583645804",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xa7e06cad78465ae9222c9e59332aed8fa8bd73455d0248e66f6c06a2ad406cae",
+                  "pool_fee": "0.980923",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.003305354575229359860000000000",
+                  "liquidity_type": "UniV3",
+                  "name": "UniswapV3",
+                  "pair": "0xa68a949680adc96f8e7aef1cc81c06119b2e132a",
+                  "pool_fee": "0.003"
+                },
+                {
+                  "liquidity": "0.002656038632686600342955",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xea312422db084af7c05914e4b5899542ee4b2f844ad7b4a9393f81c3ba00bf95",
+                  "pool_fee": "0.9875",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.00254720094367561881339",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xb22ac2e372e4d0138566f87022cc9121a455cd0c0260db40c69deb107ca3f06b",
+                  "pool_fee": "0.977589",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.002480240468773944141568",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x033191f931211145311ac97cea4f8dc9bccbe08d9aca058ba4f4901253e4993d",
+                  "pool_fee": "0.975156",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.002291803237592954655563",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xae9d06e5acd629a491e680ee4ec27e57c52b691db37fff52378667422d3ccc72",
+                  "pool_fee": "0.972347",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.001130502194510272713850",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x29851ac7720911c82537f94ab2adeb7dfcd4293a280e47a386d77d78b9998ccb",
+                  "pool_fee": "0.984482",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000776877849785370670181",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xd153a5a4e9d4539168e186bb231f345632fe60c2ce60f390bcf7feac62a249e2",
+                  "pool_fee": "0.982387",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000046080233759659780072000000",
+                  "liquidity_type": "UniV3",
+                  "name": "ThenaV3",
+                  "pair": "0x5135c813d5f9d3624221b3bdbac805339fa5a591",
+                  "pool_fee": "0.002787"
+                },
+                {
+                  "liquidity": "0.000030144361589906960667",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xdf5818d4469a893037609ba96c5aecae059beea09e9db54dc8b9ba91d29a78a5",
+                  "pool_fee": "0.983188",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.00002660031743737382356",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x288473c6690cdab0d387d9f20b716f38b01c1fa4d593bf46e9d94f0331336c90",
+                  "pool_fee": "0.928971",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000013516569098878181198",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x8dd73e1d47e742cb72a1dd07d702203747610272b0af2043c8e8e916075fbbd2",
+                  "pool_fee": "0.899598",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.00000108962655217061464",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xfdbd1e35ed6ac089d6477efd9046889d8931fbcf86d74f208b42456cc2cb447f",
+                  "pool_fee": "0.919578",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000000368968107085145341",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x22d546f2f74cd8f9355b9f9527b39ac42c5be91624ef3e622aa8a98c3c63b449",
+                  "pool_fee": "0.984437",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000000139861549790719838",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xdcda5d985eb2fe735668977ba2d91dbab3a3a24c531ba67cfbf229a671d007c9",
+                  "pool_fee": "0.774598",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000000139226556410294282",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xb5f0db9ddf53145866f9f922aeda56ba9f1d5021cdbd32bf72bfe663cb09ed75",
+                  "pool_fee": "0.92817",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000000054416048333662308",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x435be82275fbe252d902bda14172cd454cd133d525bd3177f526c6b195a4248a",
+                  "pool_fee": "0.965863",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.000000029692584071099692000000",
+                  "liquidity_type": "UniV3",
+                  "name": "UniswapV3",
+                  "pair": "0x0ea545a0e601c70a3b65224ff6033e7b9e821545",
+                  "pool_fee": "0.01"
+                },
+                {
+                  "liquidity": "0.000000000485569111040544",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0x01970f8f33fb233f5d680dafdec340860f71cf953f3e30024c28af5ecf434c9e",
+                  "pool_fee": "0.978397",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                },
+                {
+                  "liquidity": "0.00000000000641797165218",
+                  "liquidity_type": "UniV4",
+                  "name": "Pancake Infinity CL",
+                  "pair": "0xe8ade78a7e2f7bb84a064659bc9961ec7475dde1548aa46337b0ed41b31d6d8c",
+                  "pool_fee": "0.958421",
+                  "pool_manager": "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b"
+                }
+              ],
+              "external_call": "1",
+              "hidden_owner": "0",
+              "holder_count": "445723",
+              "holders": [
+                {
+                  "address": "0x000000000000000000000000000000000000dead",
+                  "balance": "5897761688101.482679459",
+                  "is_contract": 0,
+                  "is_locked": 1,
+                  "percent": "0.589776168810148267",
+                  "tag": ""
+                },
+                {
+                  "address": "0xf977814e90da44bfa03b6295a0616a897441acec",
+                  "balance": "911455843441.46598706",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.091145584344146598",
+                  "tag": ""
+                },
+                {
+                  "address": "0xb8d2471e35ee033db509e0456c8efc4135f4ee43",
+                  "balance": "730960061751.130899998",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.073096006175113089",
+                  "tag": ""
+                },
+                {
+                  "address": "0x5a52e96bacdabb82fd05763e25335261b270efcb",
+                  "balance": "435327400033.468",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.043532740003346800",
+                  "tag": ""
+                },
+                {
+                  "address": "0x231d9e7181e8479a8b40930961e93e7ed798542c",
+                  "balance": "192122341553.75118837",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.019212234155375118",
+                  "tag": "PancakeV2"
+                },
+                {
+                  "address": "0x87502434be965e609c4fedf4d5b1deaccd4ff59b",
+                  "balance": "165649862912.816289849",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.016564986291281628",
+                  "tag": ""
+                },
+                {
+                  "address": "0x611f7bf868a6212f871e89f7e44684045ddfb09d",
+                  "balance": "150753343374.993259",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.015075334337499325",
+                  "tag": ""
+                },
+                {
+                  "address": "0x17e98a24f992bb7bcd62d6722d714a3c74814b94",
+                  "balance": "74691416325.268170783",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.007469141632526817",
+                  "tag": ""
+                },
+                {
+                  "address": "0xff90e8b1580ffe3eb8d3ff028ea640cce6bcc351",
+                  "balance": "36731504128.473233958",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.003673150412847323",
+                  "tag": ""
+                },
+                {
+                  "address": "0x98adef6f2ac8572ec48965509d69a8dd5e8bba9d",
+                  "balance": "32724685290.060310777",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.003272468529006031",
+                  "tag": ""
+                }
+              ],
+              "honeypot_with_same_creator": "0",
+              "is_anti_whale": "0",
+              "is_blacklisted": "0",
+              "is_honeypot": "0",
+              "is_in_cex": {
+                "cex_list": [
+                  "Binance"
+                ],
+                "listed": "1"
+              },
+              "is_in_dex": "1",
+              "is_mintable": "0",
+              "is_open_source": "1",
+              "is_proxy": "0",
+              "is_whitelisted": "0",
+              "lp_holder_count": "66",
+              "lp_holders": [
+                {
+                  "NFT_list": null,
+                  "address": "0xc765bddb93b0d1c1a88282ba0fa6b2d00e3e0c83",
+                  "balance": "698.151175448296203678",
+                  "is_contract": 1,
+                  "is_locked": 1,
+                  "locked_detail": [
+                    {
+                      "amount": "698.151175448296203678",
+                      "end_time": "2286-11-20T17:46:39+00:00",
+                      "opt_time": "2022-01-25T20:24:06+00:00"
+                    }
+                  ],
+                  "percent": "0.841722760837232303",
+                  "tag": "UNCX",
+                  "value": "3439392.705843313794398265"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0x17e98a24f992bb7bcd62d6722d714a3c74814b94",
+                  "balance": "77.491723987173157338",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.093427541412698986",
+                  "tag": "",
+                  "value": "381757.532777290331196079"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0x44277c73295149b7a28776d0de9d0ee1fafde6f8",
+                  "balance": "53.5111",
+                  "is_contract": 1,
+                  "is_locked": 1,
+                  "locked_detail": [
+                    {
+                      "amount": "53.5111",
+                      "end_time": "9999-99-99 99:99:99",
+                      "opt_time": "2022-10-29T15:20:23+00:00"
+                    }
+                  ],
+                  "percent": "0.064515412150549209",
+                  "tag": "OnlyMoons Lock",
+                  "value": "263618.673854517108097421"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0x660546de02aac7fc6289f10691bf11d8719f16c0",
+                  "balance": "0.141586634383916046",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000170703275998577",
+                  "tag": "",
+                  "value": "697.516604813063494283"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0xf558eb4b68547b0ea2070a2341bb5bd0e9a87520",
+                  "balance": "0.059959018067306363",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000072289314978658",
+                  "tag": "",
+                  "value": "295.383889109405989071"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0x2a90acf813b06f8454b5b3b4a5b92703fff55e5a",
+                  "balance": "0.015642393547343809",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000018859179996822",
+                  "tag": "",
+                  "value": "77.061152599390229338"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0xf61030d320e71256a43ec22839db345d80ac84b3",
+                  "balance": "0.014425877928648535",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.000017392493523778",
+                  "tag": "",
+                  "value": "71.068073890042906415"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0x0ed943ce24baebf257488771759f9bf482c39706",
+                  "balance": "0.008516754555716097",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.000010268186046392",
+                  "tag": "",
+                  "value": "41.957192835174282143"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0xd634b7a48aedcab75d5879c7465adf7eb97ecc73",
+                  "balance": "0.008200211837340703",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000009886547770609",
+                  "tag": "",
+                  "value": "40.397767376971680245"
+                },
+                {
+                  "NFT_list": null,
+                  "address": "0x47b1796a0d4d7f07e46acb460d4a14ff232b6273",
+                  "balance": "0.005484159099596212",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000006611951251415",
+                  "tag": "",
+                  "value": "27.017324425076965665"
+                }
+              ],
+              "lp_total_supply": "829.431266363605938496",
+              "owner_address": "0x000000000000000000000000000000000000dead",
+              "owner_balance": "5897761688101.482",
+              "owner_change_balance": "0",
+              "owner_percent": "0.589776",
+              "personal_slippage_modifiable": "0",
+              "selfdestruct": "0",
+              "sell_tax": "0.003",
+              "slippage_modifiable": "0",
+              "token_name": "FLOKI",
+              "token_symbol": "FLOKI",
+              "total_supply": "10000000000000",
+              "trading_cooldown": "0",
+              "transfer_pausable": "0",
+              "transfer_tax": "0"
+            }
+          }
+        },
+        "sourceGroup": "gopluslabs.io",
+        "minerId": "200001",
+        "receiptHash": "0x62e9a35c84984ff01bec4e908a13ec87195a9e7055feab65aeef1c44e70cfe71",
+        "signalHash": "0x4404c515d2cdd2a9acd63cfa91e3531b9d34adb7227b56345e55d88cc074090a",
+        "httpStatus": 200
+      },
+      {
+        "check": "holder_count",
+        "adapterVersion": "0.1.0",
+        "rawResult": {
+          "token": null,
+          "chain": "bsc",
+          "holders_count": null,
+          "token_symbol": null
+        },
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "minerId": "9002",
+        "receiptHash": "0x1f189a3c33b517d7cddbc6928a0145e002dda4ad85be6e304bfdede85fd5af25",
+        "signalHash": "0x4e8c9adc303ca459aeb75d09fb0978742300d1b7b205f95684fecc29e3bd9fed",
+        "httpStatus": 200
+      },
+      {
+        "check": "holder_count",
+        "adapterVersion": "0.1.0",
+        "rawResult": {
+          "as_of": "2026-11-07T21:41:34.134Z",
+          "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+          "chain": "bsc",
+          "confidence": 0.4,
+          "holders": null,
+          "intent": "TOKEN_HOLDER_COUNT",
+          "summary": "A holder count is not served for bsc. This miner covers ethereum, base, arbitrum, polygon, where a public index of transfer events exists.",
+          "supported": false
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7302",
+        "receiptHash": "0xec7af20ded69e9a089fb7140d8ff41425c1ede645c011c0206ec275f2accd1ce",
+        "signalHash": "0x99ae72c93e1045436685c2b09f72e099e206abb8765495254e063be2582e43fc",
+        "httpStatus": 200
+      },
+      {
+        "check": "liquidity_depth",
+        "adapterVersion": "0.4.0",
+        "rawResult": {
+          "liquidity_usd": 8187607.62
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7373",
+        "receiptHash": "0x90eca081d524ca98055ed554507925f016541cb3d62e5bb85fbfcb6e379a9ad1",
+        "signalHash": "0x40e976f9cc4d288a3bd12dd001ef5c0af477957f779c4a9972b3d21ed36a5d5a",
+        "httpStatus": 200,
+        "pool": "0x231d9e7181e8479a8b40930961e93e7ed798542c"
+      },
+      {
+        "check": "sanctions",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "entity": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e",
+          "on_list": 0,
+          "sanctioned": 0,
+          "source": "ofac_sdn_xml"
+        },
+        "sourceGroup": "13.237.89.59",
+        "minerId": "78021",
+        "receiptHash": "0xe549181b3f028278edeb6e0da45242753ad4792936f07f95cfa6311ad87748cd",
+        "signalHash": "0x19ee2d7a462814a850fb12eb4a2cc5a4e5e57116c901807e2bc63562c8200fd2",
+        "httpStatus": 200
+      },
+      {
+        "check": "wash_trading",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "as_of": "2026-11-07T21:41:30.869Z",
+          "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+          "chain": "ethereum",
+          "chain_id": 1,
+          "confidence": 0.5,
+          "contract_address": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e",
+          "intent": "WASH_TRADING_DETECTION",
+          "source": "eth_getLogs Transfer events over public RPC",
+          "summary": "No ERC-20 transfers of the token were found in the last 600 blocks on Ethereum, so there is no activity to assess for wash-trading patterns in this window.",
+          "symbol": "the token",
+          "transfers": 0,
+          "verified": false,
+          "window_blocks": 600
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7378",
+        "receiptHash": "0x7fe6a7e9adf85d43cdab899f6715d8a29183270d81fc7187db6c24d9b447c936",
+        "signalHash": "0x4f44f67fccbeba2813c739bfb8e70e187b091940b6329eed02ecd4583fb03ac8",
+        "httpStatus": 200
+      }
+    ],
+    "unpurchased": [
+      {
+        "check": "code_review",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_repo_url"
+        ]
+      },
+      {
+        "check": "social_bots",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_social_handle"
+        ]
+      }
+    ],
+    "receipts": [
+      "0x62e9a35c84984ff01bec4e908a13ec87195a9e7055feab65aeef1c44e70cfe71",
+      "0x1f189a3c33b517d7cddbc6928a0145e002dda4ad85be6e304bfdede85fd5af25",
+      "0xec7af20ded69e9a089fb7140d8ff41425c1ede645c011c0206ec275f2accd1ce",
+      "0x90eca081d524ca98055ed554507925f016541cb3d62e5bb85fbfcb6e379a9ad1",
+      "0xe549181b3f028278edeb6e0da45242753ad4792936f07f95cfa6311ad87748cd",
+      "0x7fe6a7e9adf85d43cdab899f6715d8a29183270d81fc7187db6c24d9b447c936"
+    ],
+    "verdictHash": "0x2d9b401f51a7b5ca651815d799dd72f7d6edf534b45623371a8520ba8894af9a",
+    "bomRoot": "0xae7891338bce460963b7e1c637be200e96df1a86200de1a939fdd7e3cae9d840"
+  }
+}

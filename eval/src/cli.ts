@@ -21,6 +21,8 @@ const { values, positionals } = parseArgs({
   options: {
     out: { type: "string" },
     split: { type: "string" },
+    // Comma-separated case ids: rerun only these (tune split only: a holdout case is run once).
+    ids: { type: "string" },
     policy: { type: "string", default: "dex-list" },
     live: { type: "boolean", default: false },
     yes: { type: "boolean", default: false },
@@ -34,7 +36,9 @@ if (!cmd || !casesPath) {
   process.exit(64);
 }
 const file = casesFileSchema.parse(JSON.parse(readFileSync(resolve(cwd, casesPath), "utf8")));
-const cases: Case[] = file.cases.filter((c) => !values.split || c.split === values.split);
+const only = values.ids ? new Set(values.ids.split(",").map((x) => x.trim())) : null;
+const cases: Case[] = file.cases.filter((c) => (!values.split || c.split === values.split) && (!only || only.has(c.id)));
+if (only && cmd === "run" && cases.some((c) => c.split === "holdout")) throw new Error("--ids reruns tune cases only: a holdout case is run once");
 
 if (cmd === "run") {
   if (!values.live || !values.yes) throw new Error("run buys real verdicts: pass --live --yes (and --max-total-usdc)");
@@ -121,14 +125,16 @@ if (cmd === "run") {
   throw new Error(`unknown command ${cmd}`);
 }
 
-const BASIS_NOTE: Record<Case["basis"], string> = {
+function basisNote(basis: Case["basis"]): string {
+  return {
   current_state:
     "Current state: each token was checked as it is today, because the miners Skein buys from read only current state. " +
     "A rug drained long ago fails liquidity trivially, so this measures whether Skein would stop a listing today, not whether it would have caught the token before its event.",
   prospective:
     "Prospective: each verdict was bought before the outcome was known, and the label comes from what happened afterwards. " +
     "This is the point-in-time measure.",
-};
+  }[basis];
+}
 
 function report(kind: string, all: Case[], allRuns: Run[]): string {
   const pct = (v: number | null) => (v === null ? "n/a" : `${(v * 100).toFixed(1)}%`);
@@ -148,7 +154,7 @@ function report(kind: string, all: Case[], allRuns: Run[]): string {
       "",
       `## ${basis === "prospective" ? "Prospective" : "Current state"}`,
       "",
-      BASIS_NOTE[basis],
+      basisNote(basis),
       "",
       `${runs.length} of ${cs.length} cases have a run (good ${count("good")}, bad ${count("bad")}, ambiguous ${count("ambiguous")}). ${runs.length < 30 ? `A sample of ${runs.length} is small; read the intervals, not the point estimates.` : ""}`,
       "",
