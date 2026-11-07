@@ -1,5 +1,17 @@
 # Guide 2 · Registering Skein as a Telegraph miner
 
+> **Done, 2026-11-07.** Skein is registered and active: registration **5137**,
+> catalogue id **845301**, slug `skein-listing-verdict`, intent
+> `FRAUD_RISK_GENERAL`, minimum price 0.25 USDC. It was registered from a
+> computer (the path at the end of this guide) by the owner wallet
+> `0x4EbCF8147a7F0715048C013b69005231c476E43B`, which is also the fee address.
+> Its key is `MINER_REGISTRATION_KEY` in `skein-secrets.md`: keep it, because
+> only that wallet can update or deregister the miner or rotate its API key.
+> The bond was $1, taken as 0.154 MACHINA (MACHINA was about $6.50 that day,
+> so 2 USDC bought 0.31 MACHINA, not the 1.3 this guide estimated).
+> `SKEIN_SELF_REGISTRATION_IDS=845301,5137` is set on Railway. Check it any time:
+> `https://devnode.telegraphprotocol.com/api/miners/5137`.
+
 **Time:** about 30 minutes, plus a 10 to 15 minute wait. **Cost:** a little
 Sepolia ETH for gas and about 1.3 MACHINA for a bond that is returned if you
 ever deregister. **Before you start:** finish guide 1 (the purchaser wallet).
@@ -157,7 +169,16 @@ npx tsx miner/tools.ts approve-bond 5 --yes
 npx tsx miner/tools.ts register \
   --yaml-url https://raw.githubusercontent.com/linoxbt/skein/main/miner/skein-miner.plan-b.yaml \
   --fee-address 0x<your payout address> --min-price-usdc 0.25 --intent FRAUD_RISK_GENERAL --yes
+# once https://devnode.telegraphprotocol.com/api/miners/<registrationId> says "active":
+MINER_AUTH_KEY=… npx tsx miner/tools.ts install-key skein-listing-verdict --yes
 ```
+
+`install-key` asks the node for a challenge naming the key's keccak256
+fingerprint, checks that the challenge names this wallet and this key, signs it
+with the owner wallet and submits the key. The node sandbox-tests it before
+storing it. Its test of `/verdict` reports 404 and counts as a pass: it probes
+the path Telegraph exposes, not the `external_path` (`/miner/verdict`) that real
+asks are forwarded to. A paid ask is the real test.
 
 `register` fetches the YAML from that URL and hashes the bytes it serves, so
 the hash always matches. Never edit the file at that URL after registering:
