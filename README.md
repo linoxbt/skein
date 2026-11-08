@@ -1,60 +1,222 @@
+<div align="center">
+
+<img src="apps/web/app/icon.svg" width="76" alt="Skein" />
+
 # Skein
 
-**One request. Every thread.**
+### One request. Every thread.
 
-Skein is a Telegraph miner that sells one decision: whether an EVM token is fit
-to list. To make it, Skein buys ranked checks from other miners (contract audit,
-sanctions, holder distribution, liquidity, wash trading, and optionally social
-and code review), fuses them with deterministic rules, and returns APPROVE,
-REJECT, ESCALATE or ABSTAIN. Each verdict comes with reasons, the risks still
-open, confidence, cost and a verifiable bill of materials.
+**The listing verdict for tokens: independent intelligence bought on Telegraph, fused by fixed rules, and sealed with a receipt for every input.**
 
-> **Status (Nov 8).** Built, tested and deployed: the decision engine and
-> policies, the escrow-paying Telegraph client, the purchasing pipeline and
-> CLI, the Postgres store, the HTTP API and miner endpoint (Railway), the web app
-> and Skein Desk (Netlify), `@skeinlabs/sdk`, `@skeinlabs/mcp`, miner tooling, the
-> benchmark harness and browser tests. Independent audits on Nov 2 (D14) and
-> Nov 8 (production readiness, L24–L29) and their fixes are in docs/DECISIONS.md;
-> operations are in [docs/RUNBOOK.md](docs/RUNBOOK.md).
->
-> **Live on Telegraph (Nov 7).** Skein is a registered, active miner:
-> registration **5137**, catalogue id **845301**, slug `skein-listing-verdict`,
-> intent `FRAUD_RISK_GENERAL`, 0.25 USDC an answer. Any Telegraph agent can buy
-> a verdict with one paid ask (`POST /engine/v1/ask/845301`), with no account
-> and no key. The first such ask (Nov 7) paid 0.25 USDC, Skein bought its checks
-> from other miners with escrow payments, and the node holds the signal. Verdicts
-> on fresh Base launches now decide (REJECT, ESCALATE) rather than abstain:
-> see docs/DECISIONS.md L24.
->
-> **Benchmark (Nov 8).** On 20 held-out tokens, run once after the rules were
-> frozen, Skein approved none of 7 documented scams and rejected none of 13
-> long-listed tokens. Two simpler rules applied to the same paid findings each
-> let one scam through. Skein abstained on 8 of 20. Small sample, current-state
-> basis: see [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
->
-> **Pay per verdict, no account (x402).** With `X402_PAY_TO` set, `POST
-> /v1/verdicts` without a partner key answers 402 with standard x402 terms
-> (0.25 USDC on Base Sepolia), and any x402 client pays and gets the verdict.
-> The payment settles only once a verdict is sealed (docs/DECISIONS.md L30).
->
-> **Not done yet:** the prospective benchmark (the sniper's launches, labelled
-> 72 hours later) starts producing cases from Nov 11. See
-> docs/REVIEWER_GUIDE.md for what to try.
+[![CI](https://github.com/linoxbt/skein/actions/workflows/ci.yml/badge.svg)](https://github.com/linoxbt/skein/actions/workflows/ci.yml)
+[![Uptime](https://github.com/linoxbt/skein/actions/workflows/uptime.yml/badge.svg)](https://github.com/linoxbt/skein/actions/workflows/uptime.yml)
+[![npm @skeinlabs/sdk](https://img.shields.io/npm/v/@skeinlabs/sdk?label=%40skeinlabs%2Fsdk&color=2ee6c8)](https://www.npmjs.com/package/@skeinlabs/sdk)
+[![npm @skeinlabs/mcp](https://img.shields.io/npm/v/@skeinlabs/mcp?label=%40skeinlabs%2Fmcp&color=2ee6c8)](https://www.npmjs.com/package/@skeinlabs/mcp)
+[![Telegraph miner](https://img.shields.io/badge/Telegraph-miner%205137-f2b84b)](https://devnode.telegraphprotocol.com/api/miners/5137)
+[![License](https://img.shields.io/badge/license-Apache%202.0-8b979f)](LICENSE)
 
-**[Watch the 3-minute demo film →](docs/demo/skein-motion.mp4)**: what Skein
-does and why, with a real listing application decided live by an agent that pays
-Telegraph miners, then verified. The plain screen walkthrough is
-[here](docs/demo/skein-demo.mp4).
+[**Website**](https://skeinlabs.site) ·
+[**Demo film**](docs/demo/skein-motion.mp4) ·
+[**Tutorial**](https://skeinlabs.site/tutorial) ·
+[**API reference**](https://api.skeinlabs.site/v1/openapi.json) ·
+[**Skein Desk**](https://desk.skeinlabs.site) ·
+[**Reviewer guide**](docs/REVIEWER_GUIDE.md)
 
-## Use it
+<a href="docs/demo/skein-motion.mp4"><img src="docs/demo/skein-motion-poster.jpg" width="820" alt="Watch the 3-minute Skein demo film" /></a>
 
-Without an account, pay per verdict with any x402 client:
+<sub>▶ <a href="docs/demo/skein-motion.mp4">Watch the 3-minute film</a>. A real listing application, decided live by an agent that pays Telegraph miners, then verified.</sub>
+
+</div>
+
+---
+
+## Contents
+
+- [Why Skein](#why-skein)
+- [What a verdict looks like](#what-a-verdict-looks-like)
+- [How it works](#how-it-works)
+- [Quick start](#quick-start)
+- [What runs on Skein](#what-runs-on-skein)
+- [Trust and verification](#trust-and-verification)
+- [Policies](#policies)
+- [API reference](#api-reference)
+- [Results](#results)
+- [Architecture](#architecture)
+- [Development](#development)
+- [Deployment and operations](#deployment-and-operations)
+- [Security model](#security-model)
+- [Limitations and roadmap](#limitations-and-roadmap)
+- [Documentation](#documentation)
+- [Disclosures and license](#disclosures-and-license)
+
+---
+
+## Why Skein
+
+Thousands of tokens launch every day, and most are built to take money:
+honeypots, mintable supplies, wash-traded volume, sanctioned deployers,
+liquidity that disappears. Anyone who lists or trades tokens has to answer
+one question, quickly and defensibly: **is this token fit to list?**
+
+Today that answer is stitched together by hand. A team buys five vendors,
+opens five dashboards and spends hours on triage, and is left with a
+judgement nobody can reconstruct when it goes wrong.
+
+Skein turns that into **one request** and **one auditable decision**:
+
+| | Without Skein | With Skein |
+|---|---|---|
+| **Inputs** | Five vendor contracts and integrations | One call, paying per use. Skein buys each check from ranked Telegraph miners |
+| **Output** | Scores to interpret | A verdict: `APPROVE`, `REJECT`, `ESCALATE` or `ABSTAIN`, with reasons and open risks |
+| **Speed** | Hours of analyst triage | About 6 seconds; the checks run in parallel |
+| **Audit** | Screenshots and memory | A signed verdict and a bill of materials with a receipt for every purchase |
+| **Trust** | "The vendor said so" | Anyone can recompute the verdict from the raw answers it paid for |
+| **Cost** | Fixed subscriptions | 0.25 USDC a verdict, under hard spend caps |
+
+---
+
+## What a verdict looks like
+
+A real verdict, `vrd_mw8dfz384v6a6v094n03`, bought live through Telegraph
+testnet for Aerodrome (AERO) on Base. It is trimmed here; open
+[the verdict page](https://skeinlabs.site/v/vrd_mw8dfz384v6a6v094n03) or
+[verify it](https://skeinlabs.site/verify?id=vrd_mw8dfz384v6a6v094n03).
+
+```jsonc
+{
+  "id": "vrd_mw8dfz384v6a6v094n03",
+  "verdict": "APPROVE",
+  "summary": "Approved: contract_audit WARN is_mintable.",
+  "riskBps": 1886,                      // 0–10,000
+  "confidenceBps": 6089,
+  "coverage": 0.84,                     // weighted share of the policy's checks that answered
+  "reasons":   [{ "code": "CONTRACT_AUDIT_WARN", "check": "contract_audit", "detail": "contract_audit WARN is_mintable" }],
+  "openRisks": ["social_bots UNAVAILABLE", "code_review UNAVAILABLE"],
+  "subject":   { "chainId": 8453, "token": "0x940181a94a35a4569e4529a3cdfb74e38fd98631" },
+  "cost":      { "upstreamUsdc": 0.05, "priceUsdc": 0.25, "pricingRule": "standard", "currency": "USDC" },
+  "policy":    { "id": "dex-list", "version": "0.2.0", "sha256": "26038dda…" },
+  "engineVersion": "0.2.0",
+  "verdictHash": "0x88f851ac…",         // keccak256 over the canonical decision record
+  "bom": { "root": "0x2b024c6d…", "items": [ /* 5 purchases: miner, price, receipt hash, signal hash */ ] },
+  "attestation": { "scheme": "eip191", "signer": "0x07Dee329…5639309", "signature": "0x…" },
+  "durationMs": 5817
+}
+```
+
+---
+
+## How it works
+
+```mermaid
+flowchart LR
+    C["Caller<br/>exchange · launchpad · agent"] -->|"one request<br/>API key · x402 · Telegraph"| S
+    subgraph S["Skein"]
+      direction TB
+      P["Plan<br/>policy → checks → ranked miners"] --> B["Buy<br/>pay through the Telegraph escrow"]
+      B --> A["Read<br/>versioned adapters → findings"]
+      A --> D["Decide<br/>fixed decision table"]
+      D --> L["Seal<br/>verdictHash · BOM root · signature"]
+    end
+    B <-->|"402 → X-PAYMENT → receipt"| M["Telegraph miners<br/>audit · sanctions · holders<br/>liquidity · wash trading"]
+    L --> V["Verdict + evidence"]
+    V --> R["/verify<br/>anyone recomputes it"]
+```
+
+1. **Plan.** The [policy](#policies) names the checks a verdict needs, and
+   Skein picks a ranked, allowlisted miner for each one from the live Telegraph
+   catalogue.
+2. **Buy.** Every check is paid through the Telegraph escrow in USDC, machine
+   to machine. Purchases run in parallel against one deadline per verdict.
+   They stay inside a per-call ceiling, a per-verdict budget and a daily cap,
+   which are enforced atomically in Postgres.
+3. **Read.** Each paid answer goes through an immutable, versioned adapter,
+   which turns it into a finding (`PASS`, `WARN`, `FAIL` or `UNAVAILABLE`) and
+   keeps the raw answer and its receipt.
+4. **Decide.** A pure decision table runs in a fixed order. The first row that
+   matches decides:
+
+   | # | Condition | Verdict |
+   |---|---|---|
+   | 1 | A blocker hits (a sanctions match, a honeypot) | `REJECT` |
+   | 2 | A required check has no real answer | `ABSTAIN`, naming the check |
+   | 3 | Coverage is below the policy minimum | `ABSTAIN` |
+   | 4 | `riskBps` ≥ the reject threshold | `REJECT` |
+   | 5 | Two checks contradict each other (audit PASS, wash trading FAIL) | `ESCALATE` |
+   | 6 | A required check is at `FAIL` | `ESCALATE` |
+   | 7 | `riskBps` < the approve threshold and confidence ≥ the minimum | `APPROVE` |
+   | 8 | Anything else | `ESCALATE` |
+
+5. **Seal.** The decision is hashed (`verdictHash`). The receipts are
+   Merkle-rooted into a bill of materials (`bom.root`). The verdict is signed
+   (EIP-191) and stored append-only.
+
+The same findings under the same policy version always give the same verdict
+and the same hash. That property is tested with 20,000 generated cases on
+every CI run.
+
+---
+
+## Quick start
+
+There are five ways in. Pick the one that fits your stack.
+
+**Free quote: what a verdict would buy and cost**
+
+```sh
+curl "https://api.skeinlabs.site/v1/quote?chain=8453&token=0x4200000000000000000000000000000000000006"
+```
+
+<details open>
+<summary><b>TypeScript SDK</b></summary>
+
+```sh
+npm install @skeinlabs/sdk
+```
+
+```ts
+import { Skein } from "@skeinlabs/sdk";
+
+const skein = new Skein({
+  apiUrl: "https://api.skeinlabs.site",
+  payer: { kind: "apiKey", key: process.env.SKEIN_API_KEY! },
+  maxUsdcPerCall: 0.3,                                  // client-side spend cap
+});
+
+const v = await skein.verdict({ subject: { chainId: 8453, token: "0x…" } });
+if (v.verdict !== "APPROVE") holdForReview(v.reasons, v.openRisks);
+```
+
+The SDK also offers `quote()`, `verify()`, `stream()` (live events),
+`submit()`/`wait()`, typed errors, retries and webhooks. It can pay with a
+partner key or directly through Telegraph (`{ kind: "telegraph", client }`).
+A runnable app is in [`examples/listing-gate`](examples/listing-gate).
+
+</details>
+
+<details>
+<summary><b>MCP server (Claude, Cursor and other MCP clients)</b></summary>
+
+```sh
+claude mcp add skein --env SKEIN_API_KEY=sk_part_… -- npx -y @skeinlabs/mcp
+```
+
+The server provides three tools: `skein_verdict`, `skein_quote` and
+`skein_verify`. Then ask: *"Is 0x… on Base fit to list?"*
+
+</details>
+
+<details>
+<summary><b>x402: pay per verdict, no account</b></summary>
+
+`POST /v1/verdicts` without a key answers `402` with standard x402 terms:
+0.25 USDC on Base Sepolia. Any x402 client can pay. The payment is verified
+before anything is bought, and it settles only once a verdict is sealed.
 
 ```ts
 import { wrapFetchWithPayment } from "x402-fetch";
 import { privateKeyToAccount } from "viem/accounts";
 
-// x402-fetch refuses to pay over 0.10 USDC unless told otherwise; a verdict is 0.25.
+// x402-fetch's default ceiling is 0.10 USDC; a verdict is 0.25.
 const pay = wrapFetchWithPayment(fetch, privateKeyToAccount(process.env.PAYER_KEY as `0x${string}`), 250_000n);
 const res = await pay("https://api.skeinlabs.site/v1/verdicts", {
   method: "POST",
@@ -64,193 +226,373 @@ const res = await pay("https://api.skeinlabs.site/v1/verdicts", {
 // 200 with the signed verdict; X-PAYMENT-RESPONSE carries the settlement transaction.
 ```
 
-**[Tutorial: build a listing gate with Skein →](https://skeinlabs.site/tutorial)**
-From a free quote to a verified paid verdict, paying per call through
-Telegraph, and the same tools for Claude or Cursor over MCP.
+</details>
+
+<details>
+<summary><b>Telegraph: buy from the Skein miner</b></summary>
+
+Skein is a registered, active Telegraph miner: registration `5137`,
+catalogue id `845301`, slug `skein-listing-verdict`, intent
+`FRAUD_RISK_GENERAL`, 0.25 USDC an answer. Any Telegraph agent can buy a
+verdict with one paid ask, with no account and no key:
+
+```
+POST /engine/v1/ask/845301
+```
+
+</details>
+
+<details>
+<summary><b>REST</b></summary>
 
 ```sh
-npm install @skeinlabs/sdk                                    # TypeScript client
-claude mcp add skein --env SKEIN_API_KEY=sk_part_… -- npx -y @skeinlabs/mcp   # MCP server
+curl -X POST https://api.skeinlabs.site/v1/verdicts \
+  -H "authorization: Bearer $SKEIN_API_KEY" \
+  -H "idempotency-key: listing-review-42" \
+  -H "content-type: application/json" \
+  -d '{"subject":{"chainId":8453,"token":"0x4200000000000000000000000000000000000006"},"policy":"dex-list@0.2.0"}'
 ```
 
-```ts
-import { Skein } from "@skeinlabs/sdk";
+Add `"mode":"async"` to get `202` at once, then follow
+`/v1/verdicts/{id}/events` (SSE) or register a webhook.
 
-const skein = new Skein({ apiUrl: "https://api.skeinlabs.site", payer: { kind: "apiKey", key }, maxUsdcPerCall: 0.3 });
-const v = await skein.verdict({ subject: { chainId: 8453, token: "0x…" } });
-if (v.verdict !== "APPROVE") holdForReview(v.reasons);
-```
+</details>
 
-Partner keys are free during the hackathon:
-[request one](https://github.com/linoxbt/skein/issues/new?template=partner-key.yml).
-A runnable example is in [`examples/listing-gate`](examples/listing-gate).
+**Partner keys are free during the hackathon.**
+[Request one](https://github.com/linoxbt/skein/issues/new?template=partner-key.yml),
+or start with the [tutorial](https://skeinlabs.site/tutorial).
 
-**API reference:** the OpenAPI 3.1 document is served at
-[`/v1/openapi.json`](https://api.skeinlabs.site/v1/openapi.json); load it into
-any OpenAPI viewer or client generator. Every error has the shape
-`{ error: { code, message, requestId } }`, and every response carries `X-Request-Id`.
+---
 
-**Webhooks** (SDK 0.3.0+) tell you when an async verdict is sealed, instead of polling:
+## What runs on Skein
+
+| | | |
+|---|---|---|
+| **[Web console](https://skeinlabs.site)** | Run a verdict and watch each paid check land live in the Exploded View. Verdict pages have Findings, Evidence, Cost and JSON tabs. Also: `/verify`, `/ledger`, `/status`, `/policies`, docs and the tutorial. | Next.js 15 · Netlify |
+| **[Skein Desk](https://desk.skeinlabs.site)** | A listing queue for a fictional exchange, run by an agent. Every application buys a Skein verdict and is shortlisted, declined or sent to an analyst, with no human in the loop. Mission 01 (Exchange). | Next.js · Netlify |
+| **[Skein Sniper](https://sniper-production-bea6.up.railway.app)** | Watches every new pool on Base and buys a verdict before any trade: no `APPROVE`, no trade. Trades are paper; the verdicts are bought live. Mission 14 (Web3 Native and DeFi). | Node · Railway |
+| **Skein miner** | Sells the verdict back to the network as Telegraph miner 5137. | Telegraph testnet |
+
+---
+
+## Trust and verification
+
+Skein is built so that you **don't have to trust it**.
+
+- **Every input has a receipt.** The bill of materials lists each purchase:
+  miner, price, latency, receipt hash, and the signal hash on the Telegraph
+  node.
+- **Every verdict is deterministic.** `verdictHash` is keccak256 over
+  canonical JSON of the engine version, the policy, the subject, the sorted
+  findings and the decision. The same inputs always give the same hash.
+- **Every verdict is signed.** An EIP-191 attestation by a published key,
+  shown at `/v1/status`.
+- **Every verdict can be recomputed.**
+  [`/verify`](https://skeinlabs.site/verify) (or `POST /v1/verify`) does five
+  things:
+  - re-reads each raw paid answer with the adapter version recorded with it;
+  - reruns the policy;
+  - rebuilds the Merkle root from the receipts;
+  - checks the engine version;
+  - recovers the signature.
+
+  Offline: `pnpm repro <verdict.json>`.
+- **Evidence is append-only.** Purchases, findings and verdicts are never
+  edited after the fact. Adapters and policies are immutable once published,
+  and every superseded version is kept so old verdicts still replay.
+
+---
+
+## Policies
+
+Policies are versioned YAML files, locked by hash in
+`packages/policies/policies.lock.json`. A published version never changes.
+
+| Policy | For | Required checks |
+|---|---|---|
+| `dex-list@0.2.0` *(default)* | DEX token lists, launchpads, wallets: badge or hide a token | contract audit, sanctions, liquidity depth, holder count |
+| `agent-pretrade@0.2.0` | Trading agents: no `APPROVE`, no trade; traps are hard blockers | contract audit, sanctions, liquidity depth, holder count |
+| `cex-standard@0.1.0` | Centralised-exchange listing review (draft) | adds holder concentration and wash trading |
+
+`cex-standard` needs a holder-concentration intent that no Telegraph miner
+offers yet, so it refuses with `503 UPSTREAM_UNAVAILABLE` rather than give a
+weaker answer.
+
+---
+
+## API reference
+
+Base URL: `https://api.skeinlabs.site`. The full OpenAPI 3.1 document is at
+[`/v1/openapi.json`](https://api.skeinlabs.site/v1/openapi.json).
+
+| Method | Path | |
+|---|---|---|
+| `POST` | `/v1/verdicts` | Buy a verdict: sync, or async with SSE and webhooks. Idempotent per `Idempotency-Key` |
+| `GET` | `/v1/verdicts/{id}` | A verdict, or the state of a run |
+| `GET` | `/v1/verdicts/{id}/bom` | The bill of materials: every purchase, its miner, receipt and cost |
+| `GET` | `/v1/verdicts/{id}/events` | Server-sent events: plan, purchases, findings, decision, done |
+| `POST` | `/v1/verify` | Recompute a verdict from its raw answers |
+| `GET` | `/v1/quote` | What a verdict would buy and cost; free |
+| `GET` | `/v1/policies[/{ref}]` | Published policies and their file hashes |
+| `GET` | `/v1/status` | Network, payer escrow, caps, attester, and each check's miners, latency and error rate |
+| `GET` | `/v1/ledger` | The public spend ledger |
+| `GET` `POST` `DELETE` | `/v1/webhooks` | The caller's signed webhook (`verdict.done`, `verdict.refused`) |
+| `POST` | `/miner/verdict` | Telegraph's miner endpoint, called only by the network's dispatcher |
+
+Every error has the shape `{ error: { code, message, requestId } }`, and
+every response carries `X-Request-Id`. Served verdicts carry
+`X-Skein-Verdict-Hash`, `X-Skein-Bom-Root` and `X-Skein-Attestation`.
+
+**Webhooks** (SDK 0.3.0+):
 
 ```ts
 const { secret } = await skein.setWebhook("https://you.example/skein");   // shown once: store it
-// in your handler, with the raw request body:
 import { verifyWebhook } from "@skeinlabs/sdk/webhooks";
 if (!(await verifyWebhook(rawBody, req.headers["x-skein-signature"], secret))) return res.status(401).end();
 ```
 
-Deliveries are POSTs carrying `X-Skein-Event` (`verdict.done`, `verdict.refused`)
-and `X-Skein-Signature: sha256=…`, an HMAC of the body. The URL must be public
-https; it is checked again before each delivery, and redirects are not followed.
-`skein.webhook()` shows the current one, and `skein.deleteWebhook()` turns it off.
+Deliveries carry `X-Skein-Signature: sha256=…`, an HMAC of the body. A
+webhook URL must be public https. It is re-checked before every delivery,
+and redirects are never followed.
 
-## Layout
+---
+
+## Results
+
+**Live on Telegraph testnet** (as of Nov 8, 2026; live totals at
+[/ledger](https://skeinlabs.site/ledger)):
+
+| Verdicts served | Upstream receipts | Miners paid | Upstream spend |
+|---:|---:|---:|---:|
+| 187 | 407 | 9 | 4.35 USDC |
+
+**Held-out benchmark.** Twenty tokens were run once, after the rules were
+frozen:
+
+| | Skein | Weighted average | Best single check |
+|---|:---:|:---:|:---:|
+| Documented scams approved (of 7) | **0** | 1 | 1 |
+| Documented scams rejected (of 7) | 3 | 6 | 5 |
+| Long-listed tokens rejected (of 13) | **0** | 0 | 3 |
+| Abstained (of 20) | 8 | 0 | 3 |
+
+The two baselines are recomputed from Skein's own paid findings, so only the
+rule differs:
+- Skein never approved a scam and never rejected a good token.
+- The price is caution: it abstained on 8 of 20, which a listing desk treats
+  as "not approved".
+
+The sample is small and judged on the tokens' current state; method and
+caveats are in [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
+
+**Skein Sniper:**
+- 160 Base launches checked, 160 dodged;
+- the skipped tokens it tracked afterwards fell a median of 99.99%.
+
+The live feed is at
+[`/feed.json`](https://sniper-production-bea6.up.railway.app/feed.json).
+
+---
+
+## Architecture
+
+```
+            ┌────────────────────────── consumers ──────────────────────────┐
+            │  web (Next.js)       Desk (Next.js)       Sniper       MCP / SDK │
+            └──────────────┬────────────────────┬──────────────────┬───────┘
+                           │ HTTPS · x402        │ @skeinlabs/sdk    │
+                           ▼                     ▼                  ▼
+   Telegraph dispatcher ─► API (Hono, 2 replicas on Railway) ─ /v1/* and /miner/verdict
+                           │  VerdictService: claim run → plan → buy → decide → seal
+                           │        pipeline ────┬──► Telegraph node (escrow 402 → X-PAYMENT → receipt)
+                           │        engine (pure)│      └─ upstream miners (audit, sanctions, liquidity, …)
+                           ▼                     ▼
+                     Postgres: verdict_runs · purchases · findings · verdicts · events · spend_holds
+                               rate_limits · flights · kv · error_log      (nightly pg_dump → bucket)
+```
 
 ```
 packages/
-  engine/     planner, adapters, scoring, reconcile, decide, seal, reproduce
-              (pure TypeScript, no network calls)
-  policies/   versioned YAML policies, immutable once published (policies.lock.json)
-  telegraph/  network config, escrow-paying client, intent map, provider families,
-              miner allowlist, catalogue snapshot, and a fake node for tests
-  pipeline/   request builders, purchaser, runVerdict(); the verdict and repro CLIs
-  db/         Drizzle schema and migrations (append-only evidence, RLS), verdict store
-  sdk/        @skeinlabs/sdk: verdict(), quote(), verify(), stream(), submit()/wait(), typed
-              errors, retries, spend cap; pays with a partner key or through Telegraph
-  mcp/        @skeinlabs/mcp: stdio MCP server with skein_verdict, skein_quote, skein_verify
-  ui/         shared design tokens and components (web and Desk)
+  engine/      planner, adapters, scoring, reconcile, decide, seal, reproduce; pure, no network calls
+  policies/    versioned YAML policies, immutable once published (policies.lock.json)
+  telegraph/   network config, escrow-paying client, intent map, miner allowlist, fake node for tests
+  pipeline/    request builders, purchaser, runVerdict(); the verdict and repro CLIs
+  db/          Drizzle schema and migrations (append-only evidence, row-level security)
+  sdk/         @skeinlabs/sdk: typed client, retries, spend cap, webhooks; API key or Telegraph rail
+  mcp/         @skeinlabs/mcp: stdio MCP server (skein_verdict, skein_quote, skein_verify)
+  errors/      Sentry-compatible error reporter, no dependencies
+  ui/          design tokens and shared components (web and Desk)
 apps/
-  api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
-              /v1/status, /v1/ledger, /v1/policies, /v1/webhooks, /v1/openapi.json,
-              /miner/verdict; Dockerfile
-  web/        Next.js 15 console: live Exploded View, verdict pages, verify, policies,
-              ledger, status, docs, tutorial; Dockerfile (standalone) or Netlify
-  desk/       Skein Desk: a fictional exchange's listing queue; an agent buys a verdict
-              per application and shortlists, declines or routes it to an analyst
-miner/        skein-miner.yaml, validate.sh, tools.ts (escrow status/deposit, intent check,
-              registration), intent proposal
-eval/         benchmark harness (run, report, baselines, bootstrap) and replayable verdicts
-e2e/          browser tests: console flow, verify, 375 px, axe WCAG 2 AA
-scripts/      netlify-bundle.mjs: the self-contained upload each Netlify deploy is built from
-docs/         DECISIONS.md, REVIEWER_GUIDE.md, ARCHITECTURE.md, DISCLOSURES.md, MAINNET.md
+  api/         Hono API, miner endpoint, x402, shared rate limits; Dockerfile
+  web/         the web console; Netlify
+  desk/        Skein Desk, the agent-run listing queue; Netlify
+  sniper/      Skein Sniper, the Mission 14 agent; Dockerfile
+  backup/      nightly pg_dump to a private bucket (Railway cron)
+miner/         miner YAML, validation, escrow and registration tools
+eval/          benchmark harness (run, report, baselines, bootstrap) and replayable verdicts
+e2e/           browser tests: console flow, verify, 375 px layout, axe WCAG 2 AA
+examples/      listing-gate: a runnable integration
+video/         the demo film's Remotion source (narration, captures, sound)
+docs/          decisions, architecture, runbook, reviewer guide, guides
 ```
 
-## Run
+---
 
-Requires Node 22 and pnpm 10.
+## Development
+
+**Prerequisites:** Node 22 and pnpm 10. Postgres is optional, because the
+local stack uses an in-memory database.
 
 ```sh
 pnpm install
 pnpm typecheck
-pnpm test                      # unit, adapter-contract and property tests
-FC_RUNS=20000 pnpm --filter @skein/engine exec vitest run test/properties.test.ts --testTimeout=900000
-pnpm policies:lock             # record a newly published policy version
-
-# One verdict. Without --live it is SIMULATED (canned answers, labelled, never evidence).
-pnpm verdict --chain 8453 --token 0x4200000000000000000000000000000000000006 --scenario conflict
-pnpm repro out/verdicts/<file>.json   # re-run adapters and engine; exit 1 on any mismatch
-
-# Local stack, no accounts: the real API on PGlite + a fake Telegraph node (all SIMULATED).
-pnpm dev:api                   # http://localhost:8787, partner key sk_dev_local_simulated
-NEXT_PUBLIC_SKEIN_API=http://localhost:8787 pnpm dev:web   # http://localhost:3000
-# In the console: a token ending in "c" shows the conflict; the rest are clean.
-SKEIN_API_URL=http://localhost:8787 DESK_SKEIN_KEY=sk_dev_local_simulated \
-  pnpm --filter @skein/desk dev                            # http://localhost:3100
-
-# MCP server for Claude Desktop, Cursor and others (stdio):
-SKEIN_API_KEY=sk_part_… npx tsx packages/mcp/bin/skein-mcp.ts       # or, from npm: npx -y @skeinlabs/mcp
-
-# API (needs Postgres). Migrations run on start (under an advisory lock).
-DATABASE_URL=postgres://… pnpm --filter @skein/api start
-DATABASE_URL=postgres://… pnpm --filter @skein/api partner:add "Team name" 2   # prints a key once
-# Production's database is private: provision partner keys by hash instead, in the API's
-# environment (SEED_CONSUMERS="name|kind|sha256|capUsdc,…", reconciled on every start),
-# and revoke with REVOKED_KEY_HASHES.
-
-# Browser tests and the benchmark
-pnpm --filter @skein/e2e e2e                          # needs the web app on :3000 (see .github/workflows/ci.yml)
-pnpm --filter @skein/eval eval report eval/cases.example.json eval/runs
-
-# Live, from Nov 1: a burner key with test USDC deposited in escrow.
-PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --social <handle>
+pnpm test                       # about 300 tests: engine, client, pipeline, API, SDK, MCP, Desk, sniper
 ```
 
-## Deployed
+**Run the whole stack locally.** It needs no accounts and no money; all of
+it is simulated and labelled as such.
+
+```sh
+pnpm dev:api                                               # API on :8787 with a fake Telegraph node
+NEXT_PUBLIC_SKEIN_API=http://localhost:8787 pnpm dev:web   # console on :3000
+SKEIN_API_URL=http://localhost:8787 DESK_SKEIN_KEY=sk_dev_local_simulated \
+  pnpm --filter @skein/desk dev                            # Desk on :3100
+```
+
+The local partner key is `sk_dev_local_simulated`. A token ending in `c`
+shows a market-integrity conflict (`ESCALATE`).
+
+**Verdicts from the command line:**
+
+```sh
+pnpm verdict --chain 8453 --token 0x4200000000000000000000000000000000000006 --scenario conflict   # simulated
+PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x…                             # real, paid
+pnpm repro out/verdicts/<file>.json                     # replay adapters and engine; exit 1 on any mismatch
+```
+
+**Deeper checks:**
+
+```sh
+FC_RUNS=20000 pnpm --filter @skein/engine exec vitest run test/properties.test.ts --testTimeout=900000
+pnpm --filter @skein/e2e e2e                            # browser and accessibility tests (web app on :3000)
+pnpm --filter @skein/eval eval report eval/cases.example.json eval/runs
+pnpm policies:lock                                      # record a newly published policy version
+```
+
+**Configuration.** Every variable is documented in
+[`.env.example`](.env.example). The real network needs
+`PURCHASER_PRIVATE_KEY`: a wallet with test USDC in the Telegraph escrow (see
+[the purchaser guide](docs/guides/PURCHASER_KEY.md)).
+
+---
+
+## Deployment and operations
 
 | Service | Host | URL |
 |---|---|---|
-| Web app | Netlify | https://skeinlabs.site (also https://skein-web.netlify.app) |
-| API | Railway (Docker, `apps/api/Dockerfile`) | https://api.skeinlabs.site (also https://api-production-9396.up.railway.app) |
-| Skein Desk | Netlify | https://desk.skeinlabs.site (also https://skein-desk.netlify.app) |
-| Skein Sniper (Mission 14) | Railway (Docker, `apps/sniper/Dockerfile`) | https://sniper-production-bea6.up.railway.app |
+| Web console | Netlify | https://skeinlabs.site |
+| API | Railway, 2 replicas | https://api.skeinlabs.site |
+| Skein Desk | Netlify | https://desk.skeinlabs.site |
+| Skein Sniper | Railway | https://sniper-production-bea6.up.railway.app |
 | Postgres | Railway | private network only |
+| Backups | Railway cron and bucket | nightly, 30 kept |
 
-The API and the sniper deploy from `main` once CI is green (Railway's "wait
-for CI"). The web app and
-the Desk build from the repository with pnpm (`apps/*/netlify.toml`): link the
-repo in Netlify with base directory `apps/web` or `apps/desk` and they deploy
-on every push to `main` (docs/RUNBOOK.md, "Deploying"). A manual upload is
-still possible, from a self-contained bundle made by the same script every
-time, so a deployed site is always a commit:
+- **Continuous delivery.** The API and sniper deploy from `main` only after
+  CI is green. Both Netlify sites build from the repository on every merge.
+- **CI** runs typecheck, all tests (with 20,000-case property tests),
+  browser and accessibility tests, and `pnpm audit` on every change.
+- **Replicas.** Rate limits, Telegraph flight leases, idempotency, event
+  streams and spend holds all live in Postgres, so any number of API
+  instances behaves as one.
+- **Observability.**
+  - An uptime probe runs every 15 minutes and opens and closes GitHub issues
+    labelled `alert`.
+  - Unhandled errors are kept for 30 days in `error_log`, counted in
+    `/v1/status`, and sent to Sentry when `SENTRY_DSN` is set.
+  - The API also sends optional Slack or Discord alerts.
+- **Releases.** `@skeinlabs/sdk` and `@skeinlabs/mcp` are published with npm
+  provenance by the *Release packages* workflow.
+- **Partner keys.** `node scripts/issue-partner-key.mjs "Name" team 2 ./name.key`
+  prints a `SEED_CONSUMERS` entry. Only the key's hash is ever stored.
 
-```sh
-node scripts/netlify-bundle.mjs apps/desk /tmp/desk-upload   # vendors @skein/* sources as file: deps
-```
+Incidents, rollback, secret rotation, restores and scaling are covered in
+[docs/RUNBOOK.md](docs/RUNBOOK.md).
 
-then run Netlify's deploy command from that folder. Incidents, rollback,
-secret rotation and backups: [docs/RUNBOOK.md](docs/RUNBOOK.md).
+---
 
-### Releasing the npm packages
+## Security model
 
-`@skeinlabs/sdk` and `@skeinlabs/mcp` are published by
-`.github/workflows/release.yml` (Actions → Release packages → Run workflow, or
-push a `v*` tag), with npm provenance. It needs the repository secret
-`NPM_TOKEN`: an npm granular access token with write access to the
-`@skeinlabs` scope. Bump `version` in the package's `package.json` first; a
-version already on npm is skipped.
+- **Money.** Spend is bounded at four levels: per upstream call, per verdict,
+  per partner key per day, and globally per day. Each limit is enforced
+  atomically before any payment.
+- **Idempotency.** Every paid request is claimed once. A retry, even on
+  another replica, returns the original verdict and is never charged again.
+- **x402.** The signature, payee, amount and validity window are checked
+  locally and by the facilitator before anything is bought. Payment settles
+  only on a sealed verdict, and one authorization buys exactly one verdict.
+- **Keys.** Partner keys carry 192 random bits, are stored only as SHA-256
+  hashes, and can be revoked without database access.
+- **Outbound requests.** Webhook URLs are resolved and checked against
+  private, loopback and metadata ranges, then pinned to the checked address.
+  Redirects are never followed.
+- **Data.** Evidence tables are append-only, row-level security is on, and
+  internals never reach an error response; logs link to them by request id.
+- **Supply chain.** Application dependencies are pinned to exact versions.
+  CI fails on high-severity advisories, and npm packages carry provenance.
 
-### Issuing a partner key
+Found a vulnerability? Please open a private security advisory on this
+repository rather than a public issue.
 
-```sh
-node scripts/issue-partner-key.mjs "Acme Launchpad" team 2 ./acme.key
-# prints the SEED_CONSUMERS entry (name|kind|sha256|cap); the key is only in ./acme.key
-```
+---
 
-Append the printed entry to `SEED_CONSUMERS` on the Railway api service and
-send the key file's contents to the partner privately.
+## Limitations and roadmap
 
-## How a verdict is decided
+- **Testnet.** Payments and registration run on the Telegraph testnet.
+  Tokens are analysed on mainnets (Ethereum, Base, BNB Chain and Arbitrum).
+  The mainnet checklist is in [docs/MAINNET.md](docs/MAINNET.md).
+- **Holder concentration.** No Telegraph intent supplies top-10
+  concentration yet, so `cex-standard` refuses rather than guess.
+- **Upstream availability.** When a required miner fails, the verdict is
+  `ABSTAIN`, it names the check, and it is charged at upstream cost only.
+- **Prospective benchmark.** Sniper launches labelled 72 hours later begin
+  producing cases on Nov 11.
+- **x402 settlement** has been tested with real signatures and a fake
+  facilitator, but not yet settled end to end on Base Sepolia.
 
-The rows are evaluated in order, and the first one that matches decides the
-verdict:
+> **Verdicts are risk evidence, not investment advice.**
 
-| # | Condition | Verdict |
-|---|---|---|
-| 1 | A blocker hits (e.g. a sanctions match) | REJECT |
-| 2 | A required check has no real answer | ABSTAIN (names the check) |
-| 3 | Coverage is below the policy minimum | ABSTAIN |
-| 4 | risk_bps ≥ reject threshold | REJECT |
-| 5 | A contradiction fires (e.g. audit PASS, wash trading FAIL) | ESCALATE |
-| 6 | A required check is at FAIL | ESCALATE |
-| 7 | risk_bps < approve threshold and confidence ≥ minimum | APPROVE |
-| 8 | Anything else | ESCALATE |
+---
 
-The same findings and policy version always produce the same verdict and the
-same `verdictHash`: keccak256 of canonical JSON over the engine version, the
-policy, the subject, the sorted findings and the decision. `bom.root` is the
-Merkle root of the paid inputs' receipt hashes.
+## Documentation
 
-## Network
+| | |
+|---|---|
+| [Reviewer guide](docs/REVIEWER_GUIDE.md) | The five acceptance steps, with what to expect at each |
+| [Architecture](docs/ARCHITECTURE.md) | One verdict, end to end, and the data model |
+| [Decisions](docs/DECISIONS.md) | Every design decision and audit fix, with the reasoning |
+| [Runbook](docs/RUNBOOK.md) | Deploying, incidents, rollback, secrets, scaling, backups |
+| [Guides](docs/guides/README.md) | Purchaser wallet, miner registration, labelled evaluation set |
+| [Mainnet](docs/MAINNET.md) | What changes before real money |
+| [Submission](docs/SUBMISSION.md) | Telegraph Season II submission answers |
+| [Demo films](docs/demo/README.md) | The narrated film and the plain screen walkthrough |
 
-Tokens analysed are on mainnets (Ethereum, Base, BNB, Arbitrum). Payment and
-registration happen on the Telegraph **testnet**. Verdicts are risk evidence,
-not investment advice.
+---
 
-## Disclosures
+## Disclosures and license
 
-Reused libraries: `zod`, `@noble/hashes`, `yaml`, `viem`, `drizzle-orm`,
-`drizzle-kit`, `@electric-sql/pglite` (tests), `vitest`, `fast-check`, `turbo` and
-`tsx`. No templates were used.
+**Libraries reused:** `zod`, `@noble/hashes`, `yaml`, `viem`, `drizzle-orm`,
+`drizzle-kit`, `hono`, `next`, `@electric-sql/pglite` (tests), `vitest`,
+`fast-check`, `turbo` and `tsx`. No templates were used.
 
-Non-Telegraph lookups: DexScreener's public token endpoint, used only to find a
-token's main pool. The liquidity figure itself is bought through Telegraph.
+**Non-Telegraph lookups:** DexScreener's public token endpoint, used only to
+find a token's main pool. The liquidity figure itself is bought through
+Telegraph. More detail is in [docs/DISCLOSURES.md](docs/DISCLOSURES.md).
+
+**Demo film:**
+- narration: Kokoro-82M (Apache 2.0);
+- music and sound effects: [Mixkit](https://mixkit.co/license/);
+- type: SIL OFL.
+
+Released under the [Apache License 2.0](LICENSE).
+
+<div align="center"><sub>Built for Telegraph Season II · <a href="https://skeinlabs.site">skeinlabs.site</a></sub></div>
