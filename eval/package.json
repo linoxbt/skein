@@ -15,6 +15,6 @@
     "@skein/pipeline": "workspace:*",
     "@skein/policies": "workspace:*",
     "@skein/telegraph": "workspace:*",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   }
 }

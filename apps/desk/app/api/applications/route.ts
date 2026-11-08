@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { InputError, parseApplication, process as runAgent, receive, type ApplicationInput } from "@/lib/agent";
 import { DAILY_LIMIT, deskDeps, PER_IP_DAILY_LIMIT, payerRail } from "@/lib/desk";
+import { guarded } from "@/lib/http";
 import type { Application } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,10 @@ const publicView = ({ lease: _lease, ...a }: Application) => a;
  * starts work; the agent runs on intake and on the minute's tick.
  */
 export async function GET(req: Request) {
+  return guarded("GET /api/applications", () => board(req));
+}
+
+async function board(req: Request): Promise<Response> {
   const deps = await deskDeps();
   const id = new URL(req.url).searchParams.get("id");
   if (id) {
@@ -40,6 +45,10 @@ export async function GET(req: Request) {
  * minute's tick decides anything still open.
  */
 export async function POST(req: Request) {
+  return guarded("POST /api/applications", () => apply(req));
+}
+
+async function apply(req: Request): Promise<Response> {
   const secret = process.env.DESK_WEBHOOK_SECRET;
   const presented = req.headers.get("x-desk-webhook-secret");
   if (presented && !(secret && same(presented, secret))) return err(401, "UNAUTHORIZED", "bad webhook secret");

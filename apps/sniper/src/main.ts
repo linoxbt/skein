@@ -69,10 +69,26 @@ serve({ fetch: app.fetch, port });
 console.log(`skein sniper on :${port} · ${p.kind} rail · policy ${config.policy} · min liquidity $${config.minLiquidityUsd} · attester ${attester ?? "none"} · store ${env.DATABASE_URL ? "postgres" : "memory"}`);
 
 const every = num("SNIPER_TICK_SEC", 30) * 1000;
+let current: Promise<void> | null = null;
+let stopping = false;
 const loop = async () => {
-  await sniper.tick().catch((e) => console.error(`[sniper] tick: ${(e as Error).message}`));
-  setTimeout(loop, every).unref?.();
+  if (stopping) return;
+  current = sniper.tick().catch((e) => console.error(`[sniper] tick: ${(e as Error).message}`));
+  await current;
+  current = null;
+  if (!stopping) setTimeout(loop, every).unref?.();
 };
 void loop();
-// Keep the process alive for the server; the loop timer is unref'd so a SIGTERM can end it.
-process.on("SIGTERM", () => process.exit(0));
+
+// Railway sends SIGTERM on every redeploy: stop starting ticks, let a verdict in
+// flight store its result (a restart is safe anyway: each token's idempotency
+// key stops a second charge), then exit. 30 s at most.
+const shutdown = async (signal: string) => {
+  if (stopping) return;
+  stopping = true;
+  console.log(`[sniper] ${signal}: ${current ? "finishing the current tick" : "idle"}, then exiting`);
+  if (current) await Promise.race([current, new Promise((r) => setTimeout(r, 30_000))]);
+  process.exit(0);
+};
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

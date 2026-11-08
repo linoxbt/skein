@@ -1,0 +1,44 @@
+name: Uptime
+# Probes every public service every 15 minutes. A failed run is the alert:
+# GitHub emails the repository owner when a scheduled workflow fails, and the
+# Actions tab keeps the history. Free, no monitoring account needed.
+# docs/RUNBOOK.md says what to do for each failing check.
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe
+        shell: bash
+        run: |
+          set -u
+          failed=0
+          check() { # name, url, expected status, optional grep pattern that must NOT appear
+            local name="$1" url="$2" want="$3" bad="${4:-}"
+            local body code
+            body=$(curl -sS -m 20 -w '\n%{http_code}' "$url" 2>&1) || true
+            code="${body##*$'\n'}"; body="${body%$'\n'*}"
+            if [ "$code" != "$want" ]; then echo "::error::$name: HTTP $code (want $want) $url"; failed=1; return; fi
+            if [ -n "$bad" ] && grep -q "$bad" <<<"$body"; then echo "::error::$name: found $bad at $url"; failed=1; return; fi
+            echo "ok $name ($code)"
+          }
+          check "API process"        https://api.skeinlabs.site/healthz 200
+          check "API database"       https://api.skeinlabs.site/readyz 200
+          check "API wallet"         https://api.skeinlabs.site/v1/status 200 '"walletAlert":true'
+          check "API spend cap"      https://api.skeinlabs.site/v1/status 200 '"capAlert":true'
+          check "Web site"           https://skeinlabs.site/ 200
+          check "Web verdict 404"    https://skeinlabs.site/v/vrd_doesnotexist 404
+          check "Desk queue"         https://desk.skeinlabs.site/api/applications 200
+          check "Sniper"             https://sniper-production-bea6.up.railway.app/healthz 200
+          check "Telegraph miner"    https://devnode.telegraphprotocol.com/api/miners/5137 200
+          miner=$(curl -sS -m 20 https://devnode.telegraphprotocol.com/api/miners/5137 | grep -o '"activation_status":"[a-z]*"' || true)
+          if [ "$miner" != '"activation_status":"active"' ]; then echo "::error::Telegraph miner 5137 is not active ($miner)"; failed=1; else echo "ok miner active"; fi
+          exit $failed

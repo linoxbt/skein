@@ -118,6 +118,48 @@ async function blobKV(): Promise<KV> {
   };
 }
 
+/**
+ * The Desk's store on Skein's own API (GET/PUT /v1/kv), in Postgres behind
+ * valid TLS, namespaced to the Desk's partner key. Replaced Netlify Blobs as
+ * the default on 2026-11-08: Blobs stopped answering about half the calls
+ * from the Desk's functions (DECISIONS L29). Conditional writes keep the
+ * same semantics: create only if absent, replace only at the etag read.
+ */
+export function apiKV(base: string, key: string, fetchImpl: typeof fetch = fetch): KV {
+  const url = (k: string) => `${base.replace(/\/$/, "")}/v1/kv?key=${encodeURIComponent(k)}`;
+  const call = async (what: string, k: string, init: RequestInit) => {
+    try {
+      return await fetchImpl(url(k), { ...init, headers: { authorization: `Bearer ${key}`, "content-type": "application/json", ...(init.headers ?? {}) }, signal: AbortSignal.timeout(5_000) });
+    } catch (e) {
+      throw new Error(`store ${what} ${k}: ${(e as Error).message}`);
+    }
+  };
+  const fail = async (what: string, k: string, r: Response): Promise<never> => {
+    throw new Error(`store ${what} ${k}: HTTP ${r.status} ${(await r.text().catch(() => "")).slice(0, 200)}`);
+  };
+  return {
+    async get<T>(k: string) {
+      const r = await call("get", k, { method: "GET" });
+      if (r.status === 404) return null;
+      if (!r.ok) return fail("get", k, r);
+      const body = (await r.json()) as { value: T; etag: string };
+      return { value: body.value, etag: body.etag };
+    },
+    async create<T>(k: string, value: T) {
+      const r = await call("create", k, { method: "PUT", headers: { "if-none-match": "*" }, body: JSON.stringify({ value }) });
+      if (r.status === 412) return false;
+      if (!r.ok) return fail("create", k, r);
+      return true;
+    },
+    async update<T>(k: string, value: T, etag: string) {
+      const r = await call("update", k, { method: "PUT", headers: { "if-match": etag }, body: JSON.stringify({ value }) });
+      if (r.status === 412) return false;
+      if (!r.ok) return fail("update", k, r);
+      return true;
+    },
+  };
+}
+
 /** Read, change, write back; retried when another writer got there first. */
 export async function mutate<T>(kv: KV, key: string, f: (current: T | null) => T | null, tries = 8): Promise<T | null> {
   for (let i = 0; i < tries; i++) {
@@ -212,11 +254,19 @@ export function fileStore(dir: string): Store {
 }
 
 let current: Promise<Store> | null = null;
-/** DESK_STORE=blobs|file|memory; by default Blobs when running on Netlify, else .desk-data/. */
+/** DESK_STORE=api|blobs|file|memory; by default Skein's /v1/kv on Netlify (Blobs without a key), else .desk-data/. */
 export function defaultStore(): Promise<Store> {
   if (!current) {
-    const kind = process.env.DESK_STORE ?? ("Netlify" in globalThis || process.env.NETLIFY_BLOBS_CONTEXT ? "blobs" : "file");
-    current = kind === "blobs" ? blobKV().then((kv) => new Store(kv)) : Promise.resolve(kind === "memory" ? memoryStore() : fileStore(process.env.DESK_DATA_DIR ?? ".desk-data"));
+    const onNetlify = "Netlify" in globalThis || !!process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY === "true";
+    const apiKey = process.env.DESK_SKEIN_KEY;
+    const apiUrl = process.env.SKEIN_API_URL ?? "https://api.skeinlabs.site";
+    const kind = process.env.DESK_STORE ?? (onNetlify ? (apiKey ? "api" : "blobs") : "file");
+    current =
+      kind === "api"
+        ? Promise.resolve(new Store(apiKV(apiUrl, apiKey!)))
+        : kind === "blobs"
+          ? blobKV().then((kv) => new Store(kv))
+          : Promise.resolve(kind === "memory" ? memoryStore() : fileStore(process.env.DESK_DATA_DIR ?? ".desk-data"));
   }
   return current;
 }

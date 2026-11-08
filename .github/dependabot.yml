@@ -1,0 +1,15 @@
+# Weekly dependency updates: npm packages across the workspace, and the
+# GitHub Actions the workflows use. Security updates open as soon as an
+# advisory is published, whatever this schedule says.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

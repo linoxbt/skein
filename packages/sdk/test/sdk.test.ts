@@ -223,3 +223,25 @@ describe("Telegraph payer edge cases", () => {
     expect(v.payment).toMatchObject({ rail: "telegraph", amountUsdc: 0.15 });
   });
 });
+
+describe("reads and webhooks", () => {
+  it("lists policies, reads one, the status and the ledger", async () => {
+    const s = skein();
+    const ps = await s.policies();
+    expect(ps.map((p) => p.ref ?? `${p.id}@${p.version}`)).toContain("dex-list@0.2.0");
+    expect(await s.policy("agent-pretrade@0.2.0")).toBeTruthy();
+    expect(await s.status()).toHaveProperty("network");
+    expect(await s.ledger()).toBeTruthy();
+  });
+
+  it("sets, reads and deletes the partner's webhook, and needs a partner key for it", async () => {
+    api.service.deps.lookup = async () => ["93.184.216.34"];
+    const s = skein();
+    const set = await s.setWebhook("https://hooks.example.com/sdk");
+    expect(set.secret.length).toBeGreaterThan(20);
+    expect(await s.webhook()).toMatchObject({ url: "https://hooks.example.com/sdk" });
+    expect(await s.deleteWebhook()).toBe(true);
+    expect(await s.webhook()).toBeNull();
+    await expect(skein({ payer: { kind: "telegraph", client: {} as never } }).webhook()).rejects.toMatchObject({ code: "PAYMENT_REQUIRED" });
+  });
+});
