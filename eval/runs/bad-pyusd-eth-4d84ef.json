@@ -1,0 +1,757 @@
+{
+  "caseId": "bad-pyusd-eth-4d84ef",
+  "policyRef": "dex-list@0.2.0",
+  "wallMs": 4871,
+  "verdict": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 1,
+      "token": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e"
+    },
+    "decision": {
+      "verdict": "ABSTAIN",
+      "verdictCode": 0,
+      "riskBps": 10000,
+      "confidenceBps": 0,
+      "coverageBps": 4700,
+      "reasons": [
+        {
+          "code": "MISSING_REQUIRED_CHECK",
+          "check": "liquidity_depth",
+          "detail": "required check liquidity_depth is UNAVAILABLE"
+        },
+        {
+          "code": "CONTRACT_AUDIT_FAIL",
+          "check": "contract_audit",
+          "detail": "contract_audit FAIL buy_tax_gt_10pct slippage_modifiable transfer_pausable"
+        },
+        {
+          "code": "HOLDER_COUNT_FAIL",
+          "check": "holder_count",
+          "detail": "holders_count=7 < 50"
+        }
+      ],
+      "openRisks": [
+        "liquidity_depth UNAVAILABLE",
+        "wash_trading UNKNOWN",
+        "social_bots UNAVAILABLE",
+        "code_review UNAVAILABLE"
+      ],
+      "conflicts": []
+    },
+    "summary": "Abstained: required check liquidity_depth is UNAVAILABLE (+2 more).",
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.95,
+        "evidence": {
+          "minerId": "7302",
+          "receiptHash": "0x76f69e51ecfcbe36f687811e903fc526c6f4fb0ccf9514c2fc0826b7c60cdd2d",
+          "signalHash": "0xffdeca3cff48c56531bfceb5e1a13878259a8c92f72755321d69153d4c0b2b11"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 7
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0x9bdd64328e7b0742258e58c7f621af1a17c3a5a4db03e4872b60bd714ba2dcce",
+          "signalHash": "0xb01965f5dbd76a4d27bcf5d5a08d03b52514b1efc1e9c81b28a8c5007faa9c26"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x6f368c7f59f5e8e473b6c20c94e0051cf4a7a61ee7c83106d2672c7a251cbabd",
+          "signalHash": "0xbadcca0e09967265da1216d0e1ec1520c64dd97dae226919fd8724b0bb6d79f7"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x4cdd25324df4fd4a5f3189b965a8793d7abb4119229d262e61aa13e9b94eb5a1",
+          "signalHash": "0x3d5f82142aeab0dbefa5dcc70dde50e62ff36e2dfb222c1ae79011a6faede365"
+        },
+        "notes": [
+          "buy_tax_gt_10pct",
+          "slippage_modifiable",
+          "transfer_pausable"
+        ],
+        "severity": 2,
+        "sourceGroup": "gopluslabs.io",
+        "status": "FAIL"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "notes": [
+          "no_pool_found"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "verdictHash": "0x5d41a4ed9e1bc6251b163f974fd397616b1a498007d16ed26500ed8b9f41ed22",
+    "bom": {
+      "root": "0x0e099c77a51871ecc7160126da5c772e68e6b0c121fe4985e02db0183e073103",
+      "items": 4
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "intent": "SMART_CONTRACT_AUDIT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 2042,
+      "attempts": 1,
+      "sourceGroup": "gopluslabs.io",
+      "adapterVersion": "0.5.0",
+      "createdAt": "2026-11-08T05:51:03.384Z",
+      "minerId": "200001",
+      "minerName": "GoPlus Security",
+      "httpStatus": 200,
+      "signalHash": "0x3d5f82142aeab0dbefa5dcc70dde50e62ff36e2dfb222c1ae79011a6faede365",
+      "epochId": 2040,
+      "resultShape": "raw",
+      "rawResult": {
+        "code": 1,
+        "message": "OK",
+        "result": {
+          "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e": {
+            "anti_whale_modifiable": "1",
+            "buy_tax": "0.3",
+            "can_take_back_ownership": "0",
+            "cannot_buy": "0",
+            "creator_address": "0x1df4249445680a11dd578f1689a7670dcd2147b3",
+            "creator_balance": "105230383211.819452204977447441",
+            "creator_percent": "0.947073",
+            "dex": [
+              {
+                "liquidity": "0.00000000",
+                "liquidity_type": "UniV2",
+                "name": "UniswapV2",
+                "pair": "0xe7d6ba4c90e363842e54d01b68dc8b72cc9c8ca5"
+              }
+            ],
+            "external_call": "0",
+            "hidden_owner": "0",
+            "holder_count": "7",
+            "holders": [
+              {
+                "address": "0x1df4249445680a11dd578f1689a7670dcd2147b3",
+                "balance": "105230383211.819452204977447441",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.947073448907322143",
+                "tag": ""
+              },
+              {
+                "address": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+                "balance": "3030701246.457164338416465856",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.027276311218141755",
+                "tag": ""
+              },
+              {
+                "address": "0x43134dd29523c86c1ac6d0ccb920278b2b89eac0",
+                "balance": "1465230244.046997615010765849",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.013187072196436165",
+                "tag": ""
+              },
+              {
+                "address": "0xd74a6f36fd946dbe8b38e003753a0c384dd8feba",
+                "balance": "1384796407.742680857903101952",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.012463167669696590",
+                "tag": ""
+              },
+              {
+                "address": "0xf73538676b36c7b79582ddeb75d1f614a551ff8d",
+                "balance": "0.630936727141219201",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000000000005678430",
+                "tag": ""
+              },
+              {
+                "address": "0xc7e88381a943eda71cb36dc5fde04a87a5de5ecd",
+                "balance": "0.30276825625",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.000000000002724914",
+                "tag": ""
+              },
+              {
+                "address": "0xe7d6ba4c90e363842e54d01b68dc8b72cc9c8ca5",
+                "balance": "0.000000000300999701",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.000000000000000000",
+                "tag": "UniswapV2"
+              }
+            ],
+            "honeypot_with_same_creator": "0",
+            "is_anti_whale": "1",
+            "is_blacklisted": "0",
+            "is_honeypot": "0",
+            "is_in_dex": "1",
+            "is_mintable": "0",
+            "is_open_source": "1",
+            "is_proxy": "0",
+            "is_whitelisted": "1",
+            "lp_holder_count": "1",
+            "lp_holders": [
+              {
+                "NFT_list": null,
+                "address": "0x0000000000000000000000000000000000000000",
+                "balance": "0.000000000000001",
+                "is_contract": 0,
+                "is_locked": 1,
+                "percent": "1.000000000000000000",
+                "tag": "Null Address",
+                "value": null
+              }
+            ],
+            "lp_total_supply": "0.000000000000001",
+            "owner_address": "0x1df4249445680a11dd578f1689a7670dcd2147b3",
+            "owner_balance": "105230383211.81944",
+            "owner_change_balance": "0",
+            "owner_percent": "0.947073",
+            "personal_slippage_modifiable": "0",
+            "selfdestruct": "0",
+            "sell_tax": "",
+            "slippage_modifiable": "1",
+            "token_name": "DanTetherUsdcDAIPierrePaypal1DollarInu",
+            "token_symbol": "PYUSD",
+            "total_supply": "111111111111",
+            "trading_cooldown": "0",
+            "transfer_pausable": "1",
+            "transfer_tax": "0.3"
+          }
+        }
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x4cdd25324df4fd4a5f3189b965a8793d7abb4119229d262e61aa13e9b94eb5a1"
+    },
+    {
+      "check": "holder_count",
+      "intent": "TOKEN_HOLDER_COUNT_GENERAL",
+      "pinned": true,
+      "skipped": [
+        "9002"
+      ],
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 1314,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.1.0",
+      "createdAt": "2026-11-08T05:51:05.877Z",
+      "minerId": "7302",
+      "minerName": "ChainWire Token Holder Count",
+      "httpStatus": 200,
+      "signalHash": "0xffdeca3cff48c56531bfceb5e1a13878259a8c92f72755321d69153d4c0b2b11",
+      "epochId": 2040,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-08T05:51:05.530Z",
+        "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+        "chain": "ethereum",
+        "chain_id": 1,
+        "confidence": 0.95,
+        "contract_address": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+        "holders": 7,
+        "holders_count": 7,
+        "intent": "TOKEN_HOLDER_COUNT",
+        "name": "DanTetherUsdcDAIPierrePaypal1DollarInu",
+        "read_at": "2026-11-08T05:51:05.013Z",
+        "readings": "token PYUSD (DanTetherUsdcDAIPierrePaypal1DollarInu), ERC-20 on Ethereum, chain id 1, contract 0x4d84ef85274f873f9d08de44fe5e7670fc1f244e, holders 7 (7) distinct addresses, read 2026-11-08T05:51:05.013Z.",
+        "source": "Blockscout eth.blockscout.com token API",
+        "summary": "The token DanTetherUsdcDAIPierrePaypal1DollarInu (PYUSD) at 0x4d84ef85274f873f9d08de44fe5e7670fc1f244e on Ethereum has approximately 7 holders.",
+        "symbol": "PYUSD",
+        "token": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+        "token_symbol": "PYUSD",
+        "token_type": "ERC-20"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x76f69e51ecfcbe36f687811e903fc526c6f4fb0ccf9514c2fc0826b7c60cdd2d"
+    },
+    {
+      "check": "sanctions",
+      "intent": "SANCTIONS_SCREENING_MATCH_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 576,
+      "attempts": 1,
+      "sourceGroup": "13.237.89.59",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-08T05:51:01.932Z",
+      "minerId": "78021",
+      "minerName": "OFAC SDN Entity Screen",
+      "httpStatus": 200,
+      "signalHash": "0xb01965f5dbd76a4d27bcf5d5a08d03b52514b1efc1e9c81b28a8c5007faa9c26",
+      "epochId": 2040,
+      "resultShape": "raw",
+      "rawResult": {
+        "entity": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+        "on_list": 0,
+        "sanctioned": 0,
+        "source": "ofac_sdn_xml"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x9bdd64328e7b0742258e58c7f621af1a17c3a5a4db03e4872b60bd714ba2dcce"
+    },
+    {
+      "check": "wash_trading",
+      "intent": "WASH_TRADING_DETECTION_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 1175,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-08T05:51:02.509Z",
+      "minerId": "7378",
+      "minerName": "VerifyWire Wash Trading Detection",
+      "httpStatus": 200,
+      "signalHash": "0xbadcca0e09967265da1216d0e1ec1520c64dd97dae226919fd8724b0bb6d79f7",
+      "epochId": 2040,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-08T05:51:02.167Z",
+        "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+        "chain": "ethereum",
+        "chain_id": 1,
+        "confidence": 0.5,
+        "contract_address": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+        "intent": "WASH_TRADING_DETECTION",
+        "source": "eth_getLogs Transfer events over public RPC",
+        "summary": "No ERC-20 transfers of PYUSD were found in the last 600 blocks on Ethereum, so there is no activity to assess for wash-trading patterns in this window.",
+        "symbol": "PYUSD",
+        "transfers": 0,
+        "verified": false,
+        "window_blocks": 600
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x6f368c7f59f5e8e473b6c20c94e0051cf4a7a61ee7c83106d2672c7a251cbabd"
+    }
+  ],
+  "stored": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 1,
+      "token": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e"
+    },
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.95,
+        "evidence": {
+          "minerId": "7302",
+          "receiptHash": "0x76f69e51ecfcbe36f687811e903fc526c6f4fb0ccf9514c2fc0826b7c60cdd2d",
+          "signalHash": "0xffdeca3cff48c56531bfceb5e1a13878259a8c92f72755321d69153d4c0b2b11"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 7
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0x9bdd64328e7b0742258e58c7f621af1a17c3a5a4db03e4872b60bd714ba2dcce",
+          "signalHash": "0xb01965f5dbd76a4d27bcf5d5a08d03b52514b1efc1e9c81b28a8c5007faa9c26"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x6f368c7f59f5e8e473b6c20c94e0051cf4a7a61ee7c83106d2672c7a251cbabd",
+          "signalHash": "0xbadcca0e09967265da1216d0e1ec1520c64dd97dae226919fd8724b0bb6d79f7"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x4cdd25324df4fd4a5f3189b965a8793d7abb4119229d262e61aa13e9b94eb5a1",
+          "signalHash": "0x3d5f82142aeab0dbefa5dcc70dde50e62ff36e2dfb222c1ae79011a6faede365"
+        },
+        "notes": [
+          "buy_tax_gt_10pct",
+          "slippage_modifiable",
+          "transfer_pausable"
+        ],
+        "severity": 2,
+        "sourceGroup": "gopluslabs.io",
+        "status": "FAIL"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "notes": [
+          "no_pool_found"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "purchases": [
+      {
+        "check": "contract_audit",
+        "adapterVersion": "0.5.0",
+        "rawResult": {
+          "code": 1,
+          "message": "OK",
+          "result": {
+            "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e": {
+              "anti_whale_modifiable": "1",
+              "buy_tax": "0.3",
+              "can_take_back_ownership": "0",
+              "cannot_buy": "0",
+              "creator_address": "0x1df4249445680a11dd578f1689a7670dcd2147b3",
+              "creator_balance": "105230383211.819452204977447441",
+              "creator_percent": "0.947073",
+              "dex": [
+                {
+                  "liquidity": "0.00000000",
+                  "liquidity_type": "UniV2",
+                  "name": "UniswapV2",
+                  "pair": "0xe7d6ba4c90e363842e54d01b68dc8b72cc9c8ca5"
+                }
+              ],
+              "external_call": "0",
+              "hidden_owner": "0",
+              "holder_count": "7",
+              "holders": [
+                {
+                  "address": "0x1df4249445680a11dd578f1689a7670dcd2147b3",
+                  "balance": "105230383211.819452204977447441",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.947073448907322143",
+                  "tag": ""
+                },
+                {
+                  "address": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+                  "balance": "3030701246.457164338416465856",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.027276311218141755",
+                  "tag": ""
+                },
+                {
+                  "address": "0x43134dd29523c86c1ac6d0ccb920278b2b89eac0",
+                  "balance": "1465230244.046997615010765849",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.013187072196436165",
+                  "tag": ""
+                },
+                {
+                  "address": "0xd74a6f36fd946dbe8b38e003753a0c384dd8feba",
+                  "balance": "1384796407.742680857903101952",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.012463167669696590",
+                  "tag": ""
+                },
+                {
+                  "address": "0xf73538676b36c7b79582ddeb75d1f614a551ff8d",
+                  "balance": "0.630936727141219201",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000000000005678430",
+                  "tag": ""
+                },
+                {
+                  "address": "0xc7e88381a943eda71cb36dc5fde04a87a5de5ecd",
+                  "balance": "0.30276825625",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.000000000002724914",
+                  "tag": ""
+                },
+                {
+                  "address": "0xe7d6ba4c90e363842e54d01b68dc8b72cc9c8ca5",
+                  "balance": "0.000000000300999701",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.000000000000000000",
+                  "tag": "UniswapV2"
+                }
+              ],
+              "honeypot_with_same_creator": "0",
+              "is_anti_whale": "1",
+              "is_blacklisted": "0",
+              "is_honeypot": "0",
+              "is_in_dex": "1",
+              "is_mintable": "0",
+              "is_open_source": "1",
+              "is_proxy": "0",
+              "is_whitelisted": "1",
+              "lp_holder_count": "1",
+              "lp_holders": [
+                {
+                  "NFT_list": null,
+                  "address": "0x0000000000000000000000000000000000000000",
+                  "balance": "0.000000000000001",
+                  "is_contract": 0,
+                  "is_locked": 1,
+                  "percent": "1.000000000000000000",
+                  "tag": "Null Address",
+                  "value": null
+                }
+              ],
+              "lp_total_supply": "0.000000000000001",
+              "owner_address": "0x1df4249445680a11dd578f1689a7670dcd2147b3",
+              "owner_balance": "105230383211.81944",
+              "owner_change_balance": "0",
+              "owner_percent": "0.947073",
+              "personal_slippage_modifiable": "0",
+              "selfdestruct": "0",
+              "sell_tax": "",
+              "slippage_modifiable": "1",
+              "token_name": "DanTetherUsdcDAIPierrePaypal1DollarInu",
+              "token_symbol": "PYUSD",
+              "total_supply": "111111111111",
+              "trading_cooldown": "0",
+              "transfer_pausable": "1",
+              "transfer_tax": "0.3"
+            }
+          }
+        },
+        "sourceGroup": "gopluslabs.io",
+        "minerId": "200001",
+        "receiptHash": "0x4cdd25324df4fd4a5f3189b965a8793d7abb4119229d262e61aa13e9b94eb5a1",
+        "signalHash": "0x3d5f82142aeab0dbefa5dcc70dde50e62ff36e2dfb222c1ae79011a6faede365",
+        "httpStatus": 200
+      },
+      {
+        "check": "holder_count",
+        "adapterVersion": "0.1.0",
+        "rawResult": {
+          "as_of": "2026-11-08T05:51:05.530Z",
+          "attribution": "Balances and transactions read from public EVM nodes. Holder counts from Blockscout.",
+          "chain": "ethereum",
+          "chain_id": 1,
+          "confidence": 0.95,
+          "contract_address": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+          "holders": 7,
+          "holders_count": 7,
+          "intent": "TOKEN_HOLDER_COUNT",
+          "name": "DanTetherUsdcDAIPierrePaypal1DollarInu",
+          "read_at": "2026-11-08T05:51:05.013Z",
+          "readings": "token PYUSD (DanTetherUsdcDAIPierrePaypal1DollarInu), ERC-20 on Ethereum, chain id 1, contract 0x4d84ef85274f873f9d08de44fe5e7670fc1f244e, holders 7 (7) distinct addresses, read 2026-11-08T05:51:05.013Z.",
+          "source": "Blockscout eth.blockscout.com token API",
+          "summary": "The token DanTetherUsdcDAIPierrePaypal1DollarInu (PYUSD) at 0x4d84ef85274f873f9d08de44fe5e7670fc1f244e on Ethereum has approximately 7 holders.",
+          "symbol": "PYUSD",
+          "token": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+          "token_symbol": "PYUSD",
+          "token_type": "ERC-20"
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7302",
+        "receiptHash": "0x76f69e51ecfcbe36f687811e903fc526c6f4fb0ccf9514c2fc0826b7c60cdd2d",
+        "signalHash": "0xffdeca3cff48c56531bfceb5e1a13878259a8c92f72755321d69153d4c0b2b11",
+        "httpStatus": 200
+      },
+      {
+        "check": "sanctions",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "entity": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+          "on_list": 0,
+          "sanctioned": 0,
+          "source": "ofac_sdn_xml"
+        },
+        "sourceGroup": "13.237.89.59",
+        "minerId": "78021",
+        "receiptHash": "0x9bdd64328e7b0742258e58c7f621af1a17c3a5a4db03e4872b60bd714ba2dcce",
+        "signalHash": "0xb01965f5dbd76a4d27bcf5d5a08d03b52514b1efc1e9c81b28a8c5007faa9c26",
+        "httpStatus": 200
+      },
+      {
+        "check": "wash_trading",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "as_of": "2026-11-08T05:51:02.167Z",
+          "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+          "chain": "ethereum",
+          "chain_id": 1,
+          "confidence": 0.5,
+          "contract_address": "0x4d84ef85274f873f9d08de44fe5e7670fc1f244e",
+          "intent": "WASH_TRADING_DETECTION",
+          "source": "eth_getLogs Transfer events over public RPC",
+          "summary": "No ERC-20 transfers of PYUSD were found in the last 600 blocks on Ethereum, so there is no activity to assess for wash-trading patterns in this window.",
+          "symbol": "PYUSD",
+          "transfers": 0,
+          "verified": false,
+          "window_blocks": 600
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7378",
+        "receiptHash": "0x6f368c7f59f5e8e473b6c20c94e0051cf4a7a61ee7c83106d2672c7a251cbabd",
+        "signalHash": "0xbadcca0e09967265da1216d0e1ec1520c64dd97dae226919fd8724b0bb6d79f7",
+        "httpStatus": 200
+      }
+    ],
+    "unpurchased": [
+      {
+        "check": "code_review",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_repo_url"
+        ]
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_pool_found"
+        ]
+      },
+      {
+        "check": "social_bots",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_social_handle"
+        ]
+      }
+    ],
+    "receipts": [
+      "0x4cdd25324df4fd4a5f3189b965a8793d7abb4119229d262e61aa13e9b94eb5a1",
+      "0x76f69e51ecfcbe36f687811e903fc526c6f4fb0ccf9514c2fc0826b7c60cdd2d",
+      "0x9bdd64328e7b0742258e58c7f621af1a17c3a5a4db03e4872b60bd714ba2dcce",
+      "0x6f368c7f59f5e8e473b6c20c94e0051cf4a7a61ee7c83106d2672c7a251cbabd"
+    ],
+    "verdictHash": "0x5d41a4ed9e1bc6251b163f974fd397616b1a498007d16ed26500ed8b9f41ed22",
+    "bomRoot": "0x0e099c77a51871ecc7160126da5c772e68e6b0c121fe4985e02db0183e073103"
+  }
+}

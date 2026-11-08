@@ -1,0 +1,2034 @@
+{
+  "caseId": "good-chainlink-base",
+  "policyRef": "dex-list@0.2.0",
+  "wallMs": 5760,
+  "verdict": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 8453,
+      "token": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196"
+    },
+    "decision": {
+      "verdict": "ESCALATE",
+      "verdictCode": 2,
+      "riskBps": 1886,
+      "confidenceBps": 4900,
+      "coverageBps": 7000,
+      "reasons": [
+        {
+          "code": "LOW_CONFIDENCE",
+          "detail": "confidence 0.49 < 0.55"
+        },
+        {
+          "code": "CONTRACT_AUDIT_WARN",
+          "check": "contract_audit",
+          "detail": "contract_audit WARN is_mintable"
+        }
+      ],
+      "openRisks": [
+        "wash_trading UNKNOWN",
+        "social_bots UNAVAILABLE",
+        "code_review UNAVAILABLE"
+      ],
+      "conflicts": []
+    },
+    "summary": "Escalated to an analyst: confidence 0.49 < 0.55 (+1 more).",
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0xb44d18e0ac81b90077395688895a0c77b359ff1e27990f9d65a6ff2efe0855e6",
+          "signalHash": "0x972087f44274faac7064d9bb6cb7eeaaf949fad40a969e5cd75680d463bf6784"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 127556
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0x5fde965dfe6417132df45aa4205283135cb17d45b09c3636afc09417e3781649",
+          "signalHash": "0x87b155f7a99ce7b7cd3110fe0476dcd7c08de5ccdad27e595d0f1757a9a273f1"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x0ebb853ee12ed09406251c1d149a2dd65e3018dc5f1b54addfb3aa5bea357036",
+          "signalHash": "0xdb1477caa700336aa45162d44e80dafdbe2a62345e95769954bb683544e747bf"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "liquidity_depth",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "7373",
+          "receiptHash": "0x45686f16e5fd9f7f0c88ad7d4e096a20ed036bd460f236f834e72adf8fd179da",
+          "signalHash": "0x5482217185c777816e089e15a2cebd1fae8185d942ef8db3c1874e52f91af57d"
+        },
+        "metric": "liquidity_usd",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "USD",
+        "value": 237266.1
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x3160fd1b6cf24e9187441667c6012f3f66375b672bb75d11748fa3c27b784e36",
+          "signalHash": "0x935ac96323ce916aa17175990b80fbe03b98c81787510309b16d7505510b4944"
+        },
+        "notes": [
+          "is_mintable"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "WARN"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "verdictHash": "0x4516e6ffad69600528d4def8777805aee061550c087ef89e069052a694a9ca36",
+    "bom": {
+      "root": "0x2dab04ef9102419440adb78bd03a8eb3020a2a86b59cd493254b4022b5850394",
+      "items": 5
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "intent": "SMART_CONTRACT_AUDIT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 3195,
+      "attempts": 1,
+      "sourceGroup": "gopluslabs.io",
+      "adapterVersion": "0.5.0",
+      "createdAt": "2026-11-08T05:49:40.214Z",
+      "minerId": "200001",
+      "minerName": "GoPlus Security",
+      "httpStatus": 200,
+      "signalHash": "0x935ac96323ce916aa17175990b80fbe03b98c81787510309b16d7505510b4944",
+      "epochId": 2040,
+      "resultShape": "raw",
+      "rawResult": {
+        "code": 1,
+        "message": "OK",
+        "result": {
+          "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196": {
+            "anti_whale_modifiable": "0",
+            "buy_tax": "0",
+            "can_take_back_ownership": "0",
+            "cannot_buy": "0",
+            "cannot_sell_all": "0",
+            "creator_address": "0x98306f66BF80225175653410438aed33a313BBCA",
+            "creator_balance": "15",
+            "creator_percent": "0.000066",
+            "dex": [
+              {
+                "liquidity": "14556.42092841000015010809",
+                "liquidity_type": "UniV3",
+                "name": "UniswapV3",
+                "pair": "0x224a5d3f2155f2f85af70b6d72aea61a15273ff4",
+                "pool_fee": "0.003"
+              },
+              {
+                "liquidity": "10123.435450190312000000000000000000",
+                "liquidity_type": "UniV3",
+                "name": "UniswapV3",
+                "pair": "0x08c049f958e7d1f1b7ae44466b80d7773ca09c8e",
+                "pool_fee": "0.003"
+              },
+              {
+                "liquidity": "1908.188828578507401225710000000000",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x906d29b81df7369343f65e04b19de6ac9940020c66f1d8865c5a45fbed5b8a02",
+                "pool_fee": "0.0025",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "576.025188201339940118770000000000",
+                "liquidity_type": "UniV3",
+                "name": "UniswapV3",
+                "pair": "0x380cbdcabc633a8d99eb02aa31fb15cfa3e2cfc5",
+                "pool_fee": "0.01"
+              },
+              {
+                "liquidity": "176.965093683455",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x53d08ee485ae9ababa12ac9882f3ec793ddf5c7efffcc4f134c397a4d069f1a2",
+                "pool_fee": "0.0025",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "104.417837473635",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x0335dd8b5fd2d55eec70ea0969289e86ea6ddac7050074a99fce522219a0227f",
+                "pool_fee": "0.02",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "92.776005874265000000000000000000",
+                "liquidity_type": "UniV3",
+                "name": "UniswapV3",
+                "pair": "0x6c79527d387dd5c0579080374e65d3b4f711719b",
+                "pool_fee": "0.0005"
+              },
+              {
+                "liquidity": "66.983318575985000000000000000000",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xc70d9b7b4d80da1fab4a4569f470177264a81474b0075db70bbd1b325571b147",
+                "pool_fee": "0.88",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "59.655589759654293318900000000000",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xd62419409c197818e280a50847084a40f7b89afd4e3588bd7fdb20a09c75d7ee",
+                "pool_fee": "0.01",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.776493763353321435490000000000",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x7524c191f5e0d71995866854ef022f2a6499067e757cee9d9742630399b83f4c",
+                "pool_fee": "0.59",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.55047888629931813414",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xddf5fb80dc501bb8b69912ecc3eeba96fc6c2f5a1452bb7754d932e7b6d60c8c",
+                "pool_fee": "0.95",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.50761807531113738774",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xf7f7a9f1df8b83c54032804c8c0ae690d077f89ac3f1a9d0dd7fab3576628520",
+                "pool_fee": "0.9",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.498093288824",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x6e6212afa748267f15678e454b3773e022f65f15dac1de21e3620225b24f0f24",
+                "pool_fee": "0.50049",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.27100294765765795008",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x0f5233db32199dff02418ff1f3f508007d16e6b3a384314346799301ee71fb88",
+                "pool_fee": "0.5",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.118790827923",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xdd20db66ed69dace6346fa018015a7f3260541b05f306af2b35b45c33b2852bb",
+                "pool_fee": "0.4",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.083038970385",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xd7aea47298ed27c59717475c646331015fd8e942b9dab3489cc47502e73ca218",
+                "pool_fee": "0.0025",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.071026744883202223399315",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x7f933fce31461b0dea978922fe0a99e89fe1e617ead0e8931227d57e1638790a",
+                "pool_fee": "0.009",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.062240858218009133460000000000",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xabcf4416765f4951271a6d1bed5d09b7cfec78330a6f9ba2ab2957b9af278eff",
+                "pool_fee": "0.003",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.048521340895",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0xe65236cf1b29ec672749fcdb6365660158fe1a1cde3e877d0daf2cb97d6870a3",
+                "pool_fee": "0.009",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.016154454795",
+                "liquidity_type": "UniV4",
+                "name": "UniswapV4",
+                "pair": "0x68ca4824bb56440dbc8b797d37f4a3d03abfbbf516fa845c01f4d0b85c160c8c",
+                "pool_fee": "0.009",
+                "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+              },
+              {
+                "liquidity": "0.00000100",
+                "liquidity_type": "UniV2",
+                "name": "UniswapV2",
+                "pair": "0xb8f486c959f2b8dc8625b03bd18538650a32d5da",
+                "pool_fee": "0.0030"
+              },
+              {
+                "liquidity": "0.00000002",
+                "liquidity_type": "UniV2",
+                "name": "UniswapV2",
+                "pair": "0x195b2d6cea8efac465f6edd3f9db7a761502fd00",
+                "pool_fee": "0.0030"
+              }
+            ],
+            "external_call": "0",
+            "hidden_owner": "0",
+            "holder_count": "121531",
+            "holders": [
+              {
+                "address": "0x0ae5f0a9d1b7824d340c56070dc3a329e4a75a75",
+                "balance": "9872.595234661655943571",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.043608510146870822",
+                "tag": ""
+              },
+              {
+                "address": "0x3cda3aa0c2579e0479386b55f0e0e6694504151f",
+                "balance": "9207.451899173923031839",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.040670487346857349",
+                "tag": ""
+              },
+              {
+                "address": "0x5e0d10c370913cec0d528f87eaadbcc2ad5e1059",
+                "balance": "7612.120127478010731871",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.033623703790961792",
+                "tag": ""
+              },
+              {
+                "address": "0x08c049f958e7d1f1b7ae44466b80d7773ca09c8e",
+                "balance": "6545.704497557453471663",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.028913210175777534",
+                "tag": "UniswapV3"
+              },
+              {
+                "address": "0x72be417afb0abea66913141c605d313bb389b59c",
+                "balance": "5316.849961142510381907",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.023485203228613775",
+                "tag": ""
+              },
+              {
+                "address": "0x7d5e00c155b1e061ab7e760d1ee9f0b65561a223",
+                "balance": "4208.327239796007135398",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.018588717229455668",
+                "tag": ""
+              },
+              {
+                "address": "0x224a5d3f2155f2f85af70b6d72aea61a15273ff4",
+                "balance": "4101.888252588392107829",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.018118562670969406",
+                "tag": "UniswapV3"
+              },
+              {
+                "address": "0x6949b22af3cab3c79b45eaca895c2d4d03244565",
+                "balance": "3809.695897868859894139",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.016827911837752958",
+                "tag": ""
+              },
+              {
+                "address": "0xcde21876416c67f77a1f75ad415c8b86965da6f0",
+                "balance": "3221.361268458713668741",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.014229162871897363",
+                "tag": ""
+              },
+              {
+                "address": "0x2fa374c196cf637b8ab664bac8005d6bb16c08cf",
+                "balance": "2800.271015991711050964",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.012369153612833984",
+                "tag": ""
+              }
+            ],
+            "honeypot_with_same_creator": "0",
+            "is_anti_whale": "0",
+            "is_blacklisted": "0",
+            "is_honeypot": "0",
+            "is_in_cex": {
+              "cex_list": [
+                "Binance"
+              ],
+              "listed": "1"
+            },
+            "is_in_dex": "1",
+            "is_mintable": "1",
+            "is_open_source": "1",
+            "is_proxy": "0",
+            "is_whitelisted": "0",
+            "lp_holder_count": "33",
+            "lp_holders": [
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6467193",
+                    "NFT_percentage": "0.059970889805485566",
+                    "amount": "607.333986582475911461",
+                    "in_effect": "1",
+                    "value": "846.52840562965469694879"
+                  },
+                  {
+                    "NFT_id": "6282233",
+                    "NFT_percentage": "0.038905364429808916",
+                    "amount": "198.09934865601600475",
+                    "in_effect": "1",
+                    "value": "549.17471173146220329396"
+                  },
+                  {
+                    "NFT_id": "6452464",
+                    "NFT_percentage": "0.025293095203229253",
+                    "amount": "77.769407675884632747",
+                    "in_effect": "1",
+                    "value": "357.02861213625386143641"
+                  },
+                  {
+                    "NFT_id": "6464396",
+                    "NFT_percentage": "0.018382836718096821",
+                    "amount": "186.165680464444864595",
+                    "in_effect": "1",
+                    "value": "259.48578566025127030704"
+                  },
+                  {
+                    "NFT_id": "6464958",
+                    "NFT_percentage": "0.017938283190079763",
+                    "amount": "181.663621760703440351",
+                    "in_effect": "1",
+                    "value": "253.21062131785234953957"
+                  },
+                  {
+                    "NFT_id": "6467212",
+                    "NFT_percentage": "0.017346920372944253",
+                    "amount": "175.674803879020101618",
+                    "in_effect": "1",
+                    "value": "244.86314766251576031717"
+                  },
+                  {
+                    "NFT_id": "6464363",
+                    "NFT_percentage": "0.016735957135811738",
+                    "amount": "169.487489672635197656",
+                    "in_effect": "1",
+                    "value": "236.23900123571367572751"
+                  },
+                  {
+                    "NFT_id": "6467026",
+                    "NFT_percentage": "0.016111970426988947",
+                    "amount": "163.168284860550519949",
+                    "in_effect": "1",
+                    "value": "227.4310199723518603119"
+                  },
+                  {
+                    "NFT_id": "6464542",
+                    "NFT_percentage": "0.013598589528772886",
+                    "amount": "137.714908302943086526",
+                    "in_effect": "1",
+                    "value": "191.95300169702096491695"
+                  },
+                  {
+                    "NFT_id": "6468180",
+                    "NFT_percentage": "0.011354195076004283",
+                    "amount": "29.182619905906892013",
+                    "in_effect": "1",
+                    "value": "160.2719033529964344096"
+                  },
+                  {
+                    "NFT_id": "6464362",
+                    "NFT_percentage": "0.010280591628068208",
+                    "amount": "104.113057487600799459",
+                    "in_effect": "1",
+                    "value": "145.11728720493498494112"
+                  },
+                  {
+                    "NFT_id": "6467273",
+                    "NFT_percentage": "0.010214661985815129",
+                    "amount": "103.445378342045479418",
+                    "in_effect": "1",
+                    "value": "144.1866471040251041472"
+                  },
+                  {
+                    "NFT_id": "6468910",
+                    "NFT_percentage": "0.009660916320051620",
+                    "amount": "49.191705526247416947",
+                    "in_effect": "1",
+                    "value": "136.37016418900526104425"
+                  },
+                  {
+                    "NFT_id": "6464543",
+                    "NFT_percentage": "0.009426382002870370",
+                    "amount": "95.462351474546588521",
+                    "in_effect": "1",
+                    "value": "133.05955862299076228217"
+                  },
+                  {
+                    "NFT_id": "6464393",
+                    "NFT_percentage": "0.007960018562346975",
+                    "amount": "80.612274095331048703",
+                    "in_effect": "1",
+                    "value": "112.36087782292131119493"
+                  },
+                  {
+                    "NFT_id": "6346530",
+                    "NFT_percentage": "0.007920629847267774",
+                    "amount": "27.017463271795160984",
+                    "in_effect": "1",
+                    "value": "111.80488030005735666531"
+                  },
+                  {
+                    "NFT_id": "6108588",
+                    "NFT_percentage": "0.007462456606252926",
+                    "amount": "56.795470074270545826",
+                    "in_effect": "1",
+                    "value": "105.33746478435505307037"
+                  },
+                  {
+                    "NFT_id": "6465136",
+                    "NFT_percentage": "0.005475122206008793",
+                    "amount": "55.447364666205104039",
+                    "in_effect": "1",
+                    "value": "77.28493752074010066453"
+                  },
+                  {
+                    "NFT_id": "6464540",
+                    "NFT_percentage": "0.005100787161380466",
+                    "amount": "51.656418830499736498",
+                    "in_effect": "1",
+                    "value": "72.00095308215106636599"
+                  },
+                  {
+                    "NFT_id": "6471606",
+                    "NFT_percentage": "0.003742110215633525",
+                    "amount": "56.699365028338620461",
+                    "in_effect": "1",
+                    "value": "52.82233771760597178654"
+                  },
+                  {
+                    "NFT_id": "6484042",
+                    "NFT_percentage": "0.003472563444738194",
+                    "amount": "11.844999341757633",
+                    "in_effect": "1",
+                    "value": "49.0175084254487085717"
+                  },
+                  {
+                    "NFT_id": "6464394",
+                    "NFT_percentage": "0.003422214301963469",
+                    "amount": "34.657265578222649418",
+                    "in_effect": "1",
+                    "value": "48.30679728382397075571"
+                  },
+                  {
+                    "NFT_id": "6464380",
+                    "NFT_percentage": "0.003097267104712342",
+                    "amount": "31.366477708050391242",
+                    "in_effect": "1",
+                    "value": "43.71995467243320364848"
+                  },
+                  {
+                    "NFT_id": "6443541",
+                    "NFT_percentage": "0.002753220879910940",
+                    "amount": "14.018921837899857486",
+                    "in_effect": "1",
+                    "value": "38.86351677250076166918"
+                  },
+                  {
+                    "NFT_id": "6496047",
+                    "NFT_percentage": "0.002357624064343908",
+                    "amount": "17.943470100801035071",
+                    "in_effect": "1",
+                    "value": "33.27940850530116216333"
+                  },
+                  {
+                    "NFT_id": "6467398",
+                    "NFT_percentage": "0.002227065380953636",
+                    "amount": "22.553817370084642674",
+                    "in_effect": "1",
+                    "value": "31.43648714045317298718"
+                  },
+                  {
+                    "NFT_id": "6464537",
+                    "NFT_percentage": "0.002093065279483656",
+                    "amount": "21.196778711959296911",
+                    "in_effect": "1",
+                    "value": "29.54498790441519012705"
+                  },
+                  {
+                    "NFT_id": "6336899",
+                    "NFT_percentage": "0.001235084813992107",
+                    "amount": "4.73202028513039809",
+                    "in_effect": "1",
+                    "value": "17.43403144087586188644"
+                  },
+                  {
+                    "NFT_id": "6471607",
+                    "NFT_percentage": "0.000951037030543028",
+                    "amount": "14.409836333774942917",
+                    "in_effect": "1",
+                    "value": "13.42451085470987105889"
+                  },
+                  {
+                    "NFT_id": "6465489",
+                    "NFT_percentage": "0.000937567207656035",
+                    "amount": "9.494880462198095984",
+                    "in_effect": "1",
+                    "value": "13.23437547853613466852"
+                  },
+                  {
+                    "NFT_id": "6468834",
+                    "NFT_percentage": "0.000694423965365847",
+                    "amount": "10.521709844946068804",
+                    "in_effect": "1",
+                    "value": "9.80224929359647285047"
+                  },
+                  {
+                    "NFT_id": "6467272",
+                    "NFT_percentage": "0.000627902189332858",
+                    "amount": "6.358857456814107776",
+                    "in_effect": "1",
+                    "value": "8.86325083638651643854"
+                  },
+                  {
+                    "NFT_id": "6473155",
+                    "NFT_percentage": "0.000113303340659260",
+                    "amount": "3.417338453764634319",
+                    "in_effect": "1",
+                    "value": "1.59935089560774748548"
+                  }
+                ],
+                "address": "0x7d27cdfbfcc878f7e7349e216d44204bfd2afd55",
+                "balance": "2809.217374042864906214",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.336864117426573492",
+                "tag": "",
+                "value": "4755.05774824894882368228"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6464649",
+                    "NFT_percentage": "0.236769756556127233",
+                    "amount": "1802.013778104650936875",
+                    "in_effect": "1",
+                    "value": "3342.16025756626722567048"
+                  }
+                ],
+                "address": "0xafda5f371d3a352c086a6c8abf607937fd839296",
+                "balance": "1802.013778104650936875",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.236769756556127233",
+                "tag": "",
+                "value": "3342.16025756626722567048"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6486791",
+                    "NFT_percentage": "0.113751029665097208",
+                    "amount": "106.666900705121500148",
+                    "in_effect": "0",
+                    "value": "1605.67031927410694000493"
+                  }
+                ],
+                "address": "0x9cf6f27909262a374fa5c7a781f2a5a152b73950",
+                "balance": "106.666900705121500148",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.113751029665097208",
+                "tag": "",
+                "value": "1605.67031927410694000493"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6451470",
+                    "NFT_percentage": "0.044121532964190049",
+                    "amount": "150.499634415627084692",
+                    "in_effect": "1",
+                    "value": "622.80434849735413554156"
+                  },
+                  {
+                    "NFT_id": "6303954",
+                    "NFT_percentage": "0.008042382715220287",
+                    "amount": "121.855842557185971694",
+                    "in_effect": "1",
+                    "value": "113.52350180997618185052"
+                  },
+                  {
+                    "NFT_id": "6025215",
+                    "NFT_percentage": "0.000000000000000000",
+                    "amount": "0",
+                    "in_effect": "1",
+                    "value": "0.00"
+                  },
+                  {
+                    "NFT_id": "6098572",
+                    "NFT_percentage": "0.000000000000000000",
+                    "amount": "0",
+                    "in_effect": "0",
+                    "value": "0.00"
+                  }
+                ],
+                "address": "0x6fbeff30aae4bcc5e176f2f68e1497c4e5044210",
+                "balance": "272.355476972813056386",
+                "is_contract": 1,
+                "is_locked": 0,
+                "percent": "0.052163915679410336",
+                "tag": "",
+                "value": "736.32785030733031739208"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6425573",
+                    "NFT_percentage": "0.041054824747876799",
+                    "amount": "21.992677184237834536",
+                    "in_effect": "1",
+                    "value": "579.51575255843652655953"
+                  },
+                  {
+                    "NFT_id": "5896407",
+                    "NFT_percentage": "0.000000000000000000",
+                    "amount": "0",
+                    "in_effect": "1",
+                    "value": "0.00"
+                  },
+                  {
+                    "NFT_id": "6106481",
+                    "NFT_percentage": "0.000000000000000000",
+                    "amount": "0",
+                    "in_effect": "1",
+                    "value": "0.00"
+                  }
+                ],
+                "address": "0xe16ffb4bfbfa6f6bf6e2ab0426351069cc070f92",
+                "balance": "21.992677184237834536",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.041054824747876799",
+                "tag": "",
+                "value": "579.51575255843652655953"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6440978",
+                    "NFT_percentage": "0.033479573263283023",
+                    "amount": "204.216926651223105482",
+                    "in_effect": "1",
+                    "value": "472.58611415726885981073"
+                  }
+                ],
+                "address": "0x7f2f798e9d5c33357cb4bcd8fa0c73dd7f909ef3",
+                "balance": "204.216926651223105482",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.033479573263283023",
+                "tag": "",
+                "value": "472.58611415726885981073"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6040678",
+                    "NFT_percentage": "0.030878431430612218",
+                    "amount": "9.351643072289849247",
+                    "in_effect": "1",
+                    "value": "435.86929278661109685378"
+                  }
+                ],
+                "address": "0xf942ce6643bc80d0bcc1bea4fd4657e600a1de88",
+                "balance": "9.351643072289849247",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.030878431430612218",
+                "tag": "",
+                "value": "435.86929278661109685378"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6470278",
+                    "NFT_percentage": "0.021896599681620350",
+                    "amount": "331.770906436920669352",
+                    "in_effect": "1",
+                    "value": "309.08485228940815339887"
+                  }
+                ],
+                "address": "0x5466305fbaf2516e15558859c060080e81741d4e",
+                "balance": "331.770906436920669352",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.021896599681620350",
+                "tag": "",
+                "value": "309.08485228940815339887"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "6108693",
+                    "NFT_percentage": "0.019375683318952845",
+                    "amount": "59.574971071081032749",
+                    "in_effect": "1",
+                    "value": "273.50046599571952961403"
+                  },
+                  {
+                    "NFT_id": "5780388",
+                    "NFT_percentage": "0.000000000000000000",
+                    "amount": "0",
+                    "in_effect": "1",
+                    "value": "0.00"
+                  },
+                  {
+                    "NFT_id": "5947766",
+                    "NFT_percentage": "0.000000000000000000",
+                    "amount": "0",
+                    "in_effect": "1",
+                    "value": "0.00"
+                  }
+                ],
+                "address": "0xe0c63c4064abb1b2bae4a0cdac74029b31a7e700",
+                "balance": "59.574971071081032749",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.019375683318952845",
+                "tag": "",
+                "value": "273.50046599571952961403"
+              },
+              {
+                "NFT_list": [
+                  {
+                    "NFT_id": "5777552",
+                    "NFT_percentage": "0.014901547893715178",
+                    "amount": "41.71756738115042572",
+                    "in_effect": "1",
+                    "value": "210.34511278381577087187"
+                  }
+                ],
+                "address": "0x88057adb788b601c5b7dadb07e5365f278a8cfef",
+                "balance": "41.71756738115042572",
+                "is_contract": 0,
+                "is_locked": 0,
+                "percent": "0.014901547893715178",
+                "tag": "",
+                "value": "210.34511278381577087187"
+              }
+            ],
+            "lp_total_supply": "6160.833796633237",
+            "owner_address": "0x7b0328745a01634c32efaf041d91432a075b308d",
+            "owner_balance": "0",
+            "owner_change_balance": "0",
+            "owner_percent": "0.0",
+            "personal_slippage_modifiable": "0",
+            "selfdestruct": "0",
+            "sell_tax": "0",
+            "slippage_modifiable": "0",
+            "token_name": "ChainLink Token",
+            "token_symbol": "LINK",
+            "total_supply": "226391.481878453376379144",
+            "trading_cooldown": "0",
+            "transfer_pausable": "0",
+            "transfer_tax": "0"
+          }
+        }
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x3160fd1b6cf24e9187441667c6012f3f66375b672bb75d11748fa3c27b784e36"
+    },
+    {
+      "check": "holder_count",
+      "intent": "TOKEN_HOLDER_COUNT_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 5370,
+      "attempts": 1,
+      "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+      "adapterVersion": "0.1.0",
+      "createdAt": "2026-11-08T05:49:42.182Z",
+      "minerId": "9002",
+      "minerName": "TxLens",
+      "httpStatus": 200,
+      "signalHash": "0x972087f44274faac7064d9bb6cb7eeaaf949fad40a969e5cd75680d463bf6784",
+      "epochId": 2040,
+      "resultShape": "intent",
+      "rawResult": {
+        "token": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
+        "chain": "base",
+        "holders_count": 127556,
+        "token_symbol": null
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0xb44d18e0ac81b90077395688895a0c77b359ff1e27990f9d65a6ff2efe0855e6"
+    },
+    {
+      "check": "liquidity_depth",
+      "intent": "LIQUIDITY_DEPTH_VERIFY_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 5075,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.4.0",
+      "createdAt": "2026-11-08T05:49:41.882Z",
+      "minerId": "7373",
+      "pool": "0x0ae5f0a9d1b7824d340c56070dc3a329e4a75a75",
+      "minerName": "VerifyWire Liquidity Depth",
+      "httpStatus": 200,
+      "signalHash": "0x5482217185c777816e089e15a2cebd1fae8185d942ef8db3c1874e52f91af57d",
+      "epochId": 2040,
+      "resultShape": "intent",
+      "rawResult": {
+        "liquidity_usd": 237266.1
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x45686f16e5fd9f7f0c88ad7d4e096a20ed036bd460f236f834e72adf8fd179da"
+    },
+    {
+      "check": "sanctions",
+      "intent": "SANCTIONS_SCREENING_MATCH_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 1175,
+      "attempts": 1,
+      "sourceGroup": "13.237.89.59",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-08T05:49:37.989Z",
+      "minerId": "78021",
+      "minerName": "OFAC SDN Entity Screen",
+      "httpStatus": 200,
+      "signalHash": "0x87b155f7a99ce7b7cd3110fe0476dcd7c08de5ccdad27e595d0f1757a9a273f1",
+      "epochId": 2040,
+      "resultShape": "raw",
+      "rawResult": {
+        "entity": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
+        "on_list": 0,
+        "sanctioned": 0,
+        "source": "ofac_sdn_xml"
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x5fde965dfe6417132df45aa4205283135cb17d45b09c3636afc09417e3781649"
+    },
+    {
+      "check": "wash_trading",
+      "intent": "WASH_TRADING_DETECTION_GENERAL",
+      "pinned": true,
+      "rail": "escrow",
+      "amountUusdc": 10000,
+      "billing": "paid",
+      "durationMs": 2923,
+      "attempts": 1,
+      "sourceGroup": "margyn.workers.dev",
+      "adapterVersion": "0.3.0",
+      "createdAt": "2026-11-08T05:49:39.738Z",
+      "minerId": "7378",
+      "minerName": "VerifyWire Wash Trading Detection",
+      "httpStatus": 200,
+      "signalHash": "0xdb1477caa700336aa45162d44e80dafdbe2a62345e95769954bb683544e747bf",
+      "epochId": 2040,
+      "resultShape": "raw",
+      "rawResult": {
+        "as_of": "2026-11-08T05:49:38.729Z",
+        "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+        "chain": "base",
+        "chain_id": 8453,
+        "confidence": 0.5,
+        "contract_address": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
+        "intent": "WASH_TRADING_DETECTION",
+        "source": "eth_getLogs Transfer events over public RPC",
+        "summary": "No ERC-20 transfers of LINK were found in the last 8 blocks on Base, so there is no activity to assess for wash-trading patterns in this window.",
+        "symbol": "LINK",
+        "transfers": 0,
+        "verified": false,
+        "window_blocks": 8
+      },
+      "signalStatus": "verified",
+      "receiptHash": "0x0ebb853ee12ed09406251c1d149a2dd65e3018dc5f1b54addfb3aa5bea357036"
+    }
+  ],
+  "stored": {
+    "engineVersion": "0.2.0",
+    "policy": {
+      "id": "dex-list",
+      "version": "0.2.0",
+      "sha256": "26038dda8de9795c6129b7fe732c821b69255d9db666cdd33e92e809ee5b6a3e"
+    },
+    "subject": {
+      "chainId": 8453,
+      "token": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196"
+    },
+    "findings": [
+      {
+        "adapterVersion": "0.1.0",
+        "check": "holder_count",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "9002",
+          "receiptHash": "0xb44d18e0ac81b90077395688895a0c77b359ff1e27990f9d65a6ff2efe0855e6",
+          "signalHash": "0x972087f44274faac7064d9bb6cb7eeaaf949fad40a969e5cd75680d463bf6784"
+        },
+        "metric": "holders_count",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "status": "PASS",
+        "unit": "addresses",
+        "value": 127556
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "sanctions",
+        "confidence": 0.3,
+        "evidence": {
+          "minerId": "78021",
+          "receiptHash": "0x5fde965dfe6417132df45aa4205283135cb17d45b09c3636afc09417e3781649",
+          "signalHash": "0x87b155f7a99ce7b7cd3110fe0476dcd7c08de5ccdad27e595d0f1757a9a273f1"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "severity": 0,
+        "sourceGroup": "13.237.89.59",
+        "status": "PASS"
+      },
+      {
+        "adapterVersion": "0.3.0",
+        "check": "wash_trading",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7378",
+          "receiptHash": "0x0ebb853ee12ed09406251c1d149a2dd65e3018dc5f1b54addfb3aa5bea357036",
+          "signalHash": "0xdb1477caa700336aa45162d44e80dafdbe2a62345e95769954bb683544e747bf"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "UNKNOWN"
+      },
+      {
+        "adapterVersion": "0.4.0",
+        "check": "liquidity_depth",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "7373",
+          "receiptHash": "0x45686f16e5fd9f7f0c88ad7d4e096a20ed036bd460f236f834e72adf8fd179da",
+          "signalHash": "0x5482217185c777816e089e15a2cebd1fae8185d942ef8db3c1874e52f91af57d"
+        },
+        "metric": "liquidity_usd",
+        "notes": [],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "PASS",
+        "unit": "USD",
+        "value": 237266.1
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x3160fd1b6cf24e9187441667c6012f3f66375b672bb75d11748fa3c27b784e36",
+          "signalHash": "0x935ac96323ce916aa17175990b80fbe03b98c81787510309b16d7505510b4944"
+        },
+        "notes": [
+          "is_mintable"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "WARN"
+      },
+      {
+        "check": "code_review",
+        "confidence": 0,
+        "notes": [
+          "no_repo_url"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "check": "social_bots",
+        "confidence": 0,
+        "notes": [
+          "no_social_handle"
+        ],
+        "severity": 0,
+        "sourceGroup": "none",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "purchases": [
+      {
+        "check": "contract_audit",
+        "adapterVersion": "0.5.0",
+        "rawResult": {
+          "code": 1,
+          "message": "OK",
+          "result": {
+            "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196": {
+              "anti_whale_modifiable": "0",
+              "buy_tax": "0",
+              "can_take_back_ownership": "0",
+              "cannot_buy": "0",
+              "cannot_sell_all": "0",
+              "creator_address": "0x98306f66BF80225175653410438aed33a313BBCA",
+              "creator_balance": "15",
+              "creator_percent": "0.000066",
+              "dex": [
+                {
+                  "liquidity": "14556.42092841000015010809",
+                  "liquidity_type": "UniV3",
+                  "name": "UniswapV3",
+                  "pair": "0x224a5d3f2155f2f85af70b6d72aea61a15273ff4",
+                  "pool_fee": "0.003"
+                },
+                {
+                  "liquidity": "10123.435450190312000000000000000000",
+                  "liquidity_type": "UniV3",
+                  "name": "UniswapV3",
+                  "pair": "0x08c049f958e7d1f1b7ae44466b80d7773ca09c8e",
+                  "pool_fee": "0.003"
+                },
+                {
+                  "liquidity": "1908.188828578507401225710000000000",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x906d29b81df7369343f65e04b19de6ac9940020c66f1d8865c5a45fbed5b8a02",
+                  "pool_fee": "0.0025",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "576.025188201339940118770000000000",
+                  "liquidity_type": "UniV3",
+                  "name": "UniswapV3",
+                  "pair": "0x380cbdcabc633a8d99eb02aa31fb15cfa3e2cfc5",
+                  "pool_fee": "0.01"
+                },
+                {
+                  "liquidity": "176.965093683455",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x53d08ee485ae9ababa12ac9882f3ec793ddf5c7efffcc4f134c397a4d069f1a2",
+                  "pool_fee": "0.0025",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "104.417837473635",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x0335dd8b5fd2d55eec70ea0969289e86ea6ddac7050074a99fce522219a0227f",
+                  "pool_fee": "0.02",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "92.776005874265000000000000000000",
+                  "liquidity_type": "UniV3",
+                  "name": "UniswapV3",
+                  "pair": "0x6c79527d387dd5c0579080374e65d3b4f711719b",
+                  "pool_fee": "0.0005"
+                },
+                {
+                  "liquidity": "66.983318575985000000000000000000",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xc70d9b7b4d80da1fab4a4569f470177264a81474b0075db70bbd1b325571b147",
+                  "pool_fee": "0.88",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "59.655589759654293318900000000000",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xd62419409c197818e280a50847084a40f7b89afd4e3588bd7fdb20a09c75d7ee",
+                  "pool_fee": "0.01",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.776493763353321435490000000000",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x7524c191f5e0d71995866854ef022f2a6499067e757cee9d9742630399b83f4c",
+                  "pool_fee": "0.59",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.55047888629931813414",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xddf5fb80dc501bb8b69912ecc3eeba96fc6c2f5a1452bb7754d932e7b6d60c8c",
+                  "pool_fee": "0.95",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.50761807531113738774",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xf7f7a9f1df8b83c54032804c8c0ae690d077f89ac3f1a9d0dd7fab3576628520",
+                  "pool_fee": "0.9",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.498093288824",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x6e6212afa748267f15678e454b3773e022f65f15dac1de21e3620225b24f0f24",
+                  "pool_fee": "0.50049",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.27100294765765795008",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x0f5233db32199dff02418ff1f3f508007d16e6b3a384314346799301ee71fb88",
+                  "pool_fee": "0.5",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.118790827923",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xdd20db66ed69dace6346fa018015a7f3260541b05f306af2b35b45c33b2852bb",
+                  "pool_fee": "0.4",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.083038970385",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xd7aea47298ed27c59717475c646331015fd8e942b9dab3489cc47502e73ca218",
+                  "pool_fee": "0.0025",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.071026744883202223399315",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x7f933fce31461b0dea978922fe0a99e89fe1e617ead0e8931227d57e1638790a",
+                  "pool_fee": "0.009",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.062240858218009133460000000000",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xabcf4416765f4951271a6d1bed5d09b7cfec78330a6f9ba2ab2957b9af278eff",
+                  "pool_fee": "0.003",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.048521340895",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0xe65236cf1b29ec672749fcdb6365660158fe1a1cde3e877d0daf2cb97d6870a3",
+                  "pool_fee": "0.009",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.016154454795",
+                  "liquidity_type": "UniV4",
+                  "name": "UniswapV4",
+                  "pair": "0x68ca4824bb56440dbc8b797d37f4a3d03abfbbf516fa845c01f4d0b85c160c8c",
+                  "pool_fee": "0.009",
+                  "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+                },
+                {
+                  "liquidity": "0.00000100",
+                  "liquidity_type": "UniV2",
+                  "name": "UniswapV2",
+                  "pair": "0xb8f486c959f2b8dc8625b03bd18538650a32d5da",
+                  "pool_fee": "0.0030"
+                },
+                {
+                  "liquidity": "0.00000002",
+                  "liquidity_type": "UniV2",
+                  "name": "UniswapV2",
+                  "pair": "0x195b2d6cea8efac465f6edd3f9db7a761502fd00",
+                  "pool_fee": "0.0030"
+                }
+              ],
+              "external_call": "0",
+              "hidden_owner": "0",
+              "holder_count": "121531",
+              "holders": [
+                {
+                  "address": "0x0ae5f0a9d1b7824d340c56070dc3a329e4a75a75",
+                  "balance": "9872.595234661655943571",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.043608510146870822",
+                  "tag": ""
+                },
+                {
+                  "address": "0x3cda3aa0c2579e0479386b55f0e0e6694504151f",
+                  "balance": "9207.451899173923031839",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.040670487346857349",
+                  "tag": ""
+                },
+                {
+                  "address": "0x5e0d10c370913cec0d528f87eaadbcc2ad5e1059",
+                  "balance": "7612.120127478010731871",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.033623703790961792",
+                  "tag": ""
+                },
+                {
+                  "address": "0x08c049f958e7d1f1b7ae44466b80d7773ca09c8e",
+                  "balance": "6545.704497557453471663",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.028913210175777534",
+                  "tag": "UniswapV3"
+                },
+                {
+                  "address": "0x72be417afb0abea66913141c605d313bb389b59c",
+                  "balance": "5316.849961142510381907",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.023485203228613775",
+                  "tag": ""
+                },
+                {
+                  "address": "0x7d5e00c155b1e061ab7e760d1ee9f0b65561a223",
+                  "balance": "4208.327239796007135398",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.018588717229455668",
+                  "tag": ""
+                },
+                {
+                  "address": "0x224a5d3f2155f2f85af70b6d72aea61a15273ff4",
+                  "balance": "4101.888252588392107829",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.018118562670969406",
+                  "tag": "UniswapV3"
+                },
+                {
+                  "address": "0x6949b22af3cab3c79b45eaca895c2d4d03244565",
+                  "balance": "3809.695897868859894139",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.016827911837752958",
+                  "tag": ""
+                },
+                {
+                  "address": "0xcde21876416c67f77a1f75ad415c8b86965da6f0",
+                  "balance": "3221.361268458713668741",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.014229162871897363",
+                  "tag": ""
+                },
+                {
+                  "address": "0x2fa374c196cf637b8ab664bac8005d6bb16c08cf",
+                  "balance": "2800.271015991711050964",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.012369153612833984",
+                  "tag": ""
+                }
+              ],
+              "honeypot_with_same_creator": "0",
+              "is_anti_whale": "0",
+              "is_blacklisted": "0",
+              "is_honeypot": "0",
+              "is_in_cex": {
+                "cex_list": [
+                  "Binance"
+                ],
+                "listed": "1"
+              },
+              "is_in_dex": "1",
+              "is_mintable": "1",
+              "is_open_source": "1",
+              "is_proxy": "0",
+              "is_whitelisted": "0",
+              "lp_holder_count": "33",
+              "lp_holders": [
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6467193",
+                      "NFT_percentage": "0.059970889805485566",
+                      "amount": "607.333986582475911461",
+                      "in_effect": "1",
+                      "value": "846.52840562965469694879"
+                    },
+                    {
+                      "NFT_id": "6282233",
+                      "NFT_percentage": "0.038905364429808916",
+                      "amount": "198.09934865601600475",
+                      "in_effect": "1",
+                      "value": "549.17471173146220329396"
+                    },
+                    {
+                      "NFT_id": "6452464",
+                      "NFT_percentage": "0.025293095203229253",
+                      "amount": "77.769407675884632747",
+                      "in_effect": "1",
+                      "value": "357.02861213625386143641"
+                    },
+                    {
+                      "NFT_id": "6464396",
+                      "NFT_percentage": "0.018382836718096821",
+                      "amount": "186.165680464444864595",
+                      "in_effect": "1",
+                      "value": "259.48578566025127030704"
+                    },
+                    {
+                      "NFT_id": "6464958",
+                      "NFT_percentage": "0.017938283190079763",
+                      "amount": "181.663621760703440351",
+                      "in_effect": "1",
+                      "value": "253.21062131785234953957"
+                    },
+                    {
+                      "NFT_id": "6467212",
+                      "NFT_percentage": "0.017346920372944253",
+                      "amount": "175.674803879020101618",
+                      "in_effect": "1",
+                      "value": "244.86314766251576031717"
+                    },
+                    {
+                      "NFT_id": "6464363",
+                      "NFT_percentage": "0.016735957135811738",
+                      "amount": "169.487489672635197656",
+                      "in_effect": "1",
+                      "value": "236.23900123571367572751"
+                    },
+                    {
+                      "NFT_id": "6467026",
+                      "NFT_percentage": "0.016111970426988947",
+                      "amount": "163.168284860550519949",
+                      "in_effect": "1",
+                      "value": "227.4310199723518603119"
+                    },
+                    {
+                      "NFT_id": "6464542",
+                      "NFT_percentage": "0.013598589528772886",
+                      "amount": "137.714908302943086526",
+                      "in_effect": "1",
+                      "value": "191.95300169702096491695"
+                    },
+                    {
+                      "NFT_id": "6468180",
+                      "NFT_percentage": "0.011354195076004283",
+                      "amount": "29.182619905906892013",
+                      "in_effect": "1",
+                      "value": "160.2719033529964344096"
+                    },
+                    {
+                      "NFT_id": "6464362",
+                      "NFT_percentage": "0.010280591628068208",
+                      "amount": "104.113057487600799459",
+                      "in_effect": "1",
+                      "value": "145.11728720493498494112"
+                    },
+                    {
+                      "NFT_id": "6467273",
+                      "NFT_percentage": "0.010214661985815129",
+                      "amount": "103.445378342045479418",
+                      "in_effect": "1",
+                      "value": "144.1866471040251041472"
+                    },
+                    {
+                      "NFT_id": "6468910",
+                      "NFT_percentage": "0.009660916320051620",
+                      "amount": "49.191705526247416947",
+                      "in_effect": "1",
+                      "value": "136.37016418900526104425"
+                    },
+                    {
+                      "NFT_id": "6464543",
+                      "NFT_percentage": "0.009426382002870370",
+                      "amount": "95.462351474546588521",
+                      "in_effect": "1",
+                      "value": "133.05955862299076228217"
+                    },
+                    {
+                      "NFT_id": "6464393",
+                      "NFT_percentage": "0.007960018562346975",
+                      "amount": "80.612274095331048703",
+                      "in_effect": "1",
+                      "value": "112.36087782292131119493"
+                    },
+                    {
+                      "NFT_id": "6346530",
+                      "NFT_percentage": "0.007920629847267774",
+                      "amount": "27.017463271795160984",
+                      "in_effect": "1",
+                      "value": "111.80488030005735666531"
+                    },
+                    {
+                      "NFT_id": "6108588",
+                      "NFT_percentage": "0.007462456606252926",
+                      "amount": "56.795470074270545826",
+                      "in_effect": "1",
+                      "value": "105.33746478435505307037"
+                    },
+                    {
+                      "NFT_id": "6465136",
+                      "NFT_percentage": "0.005475122206008793",
+                      "amount": "55.447364666205104039",
+                      "in_effect": "1",
+                      "value": "77.28493752074010066453"
+                    },
+                    {
+                      "NFT_id": "6464540",
+                      "NFT_percentage": "0.005100787161380466",
+                      "amount": "51.656418830499736498",
+                      "in_effect": "1",
+                      "value": "72.00095308215106636599"
+                    },
+                    {
+                      "NFT_id": "6471606",
+                      "NFT_percentage": "0.003742110215633525",
+                      "amount": "56.699365028338620461",
+                      "in_effect": "1",
+                      "value": "52.82233771760597178654"
+                    },
+                    {
+                      "NFT_id": "6484042",
+                      "NFT_percentage": "0.003472563444738194",
+                      "amount": "11.844999341757633",
+                      "in_effect": "1",
+                      "value": "49.0175084254487085717"
+                    },
+                    {
+                      "NFT_id": "6464394",
+                      "NFT_percentage": "0.003422214301963469",
+                      "amount": "34.657265578222649418",
+                      "in_effect": "1",
+                      "value": "48.30679728382397075571"
+                    },
+                    {
+                      "NFT_id": "6464380",
+                      "NFT_percentage": "0.003097267104712342",
+                      "amount": "31.366477708050391242",
+                      "in_effect": "1",
+                      "value": "43.71995467243320364848"
+                    },
+                    {
+                      "NFT_id": "6443541",
+                      "NFT_percentage": "0.002753220879910940",
+                      "amount": "14.018921837899857486",
+                      "in_effect": "1",
+                      "value": "38.86351677250076166918"
+                    },
+                    {
+                      "NFT_id": "6496047",
+                      "NFT_percentage": "0.002357624064343908",
+                      "amount": "17.943470100801035071",
+                      "in_effect": "1",
+                      "value": "33.27940850530116216333"
+                    },
+                    {
+                      "NFT_id": "6467398",
+                      "NFT_percentage": "0.002227065380953636",
+                      "amount": "22.553817370084642674",
+                      "in_effect": "1",
+                      "value": "31.43648714045317298718"
+                    },
+                    {
+                      "NFT_id": "6464537",
+                      "NFT_percentage": "0.002093065279483656",
+                      "amount": "21.196778711959296911",
+                      "in_effect": "1",
+                      "value": "29.54498790441519012705"
+                    },
+                    {
+                      "NFT_id": "6336899",
+                      "NFT_percentage": "0.001235084813992107",
+                      "amount": "4.73202028513039809",
+                      "in_effect": "1",
+                      "value": "17.43403144087586188644"
+                    },
+                    {
+                      "NFT_id": "6471607",
+                      "NFT_percentage": "0.000951037030543028",
+                      "amount": "14.409836333774942917",
+                      "in_effect": "1",
+                      "value": "13.42451085470987105889"
+                    },
+                    {
+                      "NFT_id": "6465489",
+                      "NFT_percentage": "0.000937567207656035",
+                      "amount": "9.494880462198095984",
+                      "in_effect": "1",
+                      "value": "13.23437547853613466852"
+                    },
+                    {
+                      "NFT_id": "6468834",
+                      "NFT_percentage": "0.000694423965365847",
+                      "amount": "10.521709844946068804",
+                      "in_effect": "1",
+                      "value": "9.80224929359647285047"
+                    },
+                    {
+                      "NFT_id": "6467272",
+                      "NFT_percentage": "0.000627902189332858",
+                      "amount": "6.358857456814107776",
+                      "in_effect": "1",
+                      "value": "8.86325083638651643854"
+                    },
+                    {
+                      "NFT_id": "6473155",
+                      "NFT_percentage": "0.000113303340659260",
+                      "amount": "3.417338453764634319",
+                      "in_effect": "1",
+                      "value": "1.59935089560774748548"
+                    }
+                  ],
+                  "address": "0x7d27cdfbfcc878f7e7349e216d44204bfd2afd55",
+                  "balance": "2809.217374042864906214",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.336864117426573492",
+                  "tag": "",
+                  "value": "4755.05774824894882368228"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6464649",
+                      "NFT_percentage": "0.236769756556127233",
+                      "amount": "1802.013778104650936875",
+                      "in_effect": "1",
+                      "value": "3342.16025756626722567048"
+                    }
+                  ],
+                  "address": "0xafda5f371d3a352c086a6c8abf607937fd839296",
+                  "balance": "1802.013778104650936875",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.236769756556127233",
+                  "tag": "",
+                  "value": "3342.16025756626722567048"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6486791",
+                      "NFT_percentage": "0.113751029665097208",
+                      "amount": "106.666900705121500148",
+                      "in_effect": "0",
+                      "value": "1605.67031927410694000493"
+                    }
+                  ],
+                  "address": "0x9cf6f27909262a374fa5c7a781f2a5a152b73950",
+                  "balance": "106.666900705121500148",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.113751029665097208",
+                  "tag": "",
+                  "value": "1605.67031927410694000493"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6451470",
+                      "NFT_percentage": "0.044121532964190049",
+                      "amount": "150.499634415627084692",
+                      "in_effect": "1",
+                      "value": "622.80434849735413554156"
+                    },
+                    {
+                      "NFT_id": "6303954",
+                      "NFT_percentage": "0.008042382715220287",
+                      "amount": "121.855842557185971694",
+                      "in_effect": "1",
+                      "value": "113.52350180997618185052"
+                    },
+                    {
+                      "NFT_id": "6025215",
+                      "NFT_percentage": "0.000000000000000000",
+                      "amount": "0",
+                      "in_effect": "1",
+                      "value": "0.00"
+                    },
+                    {
+                      "NFT_id": "6098572",
+                      "NFT_percentage": "0.000000000000000000",
+                      "amount": "0",
+                      "in_effect": "0",
+                      "value": "0.00"
+                    }
+                  ],
+                  "address": "0x6fbeff30aae4bcc5e176f2f68e1497c4e5044210",
+                  "balance": "272.355476972813056386",
+                  "is_contract": 1,
+                  "is_locked": 0,
+                  "percent": "0.052163915679410336",
+                  "tag": "",
+                  "value": "736.32785030733031739208"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6425573",
+                      "NFT_percentage": "0.041054824747876799",
+                      "amount": "21.992677184237834536",
+                      "in_effect": "1",
+                      "value": "579.51575255843652655953"
+                    },
+                    {
+                      "NFT_id": "5896407",
+                      "NFT_percentage": "0.000000000000000000",
+                      "amount": "0",
+                      "in_effect": "1",
+                      "value": "0.00"
+                    },
+                    {
+                      "NFT_id": "6106481",
+                      "NFT_percentage": "0.000000000000000000",
+                      "amount": "0",
+                      "in_effect": "1",
+                      "value": "0.00"
+                    }
+                  ],
+                  "address": "0xe16ffb4bfbfa6f6bf6e2ab0426351069cc070f92",
+                  "balance": "21.992677184237834536",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.041054824747876799",
+                  "tag": "",
+                  "value": "579.51575255843652655953"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6440978",
+                      "NFT_percentage": "0.033479573263283023",
+                      "amount": "204.216926651223105482",
+                      "in_effect": "1",
+                      "value": "472.58611415726885981073"
+                    }
+                  ],
+                  "address": "0x7f2f798e9d5c33357cb4bcd8fa0c73dd7f909ef3",
+                  "balance": "204.216926651223105482",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.033479573263283023",
+                  "tag": "",
+                  "value": "472.58611415726885981073"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6040678",
+                      "NFT_percentage": "0.030878431430612218",
+                      "amount": "9.351643072289849247",
+                      "in_effect": "1",
+                      "value": "435.86929278661109685378"
+                    }
+                  ],
+                  "address": "0xf942ce6643bc80d0bcc1bea4fd4657e600a1de88",
+                  "balance": "9.351643072289849247",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.030878431430612218",
+                  "tag": "",
+                  "value": "435.86929278661109685378"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6470278",
+                      "NFT_percentage": "0.021896599681620350",
+                      "amount": "331.770906436920669352",
+                      "in_effect": "1",
+                      "value": "309.08485228940815339887"
+                    }
+                  ],
+                  "address": "0x5466305fbaf2516e15558859c060080e81741d4e",
+                  "balance": "331.770906436920669352",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.021896599681620350",
+                  "tag": "",
+                  "value": "309.08485228940815339887"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "6108693",
+                      "NFT_percentage": "0.019375683318952845",
+                      "amount": "59.574971071081032749",
+                      "in_effect": "1",
+                      "value": "273.50046599571952961403"
+                    },
+                    {
+                      "NFT_id": "5780388",
+                      "NFT_percentage": "0.000000000000000000",
+                      "amount": "0",
+                      "in_effect": "1",
+                      "value": "0.00"
+                    },
+                    {
+                      "NFT_id": "5947766",
+                      "NFT_percentage": "0.000000000000000000",
+                      "amount": "0",
+                      "in_effect": "1",
+                      "value": "0.00"
+                    }
+                  ],
+                  "address": "0xe0c63c4064abb1b2bae4a0cdac74029b31a7e700",
+                  "balance": "59.574971071081032749",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.019375683318952845",
+                  "tag": "",
+                  "value": "273.50046599571952961403"
+                },
+                {
+                  "NFT_list": [
+                    {
+                      "NFT_id": "5777552",
+                      "NFT_percentage": "0.014901547893715178",
+                      "amount": "41.71756738115042572",
+                      "in_effect": "1",
+                      "value": "210.34511278381577087187"
+                    }
+                  ],
+                  "address": "0x88057adb788b601c5b7dadb07e5365f278a8cfef",
+                  "balance": "41.71756738115042572",
+                  "is_contract": 0,
+                  "is_locked": 0,
+                  "percent": "0.014901547893715178",
+                  "tag": "",
+                  "value": "210.34511278381577087187"
+                }
+              ],
+              "lp_total_supply": "6160.833796633237",
+              "owner_address": "0x7b0328745a01634c32efaf041d91432a075b308d",
+              "owner_balance": "0",
+              "owner_change_balance": "0",
+              "owner_percent": "0.0",
+              "personal_slippage_modifiable": "0",
+              "selfdestruct": "0",
+              "sell_tax": "0",
+              "slippage_modifiable": "0",
+              "token_name": "ChainLink Token",
+              "token_symbol": "LINK",
+              "total_supply": "226391.481878453376379144",
+              "trading_cooldown": "0",
+              "transfer_pausable": "0",
+              "transfer_tax": "0"
+            }
+          }
+        },
+        "sourceGroup": "gopluslabs.io",
+        "minerId": "200001",
+        "receiptHash": "0x3160fd1b6cf24e9187441667c6012f3f66375b672bb75d11748fa3c27b784e36",
+        "signalHash": "0x935ac96323ce916aa17175990b80fbe03b98c81787510309b16d7505510b4944",
+        "httpStatus": 200
+      },
+      {
+        "check": "holder_count",
+        "adapterVersion": "0.1.0",
+        "rawResult": {
+          "token": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
+          "chain": "base",
+          "holders_count": 127556,
+          "token_symbol": null
+        },
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "minerId": "9002",
+        "receiptHash": "0xb44d18e0ac81b90077395688895a0c77b359ff1e27990f9d65a6ff2efe0855e6",
+        "signalHash": "0x972087f44274faac7064d9bb6cb7eeaaf949fad40a969e5cd75680d463bf6784",
+        "httpStatus": 200
+      },
+      {
+        "check": "liquidity_depth",
+        "adapterVersion": "0.4.0",
+        "rawResult": {
+          "liquidity_usd": 237266.1
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7373",
+        "receiptHash": "0x45686f16e5fd9f7f0c88ad7d4e096a20ed036bd460f236f834e72adf8fd179da",
+        "signalHash": "0x5482217185c777816e089e15a2cebd1fae8185d942ef8db3c1874e52f91af57d",
+        "httpStatus": 200,
+        "pool": "0x0ae5f0a9d1b7824d340c56070dc3a329e4a75a75"
+      },
+      {
+        "check": "sanctions",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "entity": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
+          "on_list": 0,
+          "sanctioned": 0,
+          "source": "ofac_sdn_xml"
+        },
+        "sourceGroup": "13.237.89.59",
+        "minerId": "78021",
+        "receiptHash": "0x5fde965dfe6417132df45aa4205283135cb17d45b09c3636afc09417e3781649",
+        "signalHash": "0x87b155f7a99ce7b7cd3110fe0476dcd7c08de5ccdad27e595d0f1757a9a273f1",
+        "httpStatus": 200
+      },
+      {
+        "check": "wash_trading",
+        "adapterVersion": "0.3.0",
+        "rawResult": {
+          "as_of": "2026-11-08T05:49:38.729Z",
+          "attribution": "On-chain values read from public EVM nodes. Currency mid rates from European Central Bank reference rates via Frankfurter. Crypto quotes and order book depth from the Kraken, Bitstamp and Gemini public markets.",
+          "chain": "base",
+          "chain_id": 8453,
+          "confidence": 0.5,
+          "contract_address": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
+          "intent": "WASH_TRADING_DETECTION",
+          "source": "eth_getLogs Transfer events over public RPC",
+          "summary": "No ERC-20 transfers of LINK were found in the last 8 blocks on Base, so there is no activity to assess for wash-trading patterns in this window.",
+          "symbol": "LINK",
+          "transfers": 0,
+          "verified": false,
+          "window_blocks": 8
+        },
+        "sourceGroup": "margyn.workers.dev",
+        "minerId": "7378",
+        "receiptHash": "0x0ebb853ee12ed09406251c1d149a2dd65e3018dc5f1b54addfb3aa5bea357036",
+        "signalHash": "0xdb1477caa700336aa45162d44e80dafdbe2a62345e95769954bb683544e747bf",
+        "httpStatus": 200
+      }
+    ],
+    "unpurchased": [
+      {
+        "check": "code_review",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_repo_url"
+        ]
+      },
+      {
+        "check": "social_bots",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "no_social_handle"
+        ]
+      }
+    ],
+    "receipts": [
+      "0x3160fd1b6cf24e9187441667c6012f3f66375b672bb75d11748fa3c27b784e36",
+      "0xb44d18e0ac81b90077395688895a0c77b359ff1e27990f9d65a6ff2efe0855e6",
+      "0x45686f16e5fd9f7f0c88ad7d4e096a20ed036bd460f236f834e72adf8fd179da",
+      "0x5fde965dfe6417132df45aa4205283135cb17d45b09c3636afc09417e3781649",
+      "0x0ebb853ee12ed09406251c1d149a2dd65e3018dc5f1b54addfb3aa5bea357036"
+    ],
+    "verdictHash": "0x4516e6ffad69600528d4def8777805aee061550c087ef89e069052a694a9ca36",
+    "bomRoot": "0x2dab04ef9102419440adb78bd03a8eb3020a2a86b59cd493254b4022b5850394"
+  }
+}

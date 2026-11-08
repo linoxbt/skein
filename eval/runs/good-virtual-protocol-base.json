@@ -14,21 +14,21 @@
       "token": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b"
     },
     "decision": {
-      "verdict": "REJECT",
-      "verdictCode": 3,
-      "riskBps": 4714,
-      "confidenceBps": 7000,
+      "verdict": "ESCALATE",
+      "verdictCode": 2,
+      "riskBps": 3771,
+      "confidenceBps": 4900,
       "coverageBps": 7000,
       "reasons": [
         {
-          "code": "BLOCKER_CONTRACT_AUDIT_FAIL",
+          "code": "REQUIRED_CHECK_FAILED",
           "check": "contract_audit",
-          "detail": "contract_audit FAIL (severity >= 3) is a hard blocker"
+          "detail": "required check contract_audit FAIL rules out APPROVE"
         },
         {
           "code": "CONTRACT_AUDIT_FAIL",
           "check": "contract_audit",
-          "detail": "contract_audit FAIL hidden_owner is_mintable owner_change_balance"
+          "detail": "contract_audit FAIL hidden_owner is_mintable owner_change_balance owner_powers"
         }
       ],
       "openRisks": [
@@ -38,7 +38,7 @@
       ],
       "conflicts": []
     },
-    "summary": "Rejected: contract_audit FAIL (severity >= 3) is a hard blocker (+1 more).",
+    "summary": "Escalated to an analyst: required check contract_audit FAIL rules out APPROVE (+1 more).",
     "findings": [
       {
         "adapterVersion": "0.1.0",
@@ -92,24 +92,6 @@
       },
       {
         "adapterVersion": "0.4.0",
-        "check": "contract_audit",
-        "confidence": 0.7,
-        "evidence": {
-          "minerId": "200001",
-          "receiptHash": "0x44206c8ed8dcbcbe852de853257ea3fd82ac6ad36625acbc2d990d82ff6490d5",
-          "signalHash": "0x617047546dbe0ef603c30a063a8516bf53494779c200ce73e98ce1af8fcaea58"
-        },
-        "notes": [
-          "hidden_owner",
-          "is_mintable",
-          "owner_change_balance"
-        ],
-        "severity": 3,
-        "sourceGroup": "gopluslabs.io",
-        "status": "FAIL"
-      },
-      {
-        "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
         "confidence": 0.7,
         "evidence": {
@@ -124,6 +106,25 @@
         "status": "PASS",
         "unit": "USD",
         "value": 893139.87
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x44206c8ed8dcbcbe852de853257ea3fd82ac6ad36625acbc2d990d82ff6490d5",
+          "signalHash": "0x617047546dbe0ef603c30a063a8516bf53494779c200ce73e98ce1af8fcaea58"
+        },
+        "notes": [
+          "hidden_owner",
+          "is_mintable",
+          "owner_change_balance",
+          "owner_powers"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "FAIL"
       },
       {
         "check": "code_review",
@@ -146,7 +147,7 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0xc261e7aade154a930a1845672e9f59ca4abd191c23e23c6a18b81f00008cdb7b",
+    "verdictHash": "0xf2a5d18597e64aacf2c2f7c2d1c20ea23dd465fcb72a49ff75c76b7b4b0e095e",
     "bom": {
       "root": "0xdc3cb923e1f607f922e40a4885a0319fc55c5b8716bc25841438f33869a1afd1",
       "items": 5
@@ -1162,24 +1163,6 @@
       },
       {
         "adapterVersion": "0.4.0",
-        "check": "contract_audit",
-        "confidence": 0.7,
-        "evidence": {
-          "minerId": "200001",
-          "receiptHash": "0x44206c8ed8dcbcbe852de853257ea3fd82ac6ad36625acbc2d990d82ff6490d5",
-          "signalHash": "0x617047546dbe0ef603c30a063a8516bf53494779c200ce73e98ce1af8fcaea58"
-        },
-        "notes": [
-          "hidden_owner",
-          "is_mintable",
-          "owner_change_balance"
-        ],
-        "severity": 3,
-        "sourceGroup": "gopluslabs.io",
-        "status": "FAIL"
-      },
-      {
-        "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
         "confidence": 0.7,
         "evidence": {
@@ -1194,6 +1177,25 @@
         "status": "PASS",
         "unit": "USD",
         "value": 893139.87
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x44206c8ed8dcbcbe852de853257ea3fd82ac6ad36625acbc2d990d82ff6490d5",
+          "signalHash": "0x617047546dbe0ef603c30a063a8516bf53494779c200ce73e98ce1af8fcaea58"
+        },
+        "notes": [
+          "hidden_owner",
+          "is_mintable",
+          "owner_change_balance",
+          "owner_powers"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "FAIL"
       },
       {
         "check": "code_review",
@@ -1219,7 +1221,7 @@
     "purchases": [
       {
         "check": "contract_audit",
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "rawResult": {
           "code": 1,
           "message": "OK",
@@ -2131,7 +2133,11 @@
       "0xc8e35a1fccb86001d9397ef390a20bc2d4c9f49e589580cb96cf6cef03e77b4a",
       "0x0003a74d04ff85f0882c20e6a367b1e8b69e49616857bfe64cb9c9125dfa7661"
     ],
-    "verdictHash": "0xc261e7aade154a930a1845672e9f59ca4abd191c23e23c6a18b81f00008cdb7b",
+    "verdictHash": "0xf2a5d18597e64aacf2c2f7c2d1c20ea23dd465fcb72a49ff75c76b7b4b0e095e",
     "bomRoot": "0xdc3cb923e1f607f922e40a4885a0319fc55c5b8716bc25841438f33869a1afd1"
+  },
+  "rescored": {
+    "at": "2026-11-08T05:47:41.822Z",
+    "from": "REJECT"
   }
 }

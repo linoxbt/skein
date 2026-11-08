@@ -570,7 +570,7 @@ const contractAuditV3: Adapter = {
  * contract cannot be checked for a honeypot, so it grades WARN at severity 2
  * (the flag table's is_open_source rule), noted source_not_verified.
  */
-export const contractAudit: Adapter = {
+const contractAuditV4: Adapter = {
   check: "contract_audit",
   version: "0.4.0",
   intent: "SMART_CONTRACT_AUDIT_GENERAL",
@@ -585,6 +585,34 @@ export const contractAudit: Adapter = {
       }
     }
     return { ...f, adapterVersion: "0.4.0" };
+  },
+};
+
+/** Flags that trap a holder: they cannot sell, or the contract can vanish. These stay a hard FAIL. */
+const TRAP_NOTES = new Set(["is_honeypot", "cannot_sell_all", "selfdestruct", "buy_tax_gt_10pct", "sell_tax_gt_10pct"]);
+/** Owner powers over holders' balances or the contract: serious, but common in admin-governed tokens. */
+const OWNER_POWER_NOTES = new Set(["owner_change_balance", "hidden_owner", "can_take_back_ownership"]);
+
+/**
+ * 0.5.0: owner powers escalate, traps reject. In the tune split (2026-11-07)
+ * GoPlus flagged owner_change_balance and hidden_owner on two long-listed
+ * tokens (VIRTUAL on Base, GMX on Arbitrum) whose contracts give an admin or
+ * handlers those powers, and 0.4.0 graded them a hard FAIL. Now an answer
+ * whose only FAIL flags are owner powers grades FAIL at severity 1, noted
+ * owner_powers: below every policy's blocker severity, so no hard REJECT, but
+ * still a failed required check, so never APPROVE (required_fail_blocks_approve):
+ * a person decides. Honeypots, unsellable balances, self-destruct and taxes
+ * over 10% stay FAIL at their old severity.
+ */
+export const contractAudit: Adapter = {
+  check: "contract_audit",
+  version: "0.5.0",
+  intent: "SMART_CONTRACT_AUDIT_GENERAL",
+  defaultConfidence: 0.7,
+  adapt(raw, ctx) {
+    const f = { ...contractAuditV4.adapt(raw, ctx), adapterVersion: "0.5.0" };
+    if (f.status !== "FAIL" || f.notes.some((n) => TRAP_NOTES.has(n)) || !f.notes.some((n) => OWNER_POWER_NOTES.has(n))) return f;
+    return { ...f, severity: 1, notes: [...f.notes, "owner_powers"].sort() };
   },
 };
 
@@ -609,6 +637,7 @@ export const washTrading: Adapter = {
 
 /** Superseded versions stay registered so verdicts stored with them still replay. */
 const SUPERSEDED: readonly Adapter[] = [
+  contractAuditV4,
   contractAuditV3,
   washTradingV2,
   liquidityDepthV3,
