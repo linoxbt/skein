@@ -54,6 +54,15 @@ describe("engine properties (spec section 14)", () => {
     );
   });
 
+  // Risk before rounding to whole bps, as score() computes it. The properties
+  // compare this, within 1e-9: two mathematically equal risks can round to bps
+  // one apart at a .5 boundary through floating-point error (CI found 687 vs 688).
+  const exactRisk = (fs: Finding[]) => {
+    const answeredStates = decide(policy, fs).states.filter((s) => s.answered && s.effectiveWeight > 0);
+    const eff = answeredStates.reduce((a, s) => a + s.effectiveWeight, 0);
+    return eff > 0 ? answeredStates.reduce((a, s) => a + s.effectiveWeight * s.risk, 0) / eff : 0;
+  };
+
   // Spec: "adding a PASS never raises risk". Exact for a PASS that joins the
   // check's deciding provider group, or answers an unanswered check from a new
   // provider group or from a group whose heaviest answered check weighs at
@@ -72,11 +81,17 @@ describe("engine properties (spec section 14)", () => {
         const group = states.filter((s) => s.answered && s.weight > 0 && s.sourceGroup === sourceGroup);
         const w = policy.weights[check] ?? 0;
         if (group.length > 0 && Math.max(...group.map((s) => s.weight)) < w) return; // not claimed: see above
-        const before = decide(policy, others).decision.riskBps;
+        const before = exactRisk(others);
         const pass: Finding = { check, status: "PASS", severity: 0, confidence, sourceGroup, notes: [] };
-        expect(decide(policy, [...others, pass]).decision.riskBps).toBeLessThanOrEqual(before);
+        expect(exactRisk([...others, pass])).toBeLessThanOrEqual(before + 1e-9);
       }),
     );
+  });
+
+  it("regression: CI's 687 -> 688 bps case is rounding, the exact risk does not rise", () => {
+    const mk = (check: Check, status: FindingStatus, severity: Severity, sourceGroup: string): Finding => ({ check, status, severity, confidence: 0, sourceGroup, notes: [] });
+    const others = [mk("holder_concentration", "PASS", 0, "g4"), mk("liquidity_depth", "PASS", 0, "g2"), mk("holder_count", "WARN", 3, "g1"), mk("code_review", "FAIL", 0, "g1")];
+    expect(exactRisk([...others, mk("social_bots", "PASS", 0, "g4")])).toBeLessThanOrEqual(exactRisk(others) + 1e-9);
   });
 
   it("adding a PASS never raises risk: to an answered check, from its deciding provider group", () => {
@@ -87,7 +102,9 @@ describe("engine properties (spec section 14)", () => {
         if (answeredStates.length === 0) return;
         const st = answeredStates[at % answeredStates.length]!;
         const pass: Finding = { check: st.check, status: "PASS", severity: 0, confidence, sourceGroup: st.sourceGroup!, notes: [] };
-        expect(decide(policy, [...fs, pass]).decision.riskBps).toBeLessThanOrEqual(decision.riskBps);
+        expect(exactRisk([...fs, pass])).toBeLessThanOrEqual(exactRisk(fs) + 1e-9);
+        // And in whole bps, as reported: at most the one-bp rounding step.
+        expect(decide(policy, [...fs, pass]).decision.riskBps).toBeLessThanOrEqual(decision.riskBps + 1);
       }),
     );
   });

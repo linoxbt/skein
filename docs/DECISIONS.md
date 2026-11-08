@@ -500,7 +500,10 @@ stated precisely instead. Adding a PASS never raises risk when it:
 - or answers one from a group whose heaviest answered check weighs at least as
   much (the group's shared weight stays fixed, and the risky members' shares shrink).
 
-The property test now asserts exactly this, and CI no longer fails on random seeds.
+The property test now asserts exactly this. It compares the risk before
+rounding (within 1e-9). A second CI run found 687 vs 688 bps inside the claim:
+there, mathematically equal risks rounded apart at a .5 boundary through
+floating-point error. That case is kept as a regression test.
 
 **L29. The Desk keeps its queue in Skein's Postgres, through `/v1/kv`, not in Netlify Blobs.**
 Netlify Blobs stopped answering about half the calls from the Desk's
