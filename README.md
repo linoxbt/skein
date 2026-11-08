@@ -49,11 +49,12 @@ Without an account, pay per verdict with any x402 client:
 import { wrapFetchWithPayment } from "x402-fetch";
 import { privateKeyToAccount } from "viem/accounts";
 
-const pay = wrapFetchWithPayment(fetch, privateKeyToAccount(process.env.PAYER_KEY as `0x${string}`));
+// x402-fetch refuses to pay over 0.10 USDC unless told otherwise; a verdict is 0.25.
+const pay = wrapFetchWithPayment(fetch, privateKeyToAccount(process.env.PAYER_KEY as `0x${string}`), 250_000n);
 const res = await pay("https://api.skeinlabs.site/v1/verdicts", {
   method: "POST",
   headers: { "content-type": "application/json" },
-  body: JSON.stringify({ subject: "base:0x…" }),
+  body: JSON.stringify({ subject: { chainId: 8453, token: "0x…" } }),
 });
 // 200 with the signed verdict; X-PAYMENT-RESPONSE carries the settlement transaction.
 ```

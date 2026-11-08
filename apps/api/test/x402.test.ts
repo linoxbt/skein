@@ -8,7 +8,7 @@ import { VerdictService } from "../src/service";
 import { simulatedApi } from "../src/simulated";
 import { x402FromEnv, type PaymentRequirements } from "../src/x402";
 
-const PAY_TO = "0x4EbCF8b5D4a9b8c1f8E3B0f4e3A6A1d2C3b4E43B";
+const PAY_TO = "0x000000000000000000000000000000000000a402";
 const payer = privateKeyToAccount(`0x${"7".repeat(64)}`);
 
 let api: Awaited<ReturnType<typeof simulatedApi>>;
