@@ -34,12 +34,16 @@ Netlify logs are under the site → Logs → Functions, or Observability.
 
 ### The Desk shows "Loading…" or an error banner; `/api/applications` returns 503 STORE_UNAVAILABLE
 
-- **Cause:** the Desk's store, Netlify Blobs, stopped answering inside the
-  functions. Observed on 2026-11-08: a deploy left running for days lost its
-  Blobs access while the store itself was fine (Netlify's API answered in 0.2 s).
-- **Confirm:** the function log shows `blobs list …: no answer in 8000 ms`.
-- **Fix:** redeploy the Desk (see "Deploying" below). A fresh deploy restores
-  access at once. Data is not lost; it lives in the store, not in the deploy.
+- **Cause:** the Desk's store did not answer. Since 2026-11-08 the store is
+  Skein's own API (`/v1/kv`, DECISIONS L29), so this means the API is down or
+  refusing the Desk's key.
+- **Confirm:** the Desk's function log shows `store get …: HTTP <status>`.
+  - 403: the Desk key's SHA-256 is missing from `KV_KEY_HASHES` on Railway.
+  - 5xx or a timeout: the API itself is down (see "The API is down").
+- **Fix:** restore the API, or add the hash back to `KV_KEY_HASHES`. If the
+  store must move off the API in a hurry, set `DESK_STORE=blobs` on Netlify and
+  redeploy. Netlify Blobs was unreliable from the functions, which is why it
+  was replaced.
 
 ### Every verdict is ABSTAIN with `purchase_failed`; `/v1/status` shows `walletAlert: true`
 
@@ -60,9 +64,8 @@ Netlify logs are under the site → Logs → Functions, or Observability.
 
 ### A check keeps coming back ERROR or UNKNOWN
 
-1. Read the verdict's bill of materials:
-   `GET /v1/verdicts/{id}/bom` (with a partner key) shows each purchase's
-   miner, HTTP status and error.
+1. Read the verdict's bill of materials: `GET /v1/verdicts/{id}/bom` (public)
+   shows each purchase's miner, HTTP status and error.
 2. Read the miner's actual answer on the node:
    `GET https://devnode.telegraphprotocol.com/engine/v1/signal/{signalHash}`.
 3. If a miner is down or wrong, the allowlist in
@@ -141,5 +144,5 @@ Before adding replicas, move the rate limiters to Postgres or Redis
 
   Every stored verdict also replays from its row alone (`pnpm repro`), so a
   restore can be checked.
-- **Desk store:** Netlify Blobs, kept by Netlify. To export, list and download
-  with the Netlify API: `GET /api/v1/blobs/{siteId}/site:desk`.
+- **Desk store:** the `kv` table in the same Postgres, so it is covered by the
+  database's backups. The old Netlify Blobs store (`site:desk`) is kept, read-only.

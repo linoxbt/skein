@@ -9,12 +9,13 @@ and code review), fuses them with deterministic rules, and returns APPROVE,
 REJECT, ESCALATE or ABSTAIN. Each verdict comes with reasons, the risks still
 open, confidence, cost and a verifiable bill of materials.
 
-> **Status (Nov 2, season open).** Built and tested: the decision engine and
+> **Status (Nov 8).** Built, tested and deployed: the decision engine and
 > policies, the escrow-paying Telegraph client, the purchasing pipeline and
 > CLI, the Postgres store, the HTTP API and miner endpoint (Railway), the web app
 > and Skein Desk (Netlify), `@skeinlabs/sdk`, `@skeinlabs/mcp`, miner tooling, the
-> benchmark harness and browser tests. An independent audit on Nov 2 and its
-> fixes are recorded in docs/DECISIONS.md (D14).
+> benchmark harness and browser tests. Independent audits on Nov 2 (D14) and
+> Nov 8 (production readiness, L24–L29) and their fixes are in docs/DECISIONS.md;
+> operations are in [docs/RUNBOOK.md](docs/RUNBOOK.md).
 >
 > **Live on Telegraph (Nov 7).** Skein is a registered, active miner:
 > registration **5137**, catalogue id **845301**, slug `skein-listing-verdict`,
@@ -63,7 +64,7 @@ A runnable example is in [`examples/listing-gate`](examples/listing-gate).
 any OpenAPI viewer or client generator. Every error has the shape
 `{ error: { code, message, requestId } }`, and every response carries `X-Request-Id`.
 
-**Webhooks** tell you when an async verdict is sealed, instead of polling:
+**Webhooks** (SDK 0.3.0+) tell you when an async verdict is sealed, instead of polling:
 
 ```ts
 const { secret } = await skein.setWebhook("https://you.example/skein");   // shown once: store it

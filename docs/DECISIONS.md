@@ -501,3 +501,19 @@ stated precisely instead. Adding a PASS never raises risk when it:
   much (the group's shared weight stays fixed, and the risky members' shares shrink).
 
 The property test now asserts exactly this, and CI no longer fails on random seeds.
+
+**L29. The Desk keeps its queue in Skein's Postgres, through `/v1/kv`, not in Netlify Blobs.**
+Netlify Blobs stopped answering about half the calls from the Desk's
+functions (`blobs list: no answer in 8000 ms`), on and off, whatever the
+deploy's age. On 2026-11-08, 8 of 17 board requests failed in 30 minutes, and
+later 11 of 12. Netlify's own API answered the same store at once, so the data
+was fine; the functions' access was not. A redeploy only looked like a fix.
+The Desk already depends on Skein's API, so the API gained a small key-value
+store (`GET/PUT /v1/kv`, table `kv`, migration 0004):
+- namespaced per partner key, and open only to keys listed in `KV_KEY_HASHES`;
+- conditional writes, so the Desk's `mutate()` keeps its compare-and-swap semantics.
+
+The Desk uses it with the partner key it already holds, so there is no new
+database or credential. The existing data (one application, the board index,
+two counters) was copied across with create-only writes. Afterwards, 20 of 20
+requests answered 200 in about 0.4 s. Blobs remains selectable with `DESK_STORE=blobs`.
