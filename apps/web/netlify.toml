@@ -1,13 +1,15 @@
-# Netlify builds apps/web on its own (it has no workspace dependencies).
-# NEXT_PUBLIC_SKEIN_API is set in the Netlify UI, not here.
+# skeinlabs.site on Netlify, built from the repository (pnpm workspace).
+# In the Netlify UI: Base directory = apps/web. The build runs from the repo
+# root so the workspace packages (@skein/ui) resolve. NEXT_PUBLIC_SKEIN_API is
+# set in the Netlify UI, not here. docs/RUNBOOK.md has the deploy steps.
 [build]
-  command = "npm run build"
+  command = "cd ../.. && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @skein/web... build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
 
-# Netlify's Next.js runtime: routes pages, renders /v/[id] on demand.
+# Netlify's Next.js runtime: routes pages, runs middleware, renders /v/[id] on demand.
 [[plugins]]
   package = "@netlify/plugin-nextjs"

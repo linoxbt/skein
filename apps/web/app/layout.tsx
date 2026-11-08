@@ -2,16 +2,23 @@ import type { Metadata } from "next";
 import { Inter_Tight, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Footer } from "@/components/site/Footer";
 import { Nav } from "@/components/site/Nav";
+import { SITE } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter_Tight({ subsets: ["latin"], weight: ["300", "400", "500"], variable: "--font-inter-tight" });
 const grotesk = Space_Grotesk({ subsets: ["latin"], weight: ["500"], variable: "--font-grotesk" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jetbrains" });
 
+const DESCRIPTION =
+  "Skein sells one decision: is this token fit to list. It buys ranked Telegraph intelligence, fuses it with fixed rules, and returns a verdict with reasons, cost and a receipt for every input.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE),
   title: { default: "Skein — One request. Every thread.", template: "%s · Skein" },
-  description:
-    "Skein sells one decision: is this token fit to list. It buys ranked Telegraph intelligence, fuses it with fixed rules, and returns a verdict with reasons, cost and a receipt for every input.",
+  description: DESCRIPTION,
+  openGraph: { type: "website", siteName: "Skein", title: "Skein — One request. Every thread.", description: DESCRIPTION, url: SITE },
+  twitter: { card: "summary", title: "Skein — One request. Every thread.", description: DESCRIPTION },
+  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

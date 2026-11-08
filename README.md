@@ -138,17 +138,19 @@ PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --soc
 | Skein Sniper (Mission 14) | Railway (Docker, `apps/sniper/Dockerfile`) | https://sniper-production-bea6.up.railway.app |
 | Postgres | Railway | private network only |
 
-The API redeploys on every push to the branch. The web app and the Desk are
-uploaded to Netlify, which builds them outside the workspace with npm; every
-upload is made by the same script, so a deployed site is always a commit:
+The API and the sniper redeploy on every push to the branch. The web app and
+the Desk build from the repository with pnpm (`apps/*/netlify.toml`): link the
+repo in Netlify with base directory `apps/web` or `apps/desk` and they deploy
+on every push to `main` (docs/RUNBOOK.md, "Deploying"). A manual upload is
+still possible, from a self-contained bundle made by the same script every
+time, so a deployed site is always a commit:
 
 ```sh
 node scripts/netlify-bundle.mjs apps/desk /tmp/desk-upload   # vendors @skein/* sources as file: deps
 ```
 
-then run Netlify's deploy command from that folder. Connecting the repo to
-Netlify (Project configuration → Build & deploy, base directory `apps/web` or
-`apps/desk`) would make it redeploy on push.
+then run Netlify's deploy command from that folder. Incidents, rollback,
+secret rotation and backups: [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ### Releasing the npm packages
 
