@@ -43,6 +43,13 @@
       "when": 1794122675846,
       "tag": "0005_kv_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794125219373,
+      "tag": "0006_replicas",
+      "breakpoints": true
     }
   ]
 }

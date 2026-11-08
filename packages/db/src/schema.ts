@@ -268,6 +268,28 @@ export const kv = pgTable(
   (t) => [primaryKey({ columns: [t.consumerId, t.key] })],
 );
 
+/**
+ * Shared rate-limit buckets, so every API replica counts the same requests
+ * (apps/api/src/limits.ts). One row per limiter and key; pruned hourly.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  tokens: doublePrecision("tokens").notNull(),
+  allowed: boolean("allowed").notNull(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * A lease on one in-progress Telegraph-dispatched verdict per token and
+ * policy, so a repeat call that lands on another replica waits for that run
+ * instead of buying a second one. Expired leases are taken over.
+ */
+export const flights = pgTable("flights", {
+  key: text("key").primaryKey(),
+  runId: text("run_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 export const webhooks = pgTable("webhooks", {
   id: uuid("id").primaryKey().defaultRandom(),
   consumerId: uuid("consumer_id").notNull().references(() => consumers.id),

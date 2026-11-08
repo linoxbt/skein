@@ -9,6 +9,7 @@ import { parseSeedConsumers, revokeKeys, seedConsumers } from "./seed";
 import { VerdictService } from "./service";
 import { createReporter } from "@skein/errors";
 import { Alerts } from "./alerts";
+import { pruneShared } from "./limits";
 
 const config = configFromEnv();
 const url = process.env.DATABASE_URL;
@@ -76,6 +77,8 @@ const timers = [
     else alerts.clear("cap");
   }, "spend cap"),
   every(60 * 60_000, () => service.pruneEvents(), "event pruning"),
+  // Idle rate-limit buckets and expired flight leases (limits.ts).
+  every(60 * 60_000, () => pruneShared(db), "shared-state pruning"),
   ...(signer
     ? [every(5 * 60_000, async () => {
         const who = signer.address as `0x${string}`;

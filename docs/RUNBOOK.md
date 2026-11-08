@@ -137,12 +137,25 @@ with the owner wallet:
 
 ## Scaling
 
-Run the API as **one replica**. Its per-IP and per-key rate limits, and the
-de-duplication of identical miner calls in flight, are held in memory, so a
-second replica would double the effective limits. Spend caps are not affected:
-they are held atomically in Postgres, so no number of replicas can overspend.
-Before adding replicas, move the rate limiters to Postgres or Redis
-(`apps/api/src/app.ts`, `RateLimiter`).
+The API runs as **two replicas** (Railway → `api` → Settings → Replicas).
+Everything that must be shared lives in Postgres, so any number of replicas
+behaves as one:
+- **Rate limits:** `rate_limits`, one atomic statement per request, exact
+  under concurrency (`apps/api/src/limits.ts`).
+- **Telegraph-dispatched verdicts:** a lease per token and policy in
+  `flights`, so the same ask on two replicas buys one verdict, and both
+  answer it.
+- **Idempotency:** `verdict_runs`. A retry on another replica returns the
+  same verdict, charged once.
+- **Event streams (SSE):** a replica that is not running the verdict follows
+  the `events` table to the end.
+- **Spend caps:** atomic holds in `spend_holds`.
+
+Per replica, and harmless: catalogue refresh, the lost-run sweep, wallet
+and cap checks (an alert can arrive once from each replica), and draining on
+SIGTERM. `RATE_LIMIT_STORE=memory` puts rate limits back in process, for one
+replica only. `apps/api/test/replicas.test.ts` runs two replicas on one
+database.
 
 ## Backups
 

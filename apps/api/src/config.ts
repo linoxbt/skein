@@ -36,6 +36,8 @@ export interface ApiConfig {
   revokedKeyHashes: string[];
   /** SHA-256 hashes of the partner keys that may use /v1/kv (first-party apps such as Skein Desk). */
   kvKeyHashes: string[];
+  /** Where rate-limit buckets live: postgres (shared by every replica, the default) or memory (one process). */
+  rateLimitStore: "postgres" | "memory";
   /** SSE event rows older than this are pruned (they are not evidence). */
   eventRetentionDays: number;
   /** Skein's own miner registration ids, never bought from. */
@@ -74,6 +76,7 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     cacheRefreshMinAgeSec: num(env.CACHE_REFRESH_MIN_AGE_SEC, 480),
     hotWalletAlertUusdc: usdc(env.HOT_WALLET_ALERT_USDC, 2),
     trustProxyHops: num(env.TRUST_PROXY_HOPS, 1),
+    rateLimitStore: env.RATE_LIMIT_STORE === "memory" ? "memory" : "postgres",
     kvKeyHashes: (env.KV_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     revokedKeyHashes: (env.REVOKED_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     eventRetentionDays: num(env.EVENT_RETENTION_DAYS, 7),
