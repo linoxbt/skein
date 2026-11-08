@@ -94,10 +94,11 @@ with the owner wallet:
 
 ## Deploying
 
-- **API and sniper (Railway)** deploy on every push to the connected branch
-  (`ccr-4e0a77db-k2xyoy`, kept equal to `main` after each merge). Each service
-  builds from its own Dockerfile path (`RAILWAY_DOCKERFILE_PATH`). Database
-  migrations run at start, under an advisory lock, so two instances never race.
+- **API and sniper (Railway)** deploy from `main`, and only after GitHub
+  reports CI green on the commit (Railway's "wait for CI", `checkSuites`, set
+  2026-11-08). A red build never reaches production. Each service builds from
+  its own Dockerfile path (`RAILWAY_DOCKERFILE_PATH`). Database migrations run
+  at start, under an advisory lock, so two instances never race.
 - **Web and Desk (Netlify).** `apps/web/netlify.toml` and `apps/desk/netlify.toml`
   build from the repository with pnpm. To switch from manual uploads to a
   deploy on every push:
