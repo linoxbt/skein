@@ -86,6 +86,15 @@ Netlify logs are under the site → Logs → Functions, or Observability.
 2. Roll back (below) while you fix it.
 3. If the deploy is fine but `/readyz` fails, check the Postgres service.
 
+### x402 callers get 402 "could not be settled" or "facilitator refused"
+
+The facilitator (`X402_FACILITATOR_URL`) refused or did not answer. Look for
+`x402 settlement failed` in the API logs. A verdict whose settlement failed is
+kept: the caller's retry with the same `X-PAYMENT` settles and delivers it
+without buying again. To switch x402 off, unset `X402_PAY_TO` and redeploy;
+partner keys are unaffected. Settled payments are `revenue_settled` rows in
+`spend_ledger` (ref `x402:<run>:<transaction>`).
+
 ### Telegraph asks to Skein fail with 401
 
 The key Telegraph holds differs from `MINER_AUTH_KEY` on Railway. Reinstall it

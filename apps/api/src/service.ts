@@ -37,6 +37,8 @@ export interface ServiceDeps {
   alerts?: { raise(key: string, message: string): Promise<boolean> };
   /** Error tracking (@skein/errors, Sentry): unhandled errors are reported here with their request id. */
   errors?: { capture(error: unknown, context?: Record<string, string | number | boolean | null | undefined>): Promise<boolean> };
+  /** Reaches the x402 facilitator (x402.ts); tests pass a fake. */
+  facilitatorFetch?: typeof fetch;
 }
 
 export interface Consumer {

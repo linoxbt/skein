@@ -4,7 +4,7 @@ import { ATTESTATION_SCHEME, attestationMessage, canonicalJson, InvalidSubjectEr
 import { availability, quotes, type VerdictContext } from "@skein/pipeline";
 import { getPolicy, listPolicies, type PolicyRecord } from "@skein/policies";
 import { CHECK_INTENTS, SEASON_START, SERVED_INTENTS } from "@skein/telegraph";
-import { and, asc, count, desc, eq, gt, gte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, like, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
@@ -20,6 +20,7 @@ import { contextHash, FAILED_MESSAGE, normaliseContext, type Consumer, type Refu
 import { privateKeyToAccount } from "viem/accounts";
 import { verifyMessage } from "viem";
 import { bomObject, verdictObject, type VerdictObject } from "./views";
+import { checkPayment, Facilitator, PaymentError, paymentResponse, requirements, type PaymentPayload, type PaymentRequirements } from "./x402";
 
 const UUSDC = 1_000_000;
 const usdc = (u: number) => Math.round(u) / UUSDC;
@@ -212,8 +213,8 @@ export function createApp(service: VerdictService) {
     cors({
       origin: (origin) => (config.webOrigins.includes(origin) ? origin : null),
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id", "if-match", "if-none-match"],
-      exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After"],
+      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id", "if-match", "if-none-match", "x-payment"],
+      exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After", "X-PAYMENT-RESPONSE"],
       maxAge: 600,
     }),
   );
@@ -243,7 +244,13 @@ export function createApp(service: VerdictService) {
     const auth = c.req.header("authorization") ?? "";
     const key = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
     if (!key) {
-      throw new ApiError(402, "PAYMENT_REQUIRED", "send a partner API key (Authorization: Bearer ...), or buy through Telegraph; x402 payment on the direct API is not enabled");
+      throw new ApiError(
+        402,
+        "PAYMENT_REQUIRED",
+        config.x402
+          ? "send a partner API key (Authorization: Bearer ...); POST /v1/verdicts also takes x402 payment, and Telegraph buys through the network"
+          : "send a partner API key (Authorization: Bearer ...), or buy through Telegraph; x402 payment on the direct API is not enabled",
+      );
     }
     const hash = sha256(key);
     const [consumer] = await db.select().from(schema.consumers).where(eq(schema.consumers.apiKeyHash, hash));
@@ -261,6 +268,62 @@ export function createApp(service: VerdictService) {
     if (!attester) return null;
     const message = attestationMessage(v);
     return { scheme: ATTESTATION_SCHEME, signer: attester.address, message, signature: await attester.signMessage({ message }) };
+  };
+
+  // x402: pay per verdict without a partner key (x402.ts). Every x402 payer
+  // shares one consumer row, whose daily cap bounds what they can make Skein spend.
+  const x402 = config.x402;
+  const facilitator = x402 ? new Facilitator(x402.facilitatorUrl, service.deps.facilitatorFetch) : null;
+  const X402_CONSUMER = "00000000-0000-4000-8000-000000000402";
+  let x402Ready: Promise<void> | null = null;
+  const x402Consumer = async (): Promise<Consumer> => {
+    const cap = x402?.dailyCapUusdc ?? 0;
+    x402Ready ??= db
+      .insert(schema.consumers)
+      .values({ id: X402_CONSUMER, name: "x402 payers", kind: "agent", plan: "x402", dailyCapUusdc: cap })
+      .onConflictDoUpdate({ target: schema.consumers.id, set: { dailyCapUusdc: cap } })
+      .then(() => undefined)
+      .catch((e: unknown) => {
+        x402Ready = null;
+        throw e;
+      });
+    await x402Ready;
+    return { id: X402_CONSUMER, dailyCapUusdc: cap };
+  };
+  const resourceUrl = (c: Context) => {
+    const u = new URL(c.req.url);
+    const proto = c.req.header("x-forwarded-proto")?.split(",")[0]?.trim() || u.protocol.replace(":", "");
+    return `${proto}://${c.req.header("host") ?? u.host}/v1/verdicts`;
+  };
+  /** The x402 terms, in the standard 402 body, with Skein's error object alongside. */
+  const needPayment = (c: Context, terms: PaymentRequirements, message: string) =>
+    c.json({ x402Version: 1, accepts: [terms], error: { code: "PAYMENT_REQUIRED", message, requestId: c.get("requestId") } }, 402);
+  type Paid = { payment: PaymentPayload; terms: PaymentRequirements };
+  /**
+   * Settles a paid verdict once. The ledger row (ref x402:<run>:<tx>) makes a
+   * replay serve the verdict without settling again; the authorization's own
+   * nonce makes a second on-chain settlement impossible anyway. Returns a 402
+   * response when settlement fails, or null with X-PAYMENT-RESPONSE set.
+   */
+  const settle = async (c: Context, runId: string, paid: Paid): Promise<Response | null> => {
+    const a = paid.payment.payload.authorization;
+    const prefix = `x402:${runId}:`;
+    const [prior] = await db
+      .select({ ref: schema.spendLedger.ref })
+      .from(schema.spendLedger)
+      .where(and(eq(schema.spendLedger.kind, "revenue_settled"), like(schema.spendLedger.ref, `${prefix}%`)));
+    if (prior?.ref) {
+      c.header("X-PAYMENT-RESPONSE", paymentResponse({ transaction: prior.ref.slice(prefix.length), network: paid.terms.network, payer: a.from }));
+      return null;
+    }
+    const r = await facilitator!.settle(paid.payment, paid.terms);
+    if (!r.success || !r.transaction) {
+      console.error(JSON.stringify({ level: "error", msg: "x402 settlement failed", runId, reason: r.errorReason ?? "unknown" }));
+      return needPayment(c, paid.terms, `the payment could not be settled (${r.errorReason ?? "unknown"}); the verdict is ready: send the same request with the same X-PAYMENT to settle and receive it`);
+    }
+    await db.insert(schema.spendLedger).values({ kind: "revenue_settled", amountUusdc: Number(a.value), ref: `${prefix}${r.transaction}` });
+    c.header("X-PAYMENT-RESPONSE", paymentResponse({ transaction: r.transaction, network: r.network ?? paid.terms.network, payer: r.payer ?? a.from }));
+    return null;
   };
 
   const sendVerdict = async (c: Context, id: string, extra: Record<string, unknown> = {}) => {
@@ -299,10 +362,21 @@ export function createApp(service: VerdictService) {
 
   app.post("/v1/verdicts", async (c) => {
     if (!service.accepting) throw new ApiError(503, "UPSTREAM_UNAVAILABLE", "the service is restarting; retry with the same Idempotency-Key");
-    const consumer = await consumerFor(c);
-    await limit(c, limits.key, `key:${consumer.id}`);
-    const idemKey = c.req.header("idempotency-key");
-    if (!idemKey || idemKey.length > 128) throw new ApiError(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required (at most 128 characters)");
+    // No partner key and x402 on: the caller pays for this verdict (x402.ts).
+    const terms = x402 && !c.req.header("authorization") ? requirements(x402, resourceUrl(c)) : null;
+    let consumer: Consumer;
+    let idemKey: string;
+    if (terms) {
+      await limit(c, limits.key, `x402:${ip(c)}`);
+      consumer = await x402Consumer();
+      idemKey = "";
+    } else {
+      consumer = await consumerFor(c);
+      await limit(c, limits.key, `key:${consumer.id}`);
+      const k = c.req.header("idempotency-key");
+      if (!k || k.length > 128) throw new ApiError(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required (at most 128 characters)");
+      idemKey = k;
+    }
     const raw = await c.req.json().catch(() => null);
     const parsed = createSchema.safeParse(raw);
     if (!parsed.success) {
@@ -310,6 +384,28 @@ export function createApp(service: VerdictService) {
       throw new ApiError(400, "INVALID_REQUEST", `invalid body (${where})`, parsed.error.issues);
     }
     const body = parsed.data;
+
+    let paid: Paid | undefined;
+    if (terms) {
+      if (body.mode === "async") throw new ApiError(400, "INVALID_REQUEST", "x402 payment is sync only: it settles when the verdict is delivered");
+      const header = c.req.header("x-payment");
+      if (!header) return needPayment(c, terms, "pay for this verdict with x402 (X-PAYMENT), or send a partner API key");
+      let payment: PaymentPayload;
+      try {
+        payment = await checkPayment(header, terms, Math.floor(now().getTime() / 1000));
+      } catch (e) {
+        if (e instanceof PaymentError) return needPayment(c, terms, e.message);
+        throw e;
+      }
+      // Verified before anything is bought; settled only once a verdict is sealed.
+      const v = await facilitator!.verify(payment, terms);
+      if (!v.isValid) return needPayment(c, terms, `the facilitator refused the payment: ${v.invalidReason ?? "invalid"}`);
+      paid = { payment, terms };
+      // One payment, one verdict: the authorization is the idempotency key, so
+      // a retry with the same X-PAYMENT replays the run and never settles twice.
+      const a = payment.payload.authorization;
+      idemKey = `x402:${a.from.toLowerCase()}:${a.nonce.toLowerCase()}`;
+    }
 
     const subject = resolveSubject(body.subject);
     const record = resolvePolicy(body.policy ?? config.defaultPolicy);
@@ -326,12 +422,20 @@ export function createApp(service: VerdictService) {
     if (!claim.claimed) {
       // Idempotent replay: the original outcome, never charged again.
       if (claim.existing.requestHash !== requestHash) throw new ApiError(409, "IDEMPOTENCY_CONFLICT", "this Idempotency-Key was used with a different body");
+      if (paid && claim.existing.status === "done" && claim.existing.verdictId) {
+        const unpaid = await settle(c, claim.existing.id, paid);
+        if (unpaid) return unpaid;
+      }
       return fromRun(c, claim.existing, { replayed: true });
     }
 
     const cached = await service.findCached(subject, record.policy, ctxHash);
     if (cached) {
       await finishRun(db, id, { status: "done", verdictId: cached.id, at: now() });
+      if (paid) {
+        const unpaid = await settle(c, id, paid);
+        if (unpaid) return unpaid;
+      }
       c.header("X-Skein-Cache", "hit");
       return sendVerdict(c, cached.id, { cached: true, servedFrom: cached.id });
     }
@@ -359,6 +463,10 @@ export function createApp(service: VerdictService) {
     if (out === "timeout") throw new ApiError(504, "TIMEOUT", "sync mode ran out of time; poll the id", { id });
     if (out.kind === "refused") throw refusalError(out.refusal);
     if (out.kind === "failed") throw new ApiError(503, "VERDICT_FAILED", out.message, { id });
+    if (paid) {
+      const unpaid = await settle(c, id, paid);
+      if (unpaid) return unpaid;
+    }
     return sendVerdict(c, out.id);
   });
 

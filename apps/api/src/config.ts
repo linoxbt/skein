@@ -1,4 +1,5 @@
 import { networkFromEnv, type NetworkConfig } from "@skein/telegraph";
+import { x402FromEnv, type X402Config } from "./x402";
 
 export interface ApiConfig {
   port: number;
@@ -42,6 +43,8 @@ export interface ApiConfig {
   eventRetentionDays: number;
   /** Skein's own miner registration ids, never bought from. */
   selfRegistrationIds: string[];
+  /** Pay-per-verdict on POST /v1/verdicts without a partner key; off unless X402_PAY_TO is set. */
+  x402?: X402Config;
 }
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -81,5 +84,9 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     revokedKeyHashes: (env.REVOKED_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     eventRetentionDays: num(env.EVENT_RETENTION_DAYS, 7),
     selfRegistrationIds: (env.SKEIN_SELF_REGISTRATION_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    ...(() => {
+      const x = x402FromEnv(env);
+      return x ? { x402: x } : {};
+    })(),
   };
 }
