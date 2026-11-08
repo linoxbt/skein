@@ -21,9 +21,17 @@ Discord webhook. The API posts there, at most once per condition every six hours
 - verdict runs are marked lost;
 - a request fails with an unhandled error. The alert carries the request id.
 
-Without the variable, alerts go to the Railway log only. For the outside view,
-point an uptime monitor (for example UptimeRobot, free) at the four health
-URLs above, and at `/v1/status` with a keyword alert on `"walletAlert":true`.
+Without the variable, alerts go to the Railway log only.
+
+**Uptime.** `.github/workflows/uptime.yml` probes every service every 15
+minutes from GitHub. It fails the run, and GitHub emails the repository owner,
+when any of these happen:
+- the API, its database, the web site, the Desk queue or the sniper stops answering;
+- an unknown verdict stops returning 404;
+- `/v1/status` shows a wallet or cap alert;
+- Telegraph registration 5137 is no longer `active`.
+
+The Actions tab keeps the history. Run it by hand with "Run workflow".
 
 **Logs.** Railway service → Deployments → View logs. The API writes one JSON
 line per request, carrying the `requestId` that is also sent in every error
