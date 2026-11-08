@@ -13,12 +13,13 @@
   },
   "dependencies": {
     "@netlify/blobs": "11.1.4",
+    "@skein/errors": "workspace:*",
+    "@skein/telegraph": "workspace:*",
+    "@skein/ui": "workspace:*",
     "@skeinlabs/sdk": "workspace:*",
     "next": "15.5.28",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "@skein/telegraph": "workspace:*",
-    "@skein/ui": "workspace:*"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "5.16.2",

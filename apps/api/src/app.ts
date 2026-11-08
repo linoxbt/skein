@@ -209,6 +209,7 @@ export function createApp(service: VerdictService) {
     // Internals go to the log, never to the caller; the request id links the two.
     const id = c.get("requestId");
     console.error(JSON.stringify({ level: "error", msg: "unhandled", requestId: id, method: c.req.method, path: c.req.path, error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err) }));
+    void service.deps.errors?.capture(err, { requestId: id, route: `${c.req.method} ${c.req.path}` });
     void service.deps.alerts?.raise("unhandled-error", `unhandled error on ${c.req.method} ${c.req.path} (request ${id}): ${err instanceof Error ? err.message : String(err)}`.slice(0, 500));
     return c.json({ error: { code: "INTERNAL", message: "internal error", requestId: id } }, 500);
   });
