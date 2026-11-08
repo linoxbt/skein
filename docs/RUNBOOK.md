@@ -116,8 +116,8 @@ with the owner wallet:
   3. Set Base directory to `apps/web` (or `apps/desk`). The rest comes from `netlify.toml`.
   4. Keep the environment variables already set on the site.
 
-  Until then, deploy by uploading the app with Netlify's CLI or MCP from a
-  checkout of `main`.
+  Both sites were linked this way on 2026-11-08, so every merge to `main`
+  redeploys them.
 
 ## Rolling back
 

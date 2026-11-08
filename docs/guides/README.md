@@ -8,9 +8,8 @@ Do them in this order. Each one depends on the one before it.
 | 2 | **Done (Nov 7): miner 845301, registration 5137.** [Registering the miner](MINER_REGISTRATION.md) | Any Telegraph app can buy a Skein verdict with no account; Skein earns MACHINA | MetaMask on your phone, guide 1 done |
 | 3 | **Done (Nov 8): 61 cases, holdout run once.** [The labelled evaluation set](EVAL_SET.md) | The benchmark: proof the fused verdict beats simpler alternatives | Time for research; guide 1 done to run it |
 
-**[Owner steps](OWNER_STEPS.md):** the account-only steps that finish
-production: npm 0.3.0, protecting `main`, alerts, Sentry, backups, linking
-Netlify, and an optional on-chain x402 payment. Each step has direct links.
+**[Owner steps](OWNER_STEPS.md):** the one step left for you (approving the
+npm 0.3.0 release with your 2FA), what is already set up, and optional extras.
 
 Secrets for guides 1 and 2 are in the private `skein-secrets.md` file, sent
 outside the repo. Never commit or paste them.
