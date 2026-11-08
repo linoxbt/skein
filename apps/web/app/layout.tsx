@@ -18,7 +18,6 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   openGraph: { type: "website", siteName: "Skein", title: "Skein — One request. Every thread.", description: DESCRIPTION, url: SITE },
   twitter: { card: "summary", title: "Skein — One request. Every thread.", description: DESCRIPTION },
-  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
