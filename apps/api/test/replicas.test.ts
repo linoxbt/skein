@@ -60,7 +60,7 @@ describe("two replicas on one database", () => {
     expect(ja.id).toBeTruthy();
     expect(jb.id).toBe(ja.id);
     // One verdict's worth of upstream purchases, not two.
-    const one = (await api.app.request(`/v1/verdicts/${ja.id}/bom`).then((r) => r.json())) as { lines: { billed: boolean }[] };
+    const one = (await (await api.app.request(`/v1/verdicts/${ja.id}/bom`)).json()) as { lines: { billed: boolean }[] };
     expect(api.node.charges.length - before).toBe(one.lines.filter((l) => l.billed).length);
   });
 });
