@@ -41,8 +41,10 @@ open, confidence, cost and a verifiable bill of materials.
 > 72 hours later) starts producing cases from Nov 11. See
 > docs/REVIEWER_GUIDE.md for what to try.
 
-**[Watch the 2½-minute demo →](docs/demo/skein-demo.mp4)**: a real listing
-application, decided by an agent that pays Telegraph miners, then verified.
+**[Watch the 3-minute demo film →](docs/demo/skein-motion.mp4)**: what Skein
+does and why, with a real listing application decided live by an agent that pays
+Telegraph miners, then verified. The plain screen walkthrough is
+[here](docs/demo/skein-demo.mp4).
 
 ## Use it
 
