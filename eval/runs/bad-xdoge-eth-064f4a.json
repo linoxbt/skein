@@ -92,7 +92,7 @@
         "status": "UNKNOWN"
       },
       {
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "check": "contract_audit",
         "confidence": 0.6,
         "evidence": {
@@ -140,7 +140,7 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x6e5835892ef0868faccca152b20b9e12ddef66a366a2382add8f84cf20aa9ebb",
+    "verdictHash": "0xfa110d72bb2b32d68f9a01604ab98846bb79c2e5fa73b8c5fcb6697c1d64e445",
     "bom": {
       "root": "0xc7603cea33562239b193cb0f257a2352b22bce9b1c1a8a17be80c50597300843",
       "items": 4
@@ -445,7 +445,7 @@
         "status": "UNKNOWN"
       },
       {
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "check": "contract_audit",
         "confidence": 0.6,
         "evidence": {
@@ -496,7 +496,7 @@
     "purchases": [
       {
         "check": "contract_audit",
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "rawResult": {
           "code": 1,
           "message": "OK",
@@ -719,7 +719,11 @@
       "0x451744fbd88ec0195f26e37a1b53c7657f128df53eef7dacbe0b3409851df0a6",
       "0x0e0d1573d9a7bbc709317032844b2963cd0018cae1594cf3130303f2e1b244d8"
     ],
-    "verdictHash": "0x6e5835892ef0868faccca152b20b9e12ddef66a366a2382add8f84cf20aa9ebb",
+    "verdictHash": "0xfa110d72bb2b32d68f9a01604ab98846bb79c2e5fa73b8c5fcb6697c1d64e445",
     "bomRoot": "0xc7603cea33562239b193cb0f257a2352b22bce9b1c1a8a17be80c50597300843"
+  },
+  "rescored": {
+    "at": "2026-11-08T05:47:41.931Z",
+    "from": "REJECT"
   }
 }

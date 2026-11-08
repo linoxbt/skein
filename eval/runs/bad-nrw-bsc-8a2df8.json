@@ -113,7 +113,7 @@
         "status": "UNKNOWN"
       },
       {
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "check": "contract_audit",
         "confidence": 0.7,
         "evidence": {
@@ -159,7 +159,7 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x423cd9b3b3c08637ac92c6c69a760ed2cdc095f3f10fbcb9b77e9851fa789f32",
+    "verdictHash": "0x3b20eded6a85e8982240d090e5f141e9862b2e872b3d6561ff490fdcee95b522",
     "bom": {
       "root": "0x67a5fdbca82cdbdd3480035c61868dcc7c01719fae786c61a4f700911f4f0574",
       "items": 5
@@ -630,7 +630,7 @@
         "status": "UNKNOWN"
       },
       {
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "check": "contract_audit",
         "confidence": 0.7,
         "evidence": {
@@ -679,7 +679,7 @@
     "purchases": [
       {
         "check": "contract_audit",
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "rawResult": {
           "code": 1,
           "message": "OK",
@@ -1042,7 +1042,11 @@
       "0x6e7eb62fd0c97c5a6740793e953c85fc149d0c535130d774b670f531987b4a13",
       "0xacb5b39149ecffb27d59cd66795d16ca33aed7aba7f7daf312c97c5d34627eb6"
     ],
-    "verdictHash": "0x423cd9b3b3c08637ac92c6c69a760ed2cdc095f3f10fbcb9b77e9851fa789f32",
+    "verdictHash": "0x3b20eded6a85e8982240d090e5f141e9862b2e872b3d6561ff490fdcee95b522",
     "bomRoot": "0x67a5fdbca82cdbdd3480035c61868dcc7c01719fae786c61a4f700911f4f0574"
+  },
+  "rescored": {
+    "at": "2026-11-08T05:47:41.979Z",
+    "from": "ABSTAIN"
   }
 }

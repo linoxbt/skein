@@ -16,7 +16,7 @@
     "decision": {
       "verdict": "ABSTAIN",
       "verdictCode": 0,
-      "riskBps": 8446,
+      "riskBps": 7267,
       "confidenceBps": 0,
       "coverageBps": 7000,
       "reasons": [
@@ -28,7 +28,7 @@
         {
           "code": "CONTRACT_AUDIT_FAIL",
           "check": "contract_audit",
-          "detail": "contract_audit FAIL hidden_owner is_mintable transfer_pausable"
+          "detail": "contract_audit FAIL hidden_owner is_mintable owner_powers transfer_pausable"
         },
         {
           "code": "LIQUIDITY_DEPTH_FAIL",
@@ -113,24 +113,6 @@
       },
       {
         "adapterVersion": "0.4.0",
-        "check": "contract_audit",
-        "confidence": 0.7,
-        "evidence": {
-          "minerId": "200001",
-          "receiptHash": "0x6ed8140fe28b778c2e838626adb3b20b01ad8b8a899e7b2d346ce6d16bc794f5",
-          "signalHash": "0x79a021d641032d01c3e8ab7c02a0c86215611f15f219f05494ba6d85f5e03360"
-        },
-        "notes": [
-          "hidden_owner",
-          "is_mintable",
-          "transfer_pausable"
-        ],
-        "severity": 2,
-        "sourceGroup": "gopluslabs.io",
-        "status": "FAIL"
-      },
-      {
-        "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
         "confidence": 0.7,
         "evidence": {
@@ -145,6 +127,25 @@
         "status": "PASS",
         "unit": "USD",
         "value": 2131.71
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x6ed8140fe28b778c2e838626adb3b20b01ad8b8a899e7b2d346ce6d16bc794f5",
+          "signalHash": "0x79a021d641032d01c3e8ab7c02a0c86215611f15f219f05494ba6d85f5e03360"
+        },
+        "notes": [
+          "hidden_owner",
+          "is_mintable",
+          "owner_powers",
+          "transfer_pausable"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "FAIL"
       },
       {
         "check": "code_review",
@@ -167,7 +168,7 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x510ce8ba913a79b75903fd0817eec02b395621e4ab9d7594586602d0379d94ac",
+    "verdictHash": "0xf92ede1b0bcb99bf825d13d00d60c8b0674daa6b8025c2176e822f92e970058f",
     "bom": {
       "root": "0xe5926ea81ed05809aac708ae9916178457642301c437a40d9f15fdc5a1415c10",
       "items": 6
@@ -780,24 +781,6 @@
       },
       {
         "adapterVersion": "0.4.0",
-        "check": "contract_audit",
-        "confidence": 0.7,
-        "evidence": {
-          "minerId": "200001",
-          "receiptHash": "0x6ed8140fe28b778c2e838626adb3b20b01ad8b8a899e7b2d346ce6d16bc794f5",
-          "signalHash": "0x79a021d641032d01c3e8ab7c02a0c86215611f15f219f05494ba6d85f5e03360"
-        },
-        "notes": [
-          "hidden_owner",
-          "is_mintable",
-          "transfer_pausable"
-        ],
-        "severity": 2,
-        "sourceGroup": "gopluslabs.io",
-        "status": "FAIL"
-      },
-      {
-        "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
         "confidence": 0.7,
         "evidence": {
@@ -812,6 +795,25 @@
         "status": "PASS",
         "unit": "USD",
         "value": 2131.71
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x6ed8140fe28b778c2e838626adb3b20b01ad8b8a899e7b2d346ce6d16bc794f5",
+          "signalHash": "0x79a021d641032d01c3e8ab7c02a0c86215611f15f219f05494ba6d85f5e03360"
+        },
+        "notes": [
+          "hidden_owner",
+          "is_mintable",
+          "owner_powers",
+          "transfer_pausable"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "FAIL"
       },
       {
         "check": "code_review",
@@ -837,7 +839,7 @@
     "purchases": [
       {
         "check": "contract_audit",
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "rawResult": {
           "code": 1,
           "message": "OK",
@@ -1319,7 +1321,11 @@
       "0x9dda23ff2fef85f70ef99ff2a0d935dd45891af7fb3cfcbe7d9ac612044a6f5c",
       "0x68f1fd26b8c40851a616b23599de746931182bc7be0835ea7d18481aad6fcf7d"
     ],
-    "verdictHash": "0x510ce8ba913a79b75903fd0817eec02b395621e4ab9d7594586602d0379d94ac",
+    "verdictHash": "0xf92ede1b0bcb99bf825d13d00d60c8b0674daa6b8025c2176e822f92e970058f",
     "bomRoot": "0xe5926ea81ed05809aac708ae9916178457642301c437a40d9f15fdc5a1415c10"
+  },
+  "rescored": {
+    "at": "2026-11-08T05:47:41.858Z",
+    "from": "ABSTAIN"
   }
 }
