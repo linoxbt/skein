@@ -72,9 +72,14 @@ export const OPENAPI = {
     "/v1/verdicts": {
       post: {
         summary: "Buy a verdict",
-        description: "Idempotent per Idempotency-Key: a retry with the same key and body returns the same run and is never charged twice. mode=async answers 202 at once; follow /v1/verdicts/{id}/events.",
-        security: [{ partnerKey: [] }],
-        parameters: [{ name: "Idempotency-Key", in: "header", required: true, schema: { type: "string", maxLength: 128 } }],
+        description:
+          "Idempotent per Idempotency-Key: a retry with the same key and body returns the same run and is never charged twice. mode=async answers 202 at once; follow /v1/verdicts/{id}/events.\n\n" +
+          "Without a partner key, when the deployment has x402 on, this route takes x402 (v1, scheme exact) payment: an unpaid request gets 402 with { x402Version, accepts }, and a request with an X-PAYMENT header (a signed EIP-3009 USDC authorization) is verified by the facilitator before anything is bought. The payment settles only once a verdict is sealed (a cache hit included), and the 200 carries X-PAYMENT-RESPONSE. Refusals and failures are not settled. The payment itself is the idempotency key: a retry with the same X-PAYMENT replays the run and never settles twice. x402 is sync only.",
+        security: [{ partnerKey: [] }, {}],
+        parameters: [
+          { name: "Idempotency-Key", in: "header", required: false, description: "Required with a partner key; with x402 the payment authorization is the key.", schema: { type: "string", maxLength: 128 } },
+          { name: "X-PAYMENT", in: "header", required: false, description: "x402 payment payload, base64 JSON (only without a partner key).", schema: { type: "string" } },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -96,7 +101,8 @@ export const OPENAPI = {
         responses: {
           "200": { description: "The verdict", content: { "application/json": { schema: { $ref: "#/components/schemas/Verdict" } } } },
           "202": { description: "Accepted (async): { id, status }" },
-          "400": error, "401": error, "402": error, "409": error, "429": error, "503": error,
+          "402": { description: "Payment required: { x402Version: 1, accepts: [PaymentRequirements], error } when x402 is on; otherwise the usual error body" },
+          "400": error, "401": error, "409": error, "429": error, "503": error,
         },
       },
     },

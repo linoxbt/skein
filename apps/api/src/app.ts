@@ -4,7 +4,7 @@ import { ATTESTATION_SCHEME, attestationMessage, canonicalJson, InvalidSubjectEr
 import { availability, quotes, type VerdictContext } from "@skein/pipeline";
 import { getPolicy, listPolicies, type PolicyRecord } from "@skein/policies";
 import { CHECK_INTENTS, SEASON_START, SERVED_INTENTS } from "@skein/telegraph";
-import { and, asc, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, like, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
@@ -13,12 +13,14 @@ import { secureHeaders } from "hono/secure-headers";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { ApiError, errorResponse } from "./errors";
+import { acquireFlight, releaseFlight, SharedRateLimiter, type Limiter } from "./limits";
 import { OPENAPI } from "./openapi";
 import { refuseUnsafeUrl } from "./safeurl";
 import { contextHash, FAILED_MESSAGE, normaliseContext, type Consumer, type Refusal, type RunOutcome, type VerdictEvent, type VerdictService } from "./service";
 import { privateKeyToAccount } from "viem/accounts";
 import { verifyMessage } from "viem";
 import { bomObject, verdictObject, type VerdictObject } from "./views";
+import { checkPayment, Facilitator, PaymentError, paymentResponse, requirements, type PaymentPayload, type PaymentRequirements } from "./x402";
 
 const UUSDC = 1_000_000;
 const usdc = (u: number) => Math.round(u) / UUSDC;
@@ -107,7 +109,11 @@ export function refusalError(r: Refusal): ApiError {
   }
 }
 
-/** A token bucket per key, in memory, bounded: the oldest key is evicted past `maxKeys`. */
+/**
+ * A token bucket per key, in memory, bounded: the oldest key is evicted past
+ * `maxKeys`. For one process only (RATE_LIMIT_STORE=memory); replicas share
+ * SharedRateLimiter (limits.ts) instead.
+ */
 export class RateLimiter {
   private buckets = new Map<string, { tokens: number; at: number }>();
   constructor(
@@ -125,6 +131,14 @@ export class RateLimiter {
     b.tokens -= 1;
     return null;
   }
+}
+
+const memory = new Map<string, RateLimiter>();
+/** The in-memory limiter for one name, kept per process (RATE_LIMIT_STORE=memory). */
+function memoryLimiters(name: string, perMinute: number): RateLimiter {
+  let l = memory.get(name);
+  if (!l) memory.set(name, (l = new RateLimiter(perMinute)));
+  return l;
 }
 
 function sameSecret(a: string, b: string): boolean {
@@ -164,16 +178,21 @@ export function createApp(service: VerdictService) {
   const { config } = service.deps;
   const db = service.db;
   const now = service.deps.now ?? (() => new Date());
+  // Shared by every replica (Postgres) unless RATE_LIMIT_STORE=memory.
+  const limiter = (name: string, perMinute: number): Limiter =>
+    config.rateLimitStore === "memory"
+      ? { take: async (key: string) => memoryLimiters(name, perMinute).take(key) }
+      : new SharedRateLimiter(db, name, perMinute);
   const limits = {
-    read: new RateLimiter(240),
-    publicRead: new RateLimiter(120),
-    quote: new RateLimiter(30),
-    verify: new RateLimiter(10),
-    stream: new RateLimiter(30),
-    badKey: new RateLimiter(20),
-    key: new RateLimiter(30),
-    webhook: new RateLimiter(5),
-    kv: new RateLimiter(1200),
+    read: limiter("read", 240),
+    publicRead: limiter("publicRead", 120),
+    quote: limiter("quote", 30),
+    verify: limiter("verify", 10),
+    stream: limiter("stream", 30),
+    badKey: limiter("badKey", 20),
+    key: limiter("key", 30),
+    webhook: limiter("webhook", 5),
+    kv: limiter("kv", 1200),
   };
   /** /miner/verdict: one run per token and policy at a time, however many dispatcher calls arrive. */
   const minerFlights = new Map<string, Promise<RunOutcome>>();
@@ -194,8 +213,8 @@ export function createApp(service: VerdictService) {
     cors({
       origin: (origin) => (config.webOrigins.includes(origin) ? origin : null),
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id", "if-match", "if-none-match"],
-      exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After"],
+      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id", "if-match", "if-none-match", "x-payment"],
+      exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After", "X-PAYMENT-RESPONSE"],
       maxAge: 600,
     }),
   );
@@ -209,13 +228,26 @@ export function createApp(service: VerdictService) {
     // Internals go to the log, never to the caller; the request id links the two.
     const id = c.get("requestId");
     console.error(JSON.stringify({ level: "error", msg: "unhandled", requestId: id, method: c.req.method, path: c.req.path, error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err) }));
+    void service.deps.errors?.capture(err, { requestId: id, route: `${c.req.method} ${c.req.path}` });
+    void logError(err, `${c.req.method} ${c.req.path}`, id);
     void service.deps.alerts?.raise("unhandled-error", `unhandled error on ${c.req.method} ${c.req.path} (request ${id}): ${err instanceof Error ? err.message : String(err)}`.slice(0, 500));
     return c.json({ error: { code: "INTERNAL", message: "internal error", requestId: id } }, 500);
   });
   app.notFound((c) => c.json({ error: { code: "NOT_FOUND", message: `no route ${c.req.method} ${c.req.path}`, requestId: c.get("requestId") } }, 404));
 
-  const limit = (c: Context, l: RateLimiter, key: string) => {
-    const wait = l.take(key);
+  /** Keeps an unhandled error in error_log (30 days); never throws. */
+  const logError = async (err: unknown, route: string, requestId: string | undefined) => {
+    const e = err instanceof Error ? err : new Error(String(err));
+    const message = `${e.name}: ${e.message}`.slice(0, 1000);
+    const fingerprint = sha256(`${e.name}:${(e.message.split("\n")[0] ?? "").replace(/[0-9a-f]{8,}|\d+/gi, "#")}:${route.replace(/\/(vrd|run)_[\w-]+|\/0x[0-9a-fA-F]+/g, "/:id")}`).slice(0, 16);
+    await db
+      .insert(schema.errorLog)
+      .values({ service: "skein-api", fingerprint, message, route, requestId: requestId ?? null, stack: e.stack?.slice(0, 8000) ?? null })
+      .catch(() => {});
+  };
+
+  const limit = async (c: Context, l: Limiter, key: string) => {
+    const wait = await l.take(key);
     if (wait !== null) throw new ApiError(429, "RATE_LIMITED", "too many requests", undefined, { "Retry-After": String(wait) });
   };
   const ip = (c: Context) => clientIp(c, config.trustProxyHops);
@@ -224,12 +256,18 @@ export function createApp(service: VerdictService) {
     const auth = c.req.header("authorization") ?? "";
     const key = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
     if (!key) {
-      throw new ApiError(402, "PAYMENT_REQUIRED", "send a partner API key (Authorization: Bearer ...), or buy through Telegraph; x402 payment on the direct API is not enabled");
+      throw new ApiError(
+        402,
+        "PAYMENT_REQUIRED",
+        config.x402
+          ? "send a partner API key (Authorization: Bearer ...); POST /v1/verdicts also takes x402 payment, and Telegraph buys through the network"
+          : "send a partner API key (Authorization: Bearer ...), or buy through Telegraph; x402 payment on the direct API is not enabled",
+      );
     }
     const hash = sha256(key);
     const [consumer] = await db.select().from(schema.consumers).where(eq(schema.consumers.apiKeyHash, hash));
     if (!consumer || consumer.revokedAt || config.revokedKeyHashes.includes(hash)) {
-      limit(c, limits.badKey, `ip:${ip(c)}`);
+      await limit(c, limits.badKey, `ip:${ip(c)}`);
       throw new ApiError(401, "UNAUTHORIZED", "unknown or revoked API key");
     }
     return consumer;
@@ -242,6 +280,62 @@ export function createApp(service: VerdictService) {
     if (!attester) return null;
     const message = attestationMessage(v);
     return { scheme: ATTESTATION_SCHEME, signer: attester.address, message, signature: await attester.signMessage({ message }) };
+  };
+
+  // x402: pay per verdict without a partner key (x402.ts). Every x402 payer
+  // shares one consumer row, whose daily cap bounds what they can make Skein spend.
+  const x402 = config.x402;
+  const facilitator = x402 ? new Facilitator(x402.facilitatorUrl, service.deps.facilitatorFetch) : null;
+  const X402_CONSUMER = "00000000-0000-4000-8000-000000000402";
+  let x402Ready: Promise<void> | null = null;
+  const x402Consumer = async (): Promise<Consumer> => {
+    const cap = x402?.dailyCapUusdc ?? 0;
+    x402Ready ??= db
+      .insert(schema.consumers)
+      .values({ id: X402_CONSUMER, name: "x402 payers", kind: "agent", plan: "x402", dailyCapUusdc: cap })
+      .onConflictDoUpdate({ target: schema.consumers.id, set: { dailyCapUusdc: cap } })
+      .then(() => undefined)
+      .catch((e: unknown) => {
+        x402Ready = null;
+        throw e;
+      });
+    await x402Ready;
+    return { id: X402_CONSUMER, dailyCapUusdc: cap };
+  };
+  const resourceUrl = (c: Context) => {
+    const u = new URL(c.req.url);
+    const proto = c.req.header("x-forwarded-proto")?.split(",")[0]?.trim() || u.protocol.replace(":", "");
+    return `${proto}://${c.req.header("host") ?? u.host}/v1/verdicts`;
+  };
+  /** The x402 terms, in the standard 402 body, with Skein's error object alongside. */
+  const needPayment = (c: Context, terms: PaymentRequirements, message: string) =>
+    c.json({ x402Version: 1, accepts: [terms], error: { code: "PAYMENT_REQUIRED", message, requestId: c.get("requestId") } }, 402);
+  type Paid = { payment: PaymentPayload; terms: PaymentRequirements };
+  /**
+   * Settles a paid verdict once. The ledger row (ref x402:<run>:<tx>) makes a
+   * replay serve the verdict without settling again; the authorization's own
+   * nonce makes a second on-chain settlement impossible anyway. Returns a 402
+   * response when settlement fails, or null with X-PAYMENT-RESPONSE set.
+   */
+  const settle = async (c: Context, runId: string, paid: Paid): Promise<Response | null> => {
+    const a = paid.payment.payload.authorization;
+    const prefix = `x402:${runId}:`;
+    const [prior] = await db
+      .select({ ref: schema.spendLedger.ref })
+      .from(schema.spendLedger)
+      .where(and(eq(schema.spendLedger.kind, "revenue_settled"), like(schema.spendLedger.ref, `${prefix}%`)));
+    if (prior?.ref) {
+      c.header("X-PAYMENT-RESPONSE", paymentResponse({ transaction: prior.ref.slice(prefix.length), network: paid.terms.network, payer: a.from }));
+      return null;
+    }
+    const r = await facilitator!.settle(paid.payment, paid.terms);
+    if (!r.success || !r.transaction) {
+      console.error(JSON.stringify({ level: "error", msg: "x402 settlement failed", runId, reason: r.errorReason ?? "unknown" }));
+      return needPayment(c, paid.terms, `the payment could not be settled (${r.errorReason ?? "unknown"}); the verdict is ready: send the same request with the same X-PAYMENT to settle and receive it`);
+    }
+    await db.insert(schema.spendLedger).values({ kind: "revenue_settled", amountUusdc: Number(a.value), ref: `${prefix}${r.transaction}` });
+    c.header("X-PAYMENT-RESPONSE", paymentResponse({ transaction: r.transaction, network: r.network ?? paid.terms.network, payer: r.payer ?? a.from }));
+    return null;
   };
 
   const sendVerdict = async (c: Context, id: string, extra: Record<string, unknown> = {}) => {
@@ -280,10 +374,21 @@ export function createApp(service: VerdictService) {
 
   app.post("/v1/verdicts", async (c) => {
     if (!service.accepting) throw new ApiError(503, "UPSTREAM_UNAVAILABLE", "the service is restarting; retry with the same Idempotency-Key");
-    const consumer = await consumerFor(c);
-    limit(c, limits.key, `key:${consumer.id}`);
-    const idemKey = c.req.header("idempotency-key");
-    if (!idemKey || idemKey.length > 128) throw new ApiError(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required (at most 128 characters)");
+    // No partner key and x402 on: the caller pays for this verdict (x402.ts).
+    const terms = x402 && !c.req.header("authorization") ? requirements(x402, resourceUrl(c)) : null;
+    let consumer: Consumer;
+    let idemKey: string;
+    if (terms) {
+      await limit(c, limits.key, `x402:${ip(c)}`);
+      consumer = await x402Consumer();
+      idemKey = "";
+    } else {
+      consumer = await consumerFor(c);
+      await limit(c, limits.key, `key:${consumer.id}`);
+      const k = c.req.header("idempotency-key");
+      if (!k || k.length > 128) throw new ApiError(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required (at most 128 characters)");
+      idemKey = k;
+    }
     const raw = await c.req.json().catch(() => null);
     const parsed = createSchema.safeParse(raw);
     if (!parsed.success) {
@@ -291,6 +396,28 @@ export function createApp(service: VerdictService) {
       throw new ApiError(400, "INVALID_REQUEST", `invalid body (${where})`, parsed.error.issues);
     }
     const body = parsed.data;
+
+    let paid: Paid | undefined;
+    if (terms) {
+      if (body.mode === "async") throw new ApiError(400, "INVALID_REQUEST", "x402 payment is sync only: it settles when the verdict is delivered");
+      const header = c.req.header("x-payment");
+      if (!header) return needPayment(c, terms, "pay for this verdict with x402 (X-PAYMENT), or send a partner API key");
+      let payment: PaymentPayload;
+      try {
+        payment = await checkPayment(header, terms, Math.floor(now().getTime() / 1000));
+      } catch (e) {
+        if (e instanceof PaymentError) return needPayment(c, terms, e.message);
+        throw e;
+      }
+      // Verified before anything is bought; settled only once a verdict is sealed.
+      const v = await facilitator!.verify(payment, terms);
+      if (!v.isValid) return needPayment(c, terms, `the facilitator refused the payment: ${v.invalidReason ?? "invalid"}`);
+      paid = { payment, terms };
+      // One payment, one verdict: the authorization is the idempotency key, so
+      // a retry with the same X-PAYMENT replays the run and never settles twice.
+      const a = payment.payload.authorization;
+      idemKey = `x402:${a.from.toLowerCase()}:${a.nonce.toLowerCase()}`;
+    }
 
     const subject = resolveSubject(body.subject);
     const record = resolvePolicy(body.policy ?? config.defaultPolicy);
@@ -307,12 +434,20 @@ export function createApp(service: VerdictService) {
     if (!claim.claimed) {
       // Idempotent replay: the original outcome, never charged again.
       if (claim.existing.requestHash !== requestHash) throw new ApiError(409, "IDEMPOTENCY_CONFLICT", "this Idempotency-Key was used with a different body");
+      if (paid && claim.existing.status === "done" && claim.existing.verdictId) {
+        const unpaid = await settle(c, claim.existing.id, paid);
+        if (unpaid) return unpaid;
+      }
       return fromRun(c, claim.existing, { replayed: true });
     }
 
     const cached = await service.findCached(subject, record.policy, ctxHash);
     if (cached) {
       await finishRun(db, id, { status: "done", verdictId: cached.id, at: now() });
+      if (paid) {
+        const unpaid = await settle(c, id, paid);
+        if (unpaid) return unpaid;
+      }
       c.header("X-Skein-Cache", "hit");
       return sendVerdict(c, cached.id, { cached: true, servedFrom: cached.id });
     }
@@ -340,11 +475,15 @@ export function createApp(service: VerdictService) {
     if (out === "timeout") throw new ApiError(504, "TIMEOUT", "sync mode ran out of time; poll the id", { id });
     if (out.kind === "refused") throw refusalError(out.refusal);
     if (out.kind === "failed") throw new ApiError(503, "VERDICT_FAILED", out.message, { id });
+    if (paid) {
+      const unpaid = await settle(c, id, paid);
+      if (unpaid) return unpaid;
+    }
     return sendVerdict(c, out.id);
   });
 
   app.get("/v1/verdicts/:id", async (c) => {
-    limit(c, limits.read, `ip:${ip(c)}`);
+    await limit(c, limits.read, `ip:${ip(c)}`);
     const id = c.req.param("id");
     const [row] = await db.select({ id: schema.verdicts.id }).from(schema.verdicts).where(eq(schema.verdicts.id, id));
     if (row) return sendVerdict(c, id);
@@ -354,14 +493,14 @@ export function createApp(service: VerdictService) {
   });
 
   app.get("/v1/verdicts/:id/bom", async (c) => {
-    limit(c, limits.read, `ip:${ip(c)}`);
+    await limit(c, limits.read, `ip:${ip(c)}`);
     const bom = await bomObject(db, c.req.param("id"));
     if (!bom) throw new ApiError(404, "NOT_FOUND", "verdict not found");
     return c.json(bom);
   });
 
   app.get("/v1/verdicts/:id/events", async (c) => {
-    limit(c, limits.stream, `ip:${ip(c)}`);
+    await limit(c, limits.stream, `ip:${ip(c)}`);
     const id = c.req.param("id");
     const terminal = new Set(["done", "refused", "error"]);
     const lastId = Number(c.req.header("last-event-id") ?? -1);
@@ -378,11 +517,29 @@ export function createApp(service: VerdictService) {
       const ping = setInterval(() => void stream.write(": ping\n\n").catch(() => {}), 15_000);
       try {
         if (!buffer) {
-          // Finished: replay from the table, ids as the live stream gave them.
+          // Not live on this replica: replay from the table, ids as the live
+          // stream gave them, and keep following the table while the run is
+          // still going on another replica.
+          let last = after;
+          let ended = false;
           for (const [i, e] of past.entries()) {
             const seq = e.seq ?? i;
-            if (seq <= after) continue;
+            if (terminal.has(e.type)) ended = true;
+            if (seq <= last) continue;
+            last = seq;
             await stream.writeSSE({ event: e.type, data: JSON.stringify(e.payload), id: String(seq) });
+          }
+          const followUntil = Date.now() + config.verdictDeadlineMs + 30_000;
+          while (!ended && !stream.aborted && Date.now() < followUntil) {
+            const run = await getRun(db, id);
+            const fresh = await db.select().from(schema.events).where(and(eq(schema.events.verdictId, id), gt(schema.events.seq, last))).orderBy(asc(schema.events.seq));
+            for (const e of fresh) {
+              last = e.seq ?? last + 1;
+              await stream.writeSSE({ event: e.type, data: JSON.stringify(e.payload), id: String(last) });
+              if (terminal.has(e.type)) ended = true;
+            }
+            if (ended || !run || run.status !== "running") break;
+            await new Promise((r) => setTimeout(r, 500).unref());
           }
           if (past.length === 0) {
             // A run that never recorded events (lost before its first one): say so and end.
@@ -424,7 +581,7 @@ export function createApp(service: VerdictService) {
   });
 
   app.post("/v1/verify", async (c) => {
-    limit(c, limits.verify, `ip:${ip(c)}`);
+    await limit(c, limits.verify, `ip:${ip(c)}`);
     const body = (await c.req.json().catch(() => null)) as { id?: unknown } | null;
     if (typeof body?.id !== "string" || body.id.length > 64) throw new ApiError(400, "INVALID_REQUEST", "send { id }");
     const stored = await loadStoredVerdict(db, body.id);
@@ -468,12 +625,12 @@ export function createApp(service: VerdictService) {
     });
   });
 
-  app.get("/v1/policies", (c) => {
-    limit(c, limits.publicRead, `ip:${ip(c)}`);
+  app.get("/v1/policies", async (c) => {
+    await limit(c, limits.publicRead, `ip:${ip(c)}`);
     return c.json(listPolicies().map((p) => ({ ref: p.ref, id: p.policy.id, version: p.policy.version, sha256: p.sha256, description: p.policy.description })));
   });
-  app.get("/v1/policies/:ref", (c) => {
-    limit(c, limits.publicRead, `ip:${ip(c)}`);
+  app.get("/v1/policies/:ref", async (c) => {
+    await limit(c, limits.publicRead, `ip:${ip(c)}`);
     let p: PolicyRecord;
     try {
       p = getPolicy(c.req.param("ref"));
@@ -483,8 +640,8 @@ export function createApp(service: VerdictService) {
     return c.json({ ref: p.ref, sha256: p.sha256, yaml: p.yaml, policy: p.policy });
   });
 
-  app.get("/v1/quote", (c) => {
-    limit(c, limits.quote, `ip:${ip(c)}`);
+  app.get("/v1/quote", async (c) => {
+    await limit(c, limits.quote, `ip:${ip(c)}`);
     const subject = resolveSubject({ chainId: Number(c.req.query("chain")), token: c.req.query("token") });
     const { policy } = resolvePolicy(c.req.query("policy") ?? config.defaultPolicy);
     const p = plan({
@@ -525,11 +682,12 @@ export function createApp(service: VerdictService) {
   });
 
   app.get("/v1/status", async (c) => {
-    limit(c, limits.publicRead, `ip:${ip(c)}`);
+    await limit(c, limits.publicRead, `ip:${ip(c)}`);
     const t = now().getTime();
     const spent = await service.spentTodayUusdc();
     const health = await intentHealth();
     const wallet = walletState.get();
+    const [errs] = await db.select({ n: count() }).from(schema.errorLog).where(gte(schema.errorLog.at, new Date(t - 3_600_000)));
     return c.json({
       network: config.networkLabel ?? config.network.caip2,
       node: config.networkLabel === "simulated" ? "local fake node" : config.network.nodeUrl,
@@ -549,6 +707,8 @@ export function createApp(service: VerdictService) {
       dailyCapUsdc: usdc(config.dailyCapUusdc),
       // Spec: stop-and-alert at 80% of the day's cap. Verdicts stop at 100% (the spend gate).
       capAlert: spent >= 0.8 * config.dailyCapUusdc,
+      // Unhandled errors in the last hour, across replicas; details in error_log and the logs.
+      errorsLastHour: errs?.n ?? 0,
       chainsAnalysed: SUPPORTED_CHAINS,
     });
   });
@@ -570,14 +730,14 @@ export function createApp(service: VerdictService) {
     };
   });
   app.get("/v1/ledger", async (c) => {
-    limit(c, limits.publicRead, `ip:${ip(c)}`);
+    await limit(c, limits.publicRead, `ip:${ip(c)}`);
     return c.json(await ledger());
   });
 
   /** Registers (or replaces) the caller's webhook. The signing secret is shown once. */
   app.post("/v1/webhooks", async (c) => {
     const consumer = await consumerFor(c);
-    limit(c, limits.webhook, `key:${consumer.id}`);
+    await limit(c, limits.webhook, `key:${consumer.id}`);
     const body = (await c.req.json().catch(() => null)) as { url?: unknown } | null;
     const url = typeof body?.url === "string" ? body.url : "";
     let parsed: URL | null = null;
@@ -599,7 +759,7 @@ export function createApp(service: VerdictService) {
   /** The caller's active webhook, without its secret. */
   app.get("/v1/webhooks", async (c) => {
     const consumer = await consumerFor(c);
-    limit(c, limits.key, `key:${consumer.id}`);
+    await limit(c, limits.key, `key:${consumer.id}`);
     const [hook] = await db
       .select({ url: schema.webhooks.url, createdAt: schema.webhooks.createdAt })
       .from(schema.webhooks)
@@ -610,7 +770,7 @@ export function createApp(service: VerdictService) {
   /** Turns the caller's webhook off. Idempotent. */
   app.delete("/v1/webhooks", async (c) => {
     const consumer = await consumerFor(c);
-    limit(c, limits.key, `key:${consumer.id}`);
+    await limit(c, limits.key, `key:${consumer.id}`);
     const off = await db
       .update(schema.webhooks)
       .set({ active: false })
@@ -634,7 +794,7 @@ export function createApp(service: VerdictService) {
     const consumer = await consumerFor(c);
     const presented = (c.req.header("authorization") ?? "").slice(7).trim();
     if (!config.kvKeyHashes.includes(sha256(presented))) throw new ApiError(403, "FORBIDDEN", "this key may not use the key-value store");
-    limit(c, limits.kv, `key:${consumer.id}`);
+    await limit(c, limits.kv, `key:${consumer.id}`);
     return consumer;
   }
 
@@ -739,9 +899,28 @@ export function createApp(service: VerdictService) {
     let flightId: string | undefined;
     if (!flight) {
       flightId = newVerdictId(now().getTime());
-      flight = service.start({ id: flightId, policy: record.policy, policySha256: record.sha256, subject, context: {}, contextHash: ctxHash, budgetUusdc: config.perVerdictCapUusdc, channel: "telegraph" });
+      // One run per token and policy across every replica: a lease in Postgres.
+      // A repeat call that lands on another replica waits for the holder's run.
+      const holder = await acquireFlight(db, key, flightId, config.verdictDeadlineMs + 60_000);
+      if (holder) {
+        const deadline = Date.now() + config.minerDeadlineMs;
+        while (Date.now() < deadline) {
+          const run = await getRun(db, holder);
+          if (run && run.status !== "running") {
+            if (run.status === "done" && run.verdictId) return answer(run.verdictId, false);
+            return abstain("VERDICT_FAILED", FAILED_MESSAGE);
+          }
+          await new Promise((r) => setTimeout(r, 400).unref());
+        }
+        return abstain("DEADLINE", "the verdict is still being bought; ask again shortly", { pending_id: holder });
+      }
+      const id = flightId;
+      flight = service.start({ id, policy: record.policy, policySha256: record.sha256, subject, context: {}, contextHash: ctxHash, budgetUusdc: config.perVerdictCapUusdc, channel: "telegraph" });
       minerFlights.set(key, flight);
-      void flight.finally(() => minerFlights.delete(key));
+      void flight.finally(() => {
+        minerFlights.delete(key);
+        void releaseFlight(db, key, id).catch(() => {});
+      });
     }
     const timeout = new Promise<"timeout">((r) => setTimeout(() => r("timeout"), config.minerDeadlineMs).unref());
     const out = await Promise.race([flight, timeout]);

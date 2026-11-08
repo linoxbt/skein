@@ -86,6 +86,15 @@ Netlify logs are under the site → Logs → Functions, or Observability.
 2. Roll back (below) while you fix it.
 3. If the deploy is fine but `/readyz` fails, check the Postgres service.
 
+### x402 callers get 402 "could not be settled" or "facilitator refused"
+
+The facilitator (`X402_FACILITATOR_URL`) refused or did not answer. Look for
+`x402 settlement failed` in the API logs. A verdict whose settlement failed is
+kept: the caller's retry with the same `X-PAYMENT` settles and delivers it
+without buying again. To switch x402 off, unset `X402_PAY_TO` and redeploy;
+partner keys are unaffected. Settled payments are `revenue_settled` rows in
+`spend_ledger` (ref `x402:<run>:<transaction>`).
+
 ### Telegraph asks to Skein fail with 401
 
 The key Telegraph holds differs from `MINER_AUTH_KEY` on Railway. Reinstall it
@@ -107,8 +116,8 @@ with the owner wallet:
   3. Set Base directory to `apps/web` (or `apps/desk`). The rest comes from `netlify.toml`.
   4. Keep the environment variables already set on the site.
 
-  Until then, deploy by uploading the app with Netlify's CLI or MCP from a
-  checkout of `main`.
+  Both sites were linked this way on 2026-11-08, so every merge to `main`
+  redeploys them.
 
 ## Rolling back
 
@@ -135,19 +144,60 @@ with the owner wallet:
   it cannot be changed on a registration. To move ownership, deregister
   (`deregisterMiner(5137)` returns the bond) and register again from the new wallet.
 
+## Alerts and errors
+
+- **Alerts** arrive as GitHub issues labelled `alert`. The uptime workflow
+  probes every 15 minutes and opens one when a check fails: API health,
+  database, purchaser escrow, spend cap, unhandled errors, web, Desk, sniper,
+  or the Telegraph miner. It mentions the owner, comments when the failures
+  change, and closes itself on recovery. `ALERT_WEBHOOK_URL` (Slack or Discord)
+  is optional and adds an immediate message from the API itself.
+- **Errors:** every unhandled API error is kept for 30 days in `error_log`
+  (message, stack, route, request id), and `/v1/status` shows
+  `errorsLastHour`. The error body a caller sees carries the same request id,
+  so a user's report leads straight to the row and the log line. `SENTRY_DSN` is
+  optional and sends the same errors to Sentry.
+
 ## Scaling
 
-Run the API as **one replica**. Its per-IP and per-key rate limits, and the
-de-duplication of identical miner calls in flight, are held in memory, so a
-second replica would double the effective limits. Spend caps are not affected:
-they are held atomically in Postgres, so no number of replicas can overspend.
-Before adding replicas, move the rate limiters to Postgres or Redis
-(`apps/api/src/app.ts`, `RateLimiter`).
+The API runs as **two replicas** (Railway → `api` → Settings → Replicas).
+Everything that must be shared lives in Postgres, so any number of replicas
+behaves as one:
+- **Rate limits:** `rate_limits`, one atomic statement per request, exact
+  under concurrency (`apps/api/src/limits.ts`).
+- **Telegraph-dispatched verdicts:** a lease per token and policy in
+  `flights`, so the same ask on two replicas buys one verdict, and both
+  answer it.
+- **Idempotency:** `verdict_runs`. A retry on another replica returns the
+  same verdict, charged once.
+- **Event streams (SSE):** a replica that is not running the verdict follows
+  the `events` table to the end.
+- **Spend caps:** atomic holds in `spend_holds`.
+
+Per replica, and harmless: catalogue refresh, the lost-run sweep, wallet
+and cap checks (an alert can arrive once from each replica), and draining on
+SIGTERM. `RATE_LIMIT_STORE=memory` puts rate limits back in process, for one
+replica only. `apps/api/test/replicas.test.ts` runs two replicas on one
+database.
 
 ## Backups
 
-- **Postgres:** Railway → Postgres service → Backups. Check it is on and
-  scheduled for the project's plan. The data that matters is:
+- **Postgres:** the `backup` service (`apps/backup`, a Railway cron job, daily
+  at 03:17 UTC) runs `pg_dump` in custom format and uploads it to the private
+  Railway bucket `skein-backups` under `postgres/`, keeping the newest 30.
+  Railway's own volume backups need a Pro workspace, which this project is not
+  on; if it moves to Pro, turn those on too (Postgres → Backups). Each run logs
+  `backup uploaded` with the key, size and table count.
+
+  To restore: in Railway, open the bucket → Credentials, then, with those values
+  in `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL`:
+  ```sh
+  aws s3 ls s3://<bucket>/postgres/                       # pick a dump
+  aws s3 cp s3://<bucket>/postgres/skein-<time>.dump .
+  pg_restore --clean --if-exists --no-owner -d "$DATABASE_URL" skein-<time>.dump
+  ```
+  Restore into a new Postgres service first and point the API at it only once
+  `/readyz` and a `pnpm repro` of a recent verdict pass. The data that matters is:
   - `verdict_runs` and `purchases`: every paid receipt;
   - `consumers`: partner keys, stored as hashes.
 

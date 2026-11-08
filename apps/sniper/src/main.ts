@@ -18,6 +18,7 @@ import { dexScreener } from "./market";
 import { createServer } from "./server";
 import { memoryStore, pgStore } from "./store";
 import { rpcChain, Watcher } from "./watch";
+import { createReporter } from "@skein/errors";
 
 const env = process.env;
 const num = (k: string, d: number) => (env[k] !== undefined && env[k] !== "" && Number.isFinite(Number(env[k])) ? Number(env[k]) : d);
@@ -68,12 +69,19 @@ const port = num("PORT", 8080);
 serve({ fetch: app.fetch, port });
 console.log(`skein sniper on :${port} · ${p.kind} rail · policy ${config.policy} · min liquidity $${config.minLiquidityUsd} · attester ${attester ?? "none"} · store ${env.DATABASE_URL ? "postgres" : "memory"}`);
 
+// Error tracking: SENTRY_DSN (Sentry or compatible); off when unset.
+const errors = createReporter({ dsn: env.SENTRY_DSN, service: "skein-sniper", release: env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) });
+process.on("unhandledRejection", (reason) => void errors.capture(reason, { kind: "unhandledRejection" }));
+
 const every = num("SNIPER_TICK_SEC", 30) * 1000;
 let current: Promise<void> | null = null;
 let stopping = false;
 const loop = async () => {
   if (stopping) return;
-  current = sniper.tick().catch((e) => console.error(`[sniper] tick: ${(e as Error).message}`));
+  current = sniper.tick().catch((e) => {
+    console.error(`[sniper] tick: ${(e as Error).message}`);
+    void errors.capture(e, { kind: "tick" });
+  });
   await current;
   current = null;
   if (!stopping) setTimeout(loop, every).unref?.();

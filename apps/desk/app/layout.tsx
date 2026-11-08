@@ -1,11 +1,27 @@
 import type { Metadata } from "next";
-import { Inter_Tight, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { Footer, Nav } from "@/components/Chrome";
 import "./globals.css";
 
-const inter = Inter_Tight({ subsets: ["latin"], weight: ["300", "400", "500"], variable: "--font-inter-tight" });
-const grotesk = Space_Grotesk({ subsets: ["latin"], weight: ["500"], variable: "--font-grotesk" });
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jetbrains" });
+// Self-hosted (app/fonts, OFL), so a build never depends on reaching Google Fonts.
+const inter = localFont({
+  src: [
+    { path: "./fonts/inter-tight-latin-300-normal.woff2", weight: "300" },
+    { path: "./fonts/inter-tight-latin-400-normal.woff2", weight: "400" },
+    { path: "./fonts/inter-tight-latin-500-normal.woff2", weight: "500" },
+  ],
+  variable: "--font-inter-tight",
+  display: "swap",
+});
+const grotesk = localFont({ src: [{ path: "./fonts/space-grotesk-latin-500-normal.woff2", weight: "500" }], variable: "--font-grotesk", display: "swap" });
+const mono = localFont({
+  src: [
+    { path: "./fonts/jetbrains-mono-latin-400-normal.woff2", weight: "400" },
+    { path: "./fonts/jetbrains-mono-latin-500-normal.woff2", weight: "500" },
+  ],
+  variable: "--font-jetbrains",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "Skein Desk — the listing queue that decides itself", template: "%s · Skein Desk" },

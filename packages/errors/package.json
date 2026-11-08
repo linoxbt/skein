@@ -1,0 +1,14 @@
+{
+  "name": "@skein/errors",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free error reporting to Sentry (or any Sentry-compatible service) over its envelope API.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

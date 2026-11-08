@@ -207,9 +207,9 @@ the money path unsafe; these are the decisions behind the fixes.
 - **Cache:** keyed on the request's normalised context too, and never serves
   ABSTAIN (usually a transient failure).
 - **Pricing:** ABSTAIN is charged at upstream cost; the verdict's `cost` says
-  which rule applied. Telegraph-channel verdicts record revenue owed. Charging
-  partners on the direct API (x402 in) is not built: partner keys are free
-  during the hackathon.
+  which rule applied. Telegraph-channel verdicts record revenue owed. Partner
+  keys are free during the hackathon; callers without a key pay per verdict
+  with x402 (L30).
 - **Kept as is, deliberately:** verdicts are public by id, and /v1/ledger lists
   the latest ten, because anyone must be able to verify any verdict. Row Level
   Security is enabled with no policies: it shuts out Supabase's browser roles
@@ -520,3 +520,30 @@ The Desk uses it with the partner key it already holds, so there is no new
 database or credential. The existing data (one application, the board index,
 two counters) was copied across with create-only writes. Afterwards, 20 of 20
 requests answered 200 in about 0.4 s. Blobs remains selectable with `DESK_STORE=blobs`.
+
+**L30. The direct API takes x402 payment, settled only once a verdict is sealed.**
+A caller with no partner key and no account can now buy a verdict. Set
+`X402_PAY_TO` and `POST /v1/verdicts` without `Authorization` answers 402 with
+standard x402 v1 terms: scheme `exact`, 0.25 USDC on Base Sepolia, paid to
+that address. Any x402 client (`x402-fetch`, `x402-axios`, an agent wallet)
+then pays with an `X-PAYMENT` header, a signed EIP-3009 USDC authorization.
+- **Checked before anything is bought.** Skein checks the signature, payee,
+  amount and validity window itself, then has the facilitator verify it
+  (funds, nonce unused). An invalid payment costs Skein no upstream spend.
+- **Settled after.** Settlement happens only once a verdict is sealed,
+  including a cache hit. Refusals, failures and timeouts are never settled,
+  so the authorization lapses and the caller keeps the money. If settlement
+  fails, the verdict is withheld (402) and a retry with the same payment
+  settles and delivers it without buying anything again.
+- **One payment, one verdict.** The authorization (payer and nonce) is the
+  idempotency key, so a retry replays the run. A `revenue_settled` ledger row
+  per run means a replay never settles twice; the token contract refuses a
+  reused nonce anyway.
+- **Bounded.** Every x402 payer shares one consumer row, whose daily cap
+  (`X402_DAILY_CAP_USDC`, default 5) bounds the upstream spend they can cause.
+  Requests are rate-limited per IP before the facilitator is called. x402 is
+  sync only, because settlement needs the caller still waiting.
+
+Tested with a fake facilitator and real EIP-712 signatures
+(`apps/api/test/x402.test.ts`). It has not been settled end to end on Base
+Sepolia: that needs a wallet holding Base Sepolia USDC.

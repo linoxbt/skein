@@ -7,7 +7,9 @@ import { configFromEnv } from "./config";
 import { connect, runMigrations } from "./db";
 import { parseSeedConsumers, revokeKeys, seedConsumers } from "./seed";
 import { VerdictService } from "./service";
+import { createReporter } from "@skein/errors";
 import { Alerts } from "./alerts";
+import { pruneShared } from "./limits";
 
 const config = configFromEnv();
 const url = process.env.DATABASE_URL;
@@ -31,8 +33,17 @@ const client = new TelegraphClient({
 // Wallet low, spend cap near, verdicts lost, unhandled errors: pushed to ALERT_WEBHOOK_URL (Slack or Discord) when set.
 const alerts = new Alerts({ url: process.env.ALERT_WEBHOOK_URL || undefined, service: "skein-api" });
 
+// Error tracking: SENTRY_DSN (Sentry or any Sentry-compatible service); off when unset.
+const errors = createReporter({ dsn: process.env.SENTRY_DSN, service: "skein-api", environment: process.env.RAILWAY_ENVIRONMENT_NAME ?? "production", release: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) });
+process.on("unhandledRejection", (reason) => {
+  console.error(JSON.stringify({ level: "error", msg: "unhandled rejection", error: String(reason) }));
+  void errors.capture(reason, { kind: "unhandledRejection" });
+});
+process.on("uncaughtExceptionMonitor", (err) => void errors.capture(err, { kind: "uncaughtException" }));
+
 const service = new VerdictService({
   alerts,
+  errors,
   db,
   config,
   client,
@@ -66,6 +77,8 @@ const timers = [
     else alerts.clear("cap");
   }, "spend cap"),
   every(60 * 60_000, () => service.pruneEvents(), "event pruning"),
+  // Idle rate-limit buckets and expired flight leases (limits.ts).
+  every(60 * 60_000, () => pruneShared(db), "shared-state pruning"),
   ...(signer
     ? [every(5 * 60_000, async () => {
         const who = signer.address as `0x${string}`;
