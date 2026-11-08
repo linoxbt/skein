@@ -100,6 +100,20 @@
       },
       {
         "adapterVersion": "0.4.0",
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7373"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "ERROR"
+      },
+      {
+        "adapterVersion": "0.5.0",
         "check": "contract_audit",
         "confidence": 0.7,
         "evidence": {
@@ -113,20 +127,6 @@
         "severity": 1,
         "sourceGroup": "gopluslabs.io",
         "status": "WARN"
-      },
-      {
-        "adapterVersion": "0.4.0",
-        "check": "liquidity_depth",
-        "confidence": 0,
-        "evidence": {
-          "minerId": "7373"
-        },
-        "notes": [
-          "purchase_failed"
-        ],
-        "severity": 0,
-        "sourceGroup": "margyn.workers.dev",
-        "status": "ERROR"
       },
       {
         "check": "code_review",
@@ -149,7 +149,7 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x5b045fafe4f54307cd1e36579deaa434eb6f9fc736efc39e6d7350ae3705f8d9",
+    "verdictHash": "0x965b04eca1ddaa6885974d92a64a624e16a642781ccbbfc0850cdbedcd8e68b0",
     "bom": {
       "root": "0x6d38aa1e4941a412a4fe23694723bda6e85d2f4dedfa5c099c97d57a01c2bd66",
       "items": 4
@@ -724,6 +724,20 @@
       },
       {
         "adapterVersion": "0.4.0",
+        "check": "liquidity_depth",
+        "confidence": 0,
+        "evidence": {
+          "minerId": "7373"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "severity": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "status": "ERROR"
+      },
+      {
+        "adapterVersion": "0.5.0",
         "check": "contract_audit",
         "confidence": 0.7,
         "evidence": {
@@ -737,20 +751,6 @@
         "severity": 1,
         "sourceGroup": "gopluslabs.io",
         "status": "WARN"
-      },
-      {
-        "adapterVersion": "0.4.0",
-        "check": "liquidity_depth",
-        "confidence": 0,
-        "evidence": {
-          "minerId": "7373"
-        },
-        "notes": [
-          "purchase_failed"
-        ],
-        "severity": 0,
-        "sourceGroup": "margyn.workers.dev",
-        "status": "ERROR"
       },
       {
         "check": "code_review",
@@ -776,7 +776,7 @@
     "purchases": [
       {
         "check": "contract_audit",
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "rawResult": {
           "code": 1,
           "message": "OK",
@@ -1245,7 +1245,11 @@
       "0x60c5442fe6024856e1084184466d65f4cab2f56196e6d8333e492b4d184d117b",
       "0x757ff95add0b780420cfec20874d61e4c6eab293cbe543ca720941b9c28bd690"
     ],
-    "verdictHash": "0x5b045fafe4f54307cd1e36579deaa434eb6f9fc736efc39e6d7350ae3705f8d9",
+    "verdictHash": "0x965b04eca1ddaa6885974d92a64a624e16a642781ccbbfc0850cdbedcd8e68b0",
     "bomRoot": "0x6d38aa1e4941a412a4fe23694723bda6e85d2f4dedfa5c099c97d57a01c2bd66"
+  },
+  "rescored": {
+    "at": "2026-11-08T05:47:41.778Z",
+    "from": "ABSTAIN"
   }
 }

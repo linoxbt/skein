@@ -688,66 +688,6 @@
    "notes": "BALD (rug). Cointelegraph: the BALD deployer removed 1,009.41 WETH of liquidity on July 31; rekt.news calls it a $23M rug."
   },
   {
-   "id": "bad-nudeai-base-cb3328",
-   "chainId": 8453,
-   "token": "0xcb33289e6fc28dbe78716fa44b85d4cf95af3574",
-   "label": "bad",
-   "basis": "current_state",
-   "labelSourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xCb33289E6fc28Dbe78716FA44b85D4Cf95af3574&chainID=8453",
-   "labelEventAt": "2025-01-13T00:00:00.000Z",
-   "asOfBlock": 54484790,
-   "split": "tune",
-   "notes": "NUDEAI (honeypot). Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan flags NUDE AI as a Base honeypot but links only its pair, which honeypot.is maps to this token."
-  },
-  {
-   "id": "bad-sai-base-2b3989",
-   "chainId": 8453,
-   "token": "0x2b3989bd9544e6221fe3696c4bd063bba2b50268",
-   "label": "bad",
-   "basis": "current_state",
-   "labelSourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0x2B3989bd9544e6221fE3696c4bD063Bba2B50268&chainID=8453",
-   "labelEventAt": "2025-01-13T00:00:00.000Z",
-   "asOfBlock": 54484790,
-   "split": "holdout",
-   "notes": "SAI (honeypot). Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan calls Scrypt AI (SAI) a suspected honeypot and links only its pair."
-  },
-  {
-   "id": "bad-mega-base-c20fd8",
-   "chainId": 8453,
-   "token": "0xc20fd82a30d1d72c9cdd1d57f703e8b522372901",
-   "label": "bad",
-   "basis": "current_state",
-   "labelSourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xc20fD82a30D1D72c9Cdd1D57f703E8b522372901&chainID=8453",
-   "labelEventAt": "2025-01-12T00:00:00.000Z",
-   "asOfBlock": 54484790,
-   "split": "holdout",
-   "notes": "MEGA (honeypot). Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan names MEGA in the Base honeypot wave (pair only). eventAt is pair creation."
-  },
-  {
-   "id": "bad-bigi-base-8384de",
-   "chainId": 8453,
-   "token": "0x8384de070d4417fdf1e28117f244e909c754bcff",
-   "label": "bad",
-   "basis": "current_state",
-   "labelSourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0x8384De070d4417fDf1e28117f244E909C754bCFf&chainID=8453",
-   "labelEventAt": "2024-09-17T00:00:00.000Z",
-   "asOfBlock": 54484790,
-   "split": "tune",
-   "notes": "BIGI (honeypot). Detector-only label: honeypot.is reports HONEYPOT DETECTED. A SlowMist guide reportedly analyses its permit backdoor (page not opened). eventAt is pair creation."
-  },
-  {
-   "id": "bad-hashai-base-af80f4",
-   "chainId": 8453,
-   "token": "0xaf80f49809048db0b84f29e9ccfd039cbae9ddee",
-   "label": "bad",
-   "basis": "current_state",
-   "labelSourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xaF80F49809048dB0b84F29E9CCfD039CBae9ddee&chainID=8453",
-   "labelEventAt": "2024-04-06T03:30:17.000Z",
-   "asOfBlock": 54484790,
-   "split": "tune",
-   "notes": "HashAI (honeypot). Detector-only label: honeypot.is reports a honeypot (extremely low sell limit). An X post calls HashAI on Base a honeypot with no way to sell, later rugged (pair only)."
-  },
-  {
    "id": "bad-livecaster-base-7dade1",
    "chainId": 8453,
    "token": "0x7dade1cad47583e7718ab64a7deb307ac990516a",

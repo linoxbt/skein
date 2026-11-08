@@ -290,7 +290,8 @@
    "type": "honeypot",
    "eventAt": "2025-01-13",
    "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xCb33289E6fc28Dbe78716FA44b85D4Cf95af3574&chainID=8453",
-   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan flags NUDE AI as a Base honeypot but links only its pair, which honeypot.is maps to this token."
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan flags NUDE AI as a Base honeypot but links only its pair, which honeypot.is maps to this token.",
+   "exclude": "the only source that names the address is the honeypot.is detector: a detector is the same kind of tool as Skein's own audit check, so the label would be partly circular (owner review, 2026-11-08)"
   },
   {
    "chainId": 8453,
@@ -300,7 +301,8 @@
    "type": "honeypot",
    "eventAt": "2025-01-13",
    "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0x2B3989bd9544e6221fE3696c4bD063Bba2B50268&chainID=8453",
-   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan calls Scrypt AI (SAI) a suspected honeypot and links only its pair."
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan calls Scrypt AI (SAI) a suspected honeypot and links only its pair.",
+   "exclude": "the only source that names the address is the honeypot.is detector: a detector is the same kind of tool as Skein's own audit check, so the label would be partly circular (owner review, 2026-11-08)"
   },
   {
    "chainId": 8453,
@@ -310,7 +312,8 @@
    "type": "honeypot",
    "eventAt": "2025-01-12",
    "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xc20fD82a30D1D72c9Cdd1D57f703E8b522372901&chainID=8453",
-   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan names MEGA in the Base honeypot wave (pair only). eventAt is pair creation."
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. Cryptopolitan names MEGA in the Base honeypot wave (pair only). eventAt is pair creation.",
+   "exclude": "the only source that names the address is the honeypot.is detector: a detector is the same kind of tool as Skein's own audit check, so the label would be partly circular (owner review, 2026-11-08)"
   },
   {
    "chainId": 8453,
@@ -320,7 +323,8 @@
    "type": "honeypot",
    "eventAt": "2024-09-17",
    "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0x8384De070d4417fDf1e28117f244E909C754bCFf&chainID=8453",
-   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. A SlowMist guide reportedly analyses its permit backdoor (page not opened). eventAt is pair creation."
+   "evidence": "Detector-only label: honeypot.is reports HONEYPOT DETECTED. A SlowMist guide reportedly analyses its permit backdoor (page not opened). eventAt is pair creation.",
+   "exclude": "the only source that names the address is the honeypot.is detector: a detector is the same kind of tool as Skein's own audit check, so the label would be partly circular (owner review, 2026-11-08)"
   },
   {
    "chainId": 8453,
@@ -330,7 +334,8 @@
    "type": "honeypot",
    "eventAt": "2024-04-06T03:30:17Z",
    "sourceUrl": "https://api.honeypot.is/v2/IsHoneypot?address=0xaF80F49809048dB0b84F29E9CCfD039CBae9ddee&chainID=8453",
-   "evidence": "Detector-only label: honeypot.is reports a honeypot (extremely low sell limit). An X post calls HashAI on Base a honeypot with no way to sell, later rugged (pair only)."
+   "evidence": "Detector-only label: honeypot.is reports a honeypot (extremely low sell limit). An X post calls HashAI on Base a honeypot with no way to sell, later rugged (pair only).",
+   "exclude": "the only source that names the address is the honeypot.is detector: a detector is the same kind of tool as Skein's own audit check, so the label would be partly circular (owner review, 2026-11-08)"
   },
   {
    "chainId": 8453,

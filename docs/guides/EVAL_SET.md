@@ -1,25 +1,12 @@
 # Guide 3 · Building the labelled evaluation set
 
-> **Status, 2026-11-07: a first set is built; the labels await your review.**
-> `eval/cases.json` holds 66 current-state cases: 34 good, 32 bad; 44 tune, 22 holdout.
-> - **Good** (`eval/sources/good.json`): chosen by a written rule rather than
->   by hand (`eval-tools good-from-coingecko`).
-> - **Bad** (`eval/sources/bad.json`): researched incidents, each with a source
->   that names the token contract (`eval/sources/bad-candidates.json` has the
->   evidence line for each). Every address is checked on-chain.
-> - **Ambiguous:** comes from the prospective set (`eval-tools prospective`). It
->   labels the sniper's launches 72 hours after their verdicts.
->
-> One correction to this guide: the miners Skein buys from read only current
-> state, so a case cannot be checked "as of" a past block (DECISIONS L26).
-> Current-state results answer "would Skein stop this listing today". The
-> prospective set is the point-in-time measure. Step 5 below describes the
-> original plan.
->
-> **What is left for you:** read each bad case's source and confirm the label
-> (open `eval/sources/bad-candidates.json`; five Base honeypots rest on the
-> honeypot.is detector alone and say so), and look over the good rule's
-> output. Change a label by editing `eval/cases.json`, never a split.
+> **Status, 2026-11-08: done.** `eval/cases.json` holds 61 current-state cases
+> (34 good, 27 bad; 41 tune, 20 holdout). Labels were reviewed: the five
+> detector-only honeypots are excluded (DECISIONS L27). The rules were frozen,
+> then the holdout ran once: Skein approved 0 of 7 bad and rejected 0 of 13
+> good (`eval/FINDINGS-holdout.md`). The prospective set grows from Nov 11 with
+> `eval-tools prospective`. One correction to the steps below: the miners read
+> only current state, so step 5's "as of a block" check is not possible (L26).
 
 **Time:** a few hours of research, spread out as you like. **Cost:** about 6
 test USDC to run (from the purchaser wallet, guide 1). **Output:**

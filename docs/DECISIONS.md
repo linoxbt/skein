@@ -464,3 +464,22 @@ trivially), so each case now carries a `basis`, and the report never pools the t
   `/checked.json` (its feed keeps only the latest 100).
 Holdout membership comes from a hash of the case id, so it is fixed when a case
 is added and never chosen by looking at results.
+
+**L27. Rules frozen for the holdout run (2026-11-08), from the tune split only.**
+Three decisions by the project owner, on the tune split's findings:
+- **Labels:** only bad tokens labelled by an independent write-up are scored.
+  The five Base honeypots whose only source naming the address is the
+  honeypot.is detector are excluded (kept in `bad-candidates.json` with the
+  reason): a detector is the same kind of tool as Skein's audit check, so
+  those labels would be partly circular. 61 cases remain: 41 tune, 20 holdout.
+- **No market found** stays UNAVAILABLE, so a required check is missing and
+  Skein abstains. A missing DEX pool is not a failed liquidity check.
+- **Owner powers escalate, traps reject** (`contract_audit@0.5.0`). An audit
+  whose only failing flags are owner powers (owner_change_balance,
+  hidden_owner, can_take_back_ownership) grades FAIL at severity 1: below every
+  policy's blocker, but still a failed required check, so never APPROVE.
+  Honeypots, unsellable balances, self-destruct and taxes over 10% keep their
+  hard FAIL. Re-graded offline from the answers already bought (`eval rescore`),
+  this moved VIRTUAL and GMX from REJECT to ESCALATE and changed no bad token.
+The holdout split is run once, after this commit, with these rules and
+`dex-list@0.2.0`; its result is reported as it comes.

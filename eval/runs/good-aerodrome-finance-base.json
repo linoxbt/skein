@@ -91,22 +91,6 @@
       },
       {
         "adapterVersion": "0.4.0",
-        "check": "contract_audit",
-        "confidence": 0.7,
-        "evidence": {
-          "minerId": "200001",
-          "receiptHash": "0x2a2e55ae5bf1d79a349e317ca1ccc06c4c010e36f27eeeaa4f62dfd7a27d6924",
-          "signalHash": "0xeffa18dca6cde284166c078adefea9bf500026b24aa3909e0bd1c99c5b0b8c06"
-        },
-        "notes": [
-          "is_mintable"
-        ],
-        "severity": 1,
-        "sourceGroup": "gopluslabs.io",
-        "status": "WARN"
-      },
-      {
-        "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
         "confidence": 0.7,
         "evidence": {
@@ -121,6 +105,22 @@
         "status": "PASS",
         "unit": "USD",
         "value": 4911950.44
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x2a2e55ae5bf1d79a349e317ca1ccc06c4c010e36f27eeeaa4f62dfd7a27d6924",
+          "signalHash": "0xeffa18dca6cde284166c078adefea9bf500026b24aa3909e0bd1c99c5b0b8c06"
+        },
+        "notes": [
+          "is_mintable"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "WARN"
       },
       {
         "check": "code_review",
@@ -143,7 +143,7 @@
         "status": "UNAVAILABLE"
       }
     ],
-    "verdictHash": "0x11c08300f1cd64f71d69dbc90e607d59b3c92a70bdf9d23d3c4218860e96e244",
+    "verdictHash": "0xf71ea857d74a0ae7a147c6fd5b40dea44208ab20c221f17d664d219ce7ad2155",
     "bom": {
       "root": "0x3af65dbbfdd4c104dc5c298ec441a87961162fad26e5273342255402e123772d",
       "items": 5
@@ -1373,22 +1373,6 @@
       },
       {
         "adapterVersion": "0.4.0",
-        "check": "contract_audit",
-        "confidence": 0.7,
-        "evidence": {
-          "minerId": "200001",
-          "receiptHash": "0x2a2e55ae5bf1d79a349e317ca1ccc06c4c010e36f27eeeaa4f62dfd7a27d6924",
-          "signalHash": "0xeffa18dca6cde284166c078adefea9bf500026b24aa3909e0bd1c99c5b0b8c06"
-        },
-        "notes": [
-          "is_mintable"
-        ],
-        "severity": 1,
-        "sourceGroup": "gopluslabs.io",
-        "status": "WARN"
-      },
-      {
-        "adapterVersion": "0.4.0",
         "check": "liquidity_depth",
         "confidence": 0.7,
         "evidence": {
@@ -1403,6 +1387,22 @@
         "status": "PASS",
         "unit": "USD",
         "value": 4911950.44
+      },
+      {
+        "adapterVersion": "0.5.0",
+        "check": "contract_audit",
+        "confidence": 0.7,
+        "evidence": {
+          "minerId": "200001",
+          "receiptHash": "0x2a2e55ae5bf1d79a349e317ca1ccc06c4c010e36f27eeeaa4f62dfd7a27d6924",
+          "signalHash": "0xeffa18dca6cde284166c078adefea9bf500026b24aa3909e0bd1c99c5b0b8c06"
+        },
+        "notes": [
+          "is_mintable"
+        ],
+        "severity": 1,
+        "sourceGroup": "gopluslabs.io",
+        "status": "WARN"
       },
       {
         "check": "code_review",
@@ -1428,7 +1428,7 @@
     "purchases": [
       {
         "check": "contract_audit",
-        "adapterVersion": "0.4.0",
+        "adapterVersion": "0.5.0",
         "rawResult": {
           "code": 1,
           "message": "OK",
@@ -2554,7 +2554,11 @@
       "0x5ea0351dcd9de59e71c3192dd401b0496ddf59516b938c249edaf672deb52f98",
       "0x6d96d8a9a132bb4f7dd92b07d552bb7c746089608c088231c319afdc013858d7"
     ],
-    "verdictHash": "0x11c08300f1cd64f71d69dbc90e607d59b3c92a70bdf9d23d3c4218860e96e244",
+    "verdictHash": "0xf71ea857d74a0ae7a147c6fd5b40dea44208ab20c221f17d664d219ce7ad2155",
     "bomRoot": "0x3af65dbbfdd4c104dc5c298ec441a87961162fad26e5273342255402e123772d"
+  },
+  "rescored": {
+    "at": "2026-11-08T05:47:41.811Z",
+    "from": "ESCALATE"
   }
 }

@@ -1,5 +1,7 @@
 // pnpm --filter @skein/eval eval run <cases.json> --out <dir> [--split holdout] [--policy dex-list] --live --yes --max-total-usdc <n>
 // pnpm --filter @skein/eval eval report <cases.json> <runs dir> [--split holdout]
+// pnpm --filter @skein/eval eval rescore <cases.json> <runs dir> --split tune   re-grade stored tune runs with the
+//   current adapters, from the answers already bought (free; tune only: a holdout run is scored as it was bought)
 // pnpm --filter @skein/eval eval import <cases.json> --out <dir>   prospective cases: fetch the verdict bought
 //   before the outcome (its verdictId) from the Skein API (SKEIN_API_KEY), rather than buy a new one
 //
@@ -10,6 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { adapterFor, evaluate, type Finding, type StoredPurchase } from "@skein/engine";
 import { getPolicy } from "@skein/policies";
 import { dexScreenerResolver, loadCatalogue, runVerdict } from "@skein/pipeline";
 import { CHECK_INTENTS, networkFromEnv, TelegraphClient, viemSigner } from "@skein/telegraph";
@@ -71,6 +74,32 @@ if (cmd === "run") {
     console.log(`${c.id}: ${run.verdict.decision.verdict} (${c.label})`);
   }
   console.log(`spent ${spent / 1e6} USDC`);
+} else if (cmd === "rescore") {
+  if (!runsDir) throw new Error("rescore needs a runs directory");
+  if (values.split !== "tune") throw new Error("rescore re-grades the tune split only: pass --split tune");
+  const dir = resolve(cwd, runsDir);
+  let changed = 0;
+  for (const c of cases) {
+    const file = join(dir, `${c.id}.json`);
+    if (!existsSync(file)) continue;
+    const r = JSON.parse(readFileSync(file, "utf8"));
+    if (!r.stored) continue; // imported (prospective) runs carry no raw answers
+    const record = getPolicy(r.policyRef);
+    const stored = r.stored as { subject: { chainId: number; token: string }; purchases: StoredPurchase[]; unpurchased: Finding[]; receipts: string[] };
+    const purchases = stored.purchases.map((p) => ({ ...p, adapterVersion: adapterFor(p.check).version }));
+    const findings = [...purchases.map((p) => adapterFor(p.check).adapt(p.rawResult, { ...p, subject: stored.subject })), ...stored.unpurchased];
+    const verdict = evaluate(record.policy, stored.subject, findings, stored.receipts, { policySha256: record.sha256 });
+    const before = r.verdict.decision.verdict;
+    r.verdict = verdict;
+    r.stored = { ...r.stored, purchases, findings: verdict.findings, verdictHash: verdict.verdictHash };
+    r.rescored = { at: new Date().toISOString(), from: before };
+    writeFileSync(file, `${JSON.stringify(r, null, 2)}\n`);
+    if (before !== verdict.decision.verdict) {
+      changed++;
+      console.log(`${c.id}: ${before} -> ${verdict.decision.verdict} (${c.label})`);
+    }
+  }
+  console.log(`rescored; ${changed} verdicts changed`);
 } else if (cmd === "import") {
   const key = process.env.SKEIN_API_KEY;
   const api = (process.env.SKEIN_API_URL ?? "https://api.skeinlabs.site").replace(/\/$/, "");

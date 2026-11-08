@@ -29,7 +29,7 @@ describe("adapter versions", () => {
   // Every version ever published. Stored verdicts replay with the version they
   // recorded, so removing one from the registry breaks their reproducibility.
   const PUBLISHED = [
-    "contract_audit@0.1.0", "contract_audit@0.2.0", "contract_audit@0.3.0", "contract_audit@0.4.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
+    "contract_audit@0.1.0", "contract_audit@0.2.0", "contract_audit@0.3.0", "contract_audit@0.4.0", "contract_audit@0.5.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
     "sanctions@0.1.0", "sanctions@0.2.0", "sanctions@0.3.0", "wash_trading@0.1.0", "wash_trading@0.2.0", "wash_trading@0.3.0",
     "liquidity_depth@0.1.0", "liquidity_depth@0.2.0", "liquidity_depth@0.3.0", "liquidity_depth@0.4.0", "social_bots@0.1.0", "code_review@0.1.0",
   ];
@@ -160,9 +160,9 @@ describe("contract audit (GoPlus-style flags)", () => {
       owner_change_balance: "0", selfdestruct: "0", slippage_modifiable: "0", transfer_pausable: "0", transfer_tax: "",
     };
     const f = contractAudit.adapt({ code: 1, message: "OK", result: { [token]: weth } }, ctx);
-    expect(f).toMatchObject({ status: "PASS", adapterVersion: "0.4.0", notes: ["tax_not_reported"] });
+    expect(f).toMatchObject({ status: "PASS", adapterVersion: "0.5.0", notes: ["tax_not_reported"] });
     expect(f.confidence).toBeLessThanOrEqual(0.6);
-    expect(contractAudit.adapt({ result: { [token]: { ...weth, hidden_owner: "1" } } }, ctx)).toMatchObject({ status: "FAIL", severity: 2 });
+    expect(contractAudit.adapt({ result: { [token]: { ...weth, hidden_owner: "1" } } }, ctx)).toMatchObject({ status: "FAIL", severity: 1, notes: ["hidden_owner", "owner_powers", "tax_not_reported"] }); // an owner power: escalates (0.5.0)
     expect(adapterFor("contract_audit", "0.2.0").adapt({ result: { [token]: weth } }, ctx).notes).toEqual(["insufficient_flags"]);
     // is_honeypot and two owner flags, no tax: still not an audit.
     expect(contractAudit.adapt({ is_honeypot: "0", is_proxy: "0", is_mintable: "0" }, ctx).notes).toEqual(["insufficient_flags"]);
@@ -174,13 +174,25 @@ describe("contract audit (GoPlus-style flags)", () => {
       is_in_dex: "0", is_open_source: "0", owner_address: "", sell_tax: "", token_name: "Reboot", total_supply: "1000000000",
     };
     const f = contractAudit.adapt({ code: 1, message: "OK", result: { [token]: reboot } }, ctx);
-    expect(f).toMatchObject({ status: "WARN", severity: 2, adapterVersion: "0.4.0", notes: ["is_open_source", "source_not_verified"] });
+    expect(f).toMatchObject({ status: "WARN", severity: 2, adapterVersion: "0.5.0", notes: ["is_open_source", "source_not_verified"] });
     expect(f.confidence).toBeLessThanOrEqual(0.6);
     expect(adapterFor("contract_audit", "0.3.0").adapt({ result: { [token]: reboot } }, ctx).notes).toEqual(["insufficient_flags"]);
     // Open source but no flags is still not an audit.
     expect(contractAudit.adapt({ result: { [token]: { ...reboot, is_open_source: "1" } } }, ctx).notes).toEqual(["insufficient_flags"]);
     // A honeypot flag decides, whatever the source status.
     expect(contractAudit.adapt({ result: { [token]: { ...reboot, is_honeypot: "1", buy_tax: "0", sell_tax: "0" } } }, ctx).status).toBe("FAIL");
+  });
+  it("escalates owner powers and rejects traps (0.5.0)", () => {
+    // GoPlus's flags on VIRTUAL (Base), 2026-11-07: an admin can change balances; the token trades.
+    const virtual = { ...clean, hidden_owner: "1", owner_change_balance: "1", is_mintable: "1" };
+    expect(contractAudit.adapt(virtual, ctx)).toMatchObject({
+      status: "FAIL", severity: 1, notes: ["hidden_owner", "is_mintable", "owner_change_balance", "owner_powers"],
+    });
+    expect(adapterFor("contract_audit", "0.4.0").adapt(virtual, ctx)).toMatchObject({ status: "FAIL", severity: 3 });
+    // A trap beside the owner powers still rejects at full severity.
+    expect(contractAudit.adapt({ ...virtual, is_honeypot: "1" }, ctx)).toMatchObject({ status: "FAIL", severity: 3 });
+    expect(contractAudit.adapt({ ...virtual, sell_tax: "0.4" }, ctx).severity).toBeGreaterThanOrEqual(2);
+    expect(contractAudit.adapt({ ...clean, sell_tax: "0.4" }, ctx)).toMatchObject({ status: "FAIL", severity: 2, notes: ["sell_tax_gt_10pct"] });
   });
   it("is UNKNOWN when the answer carries no security flags at all", () => {
     expect(contractAudit.adapt({ message: "OK", works: [] }, ctx)).toMatchObject({ status: "UNKNOWN", notes: ["insufficient_flags"] });

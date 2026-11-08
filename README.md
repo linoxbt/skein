@@ -25,9 +25,15 @@ open, confidence, cost and a verifiable bill of materials.
 > on fresh Base launches now decide (REJECT, ESCALATE) rather than abstain:
 > see docs/DECISIONS.md L24.
 >
-> **Not done yet:** the labelled evaluation set is not curated, and x402
-> payment on the direct API is not built. See docs/REVIEWER_GUIDE.md for what to
-> try, and [docs/guides](docs/guides/README.md) for the remaining step (the labelled set).
+> **Benchmark (Nov 8).** On 20 held-out tokens, run once after the rules were
+> frozen, Skein approved none of 7 documented scams and rejected none of 13
+> long-listed tokens. Two simpler rules applied to the same paid findings each
+> let one scam through. Skein abstained on 8 of 20. Small sample, current-state
+> basis: see [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
+>
+> **Not done yet:** x402 payment on the direct API is not built, and the
+> prospective benchmark (the sniper's launches, labelled 72 hours later) starts
+> producing cases from Nov 11. See docs/REVIEWER_GUIDE.md for what to try.
 
 ## Use it
 
