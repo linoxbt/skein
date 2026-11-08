@@ -2,13 +2,13 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { InputError, parseApplication, process as runAgent, receive, type ApplicationInput } from "@/lib/agent";
 import { DAILY_LIMIT, deskDeps, PER_IP_DAILY_LIMIT, payerRail } from "@/lib/desk";
-import { guarded } from "@/lib/http";
+import { errorResponse, guarded } from "@/lib/http";
 import type { Application } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
-const err = (status: number, code: string, message: string) => NextResponse.json({ error: { code, message } }, { status });
+const err = (status: number, code: string, message: string) => errorResponse(status, code, message);
 /** The public view of one application: everything but the lease. */
 const publicView = ({ lease: _lease, ...a }: Application) => a;
 

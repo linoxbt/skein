@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { schema } from "@skein/db";
 import { beforeAll, describe, expect, it } from "vitest";
+import { walletState } from "../src/app";
 import { simulatedApi } from "../src/simulated";
 
 type Api = Awaited<ReturnType<typeof simulatedApi>>;
@@ -71,6 +72,20 @@ describe("errors", () => {
     const res = await api.app.request("/v1/verdicts/vrd_nope", { headers: { "x-request-id": "trace-123" } });
     expect(res.headers.get("x-request-id")).toBe("trace-123");
     expect(((await res.json()) as { error: { requestId?: string } }).error.requestId).toBe("trace-123");
+  });
+});
+
+describe("wallet alert", () => {
+  it("follows the escrow purchases spend, not the wallet's own balance", async () => {
+    const status = async () => (await (await api.app.request("/v1/status")).json()) as { walletAlert: boolean; payerEscrowUsdc: number | null; payerUsdcBalance: number | null };
+    walletState.set(50_000_000); // a full wallet...
+    walletState.setEscrow(500_000); // ...and an almost empty escrow
+    expect(await status()).toMatchObject({ walletAlert: true, payerEscrowUsdc: 0.5, payerUsdcBalance: 50 });
+    walletState.set(0);
+    walletState.setEscrow(13_000_000);
+    expect((await status()).walletAlert).toBe(false);
+    walletState.set(null);
+    walletState.setEscrow(null);
   });
 });
 

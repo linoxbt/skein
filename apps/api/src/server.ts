@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import { dexScreenerResolver } from "@skein/pipeline";
 import { TelegraphClient, viemSigner } from "@skein/telegraph";
-import { createPublicClient, erc20Abi, http } from "viem";
+import { createPublicClient, erc20Abi, http, parseAbi } from "viem";
 import { createApp, walletState } from "./app";
 import { configFromEnv } from "./config";
 import { connect, runMigrations } from "./db";
@@ -47,7 +47,8 @@ const every = (ms: number, task: () => Promise<unknown>, name: string) => {
 };
 
 
-// The purchaser wallet's test-USDC balance, for the /v1/status alert.
+// The purchaser's escrow and wallet balances, for the /v1/status alert.
+const ESCROW_ABI = parseAbi(["function effectiveBalance(address account) view returns (int256)"]);
 const chain = createPublicClient({ transport: http(config.network.rpcUrl) });
 const timers = [
   every(5 * 60_000, () => service.refreshCatalogue(), "catalogue refresh"),
@@ -67,10 +68,16 @@ const timers = [
   every(60 * 60_000, () => service.pruneEvents(), "event pruning"),
   ...(signer
     ? [every(5 * 60_000, async () => {
-        const b = await chain.readContract({ address: config.network.usdc as `0x${string}`, abi: erc20Abi, functionName: "balanceOf", args: [signer.address as `0x${string}`] });
+        const who = signer.address as `0x${string}`;
+        const [b, e] = await Promise.all([
+          chain.readContract({ address: config.network.usdc as `0x${string}`, abi: erc20Abi, functionName: "balanceOf", args: [who] }),
+          // What purchases spend: the escrow's effective balance (deposits less debt), not the wallet.
+          chain.readContract({ address: config.network.diamond as `0x${string}`, abi: ESCROW_ABI, functionName: "effectiveBalance", args: [who] }),
+        ]);
         walletState.set(Number(b));
-        if (Number(b) < config.hotWalletAlertUusdc) {
-          await alerts.raise("wallet", `the purchaser wallet holds ${Number(b) / 1e6} test USDC, below ${config.hotWalletAlertUusdc / 1e6}: refill it (docs/RUNBOOK.md)`);
+        walletState.setEscrow(Number(e));
+        if (Number(e) < config.hotWalletAlertUusdc) {
+          await alerts.raise("wallet", `the purchaser's Telegraph escrow holds ${Number(e) / 1e6} test USDC (wallet ${Number(b) / 1e6}), below ${config.hotWalletAlertUusdc / 1e6}: deposit more (docs/RUNBOOK.md)`);
         } else alerts.clear("wallet");
       }, "wallet balance")]
     : []),

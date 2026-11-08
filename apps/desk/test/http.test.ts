@@ -8,7 +8,9 @@ describe("route guard", () => {
       throw new Error("blobs list index: no answer in 8000 ms");
     });
     expect(r.status).toBe(503);
-    expect(await r.json()).toMatchObject({ error: { code: "STORE_UNAVAILABLE" } });
+    const body = (await r.json()) as { error: { code: string; requestId: string } };
+    expect(body).toMatchObject({ error: { code: "STORE_UNAVAILABLE" } });
+    expect(body.error.requestId).toBe(r.headers.get("x-request-id"));
   });
 
   it("turns anything else into a JSON 500, and passes answers through", async () => {

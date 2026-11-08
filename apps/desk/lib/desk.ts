@@ -38,5 +38,11 @@ export async function deskDeps(overrides: Partial<AgentDeps> = {}): Promise<Agen
 }
 
 /** Applications a day the public form accepts in total, and per visitor address. */
-export const DAILY_LIMIT = Number(process.env.DESK_DAILY_APPLICATIONS ?? 40);
+/**
+ * Applications from the public form per UTC day. Each buys at most one verdict
+ * under dex-list (budget 0.13 USDC), so the form can spend at most 20 x 0.13 =
+ * 2.6 USDC a day: about a quarter of the API's 10 USDC daily cap, leaving the
+ * rest for partners. Webhook intake needs DESK_WEBHOOK_SECRET.
+ */
+export const DAILY_LIMIT = Number(process.env.DESK_DAILY_APPLICATIONS ?? 20);
 export const PER_IP_DAILY_LIMIT = Number(process.env.DESK_DAILY_PER_IP ?? 5);

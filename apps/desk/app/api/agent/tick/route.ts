@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { tick } from "@/lib/agent";
 import { deskDeps } from "@/lib/desk";
-import { guarded } from "@/lib/http";
+import { errorResponse, guarded } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const secret = process.env.DESK_CRON_SECRET;
   const presented = req.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
   if (!secret || presented.length !== secret.length || !timingSafeEqual(Buffer.from(presented), Buffer.from(secret))) {
-    return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "bad cron secret" } }, { status: 401 });
+    return errorResponse(401, "UNAUTHORIZED", "bad cron secret");
   }
   return guarded("POST /api/agent/tick", async () => {
     const deps = await deskDeps({ waitMs: 5_000 });

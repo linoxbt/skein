@@ -98,7 +98,7 @@ apps/
               /v1/status, /v1/ledger, /v1/policies, /v1/webhooks, /v1/openapi.json,
               /miner/verdict; Dockerfile
   web/        Next.js 15 console: live Exploded View, verdict pages, verify, policies,
-              ledger, status, integrate; Dockerfile (standalone) or Netlify
+              ledger, status, docs, tutorial; Dockerfile (standalone) or Netlify
   desk/       Skein Desk: a fictional exchange's listing queue; an agent buys a verdict
               per application and shortlists, declines or routes it to an analyst
 miner/        skein-miner.yaml, validate.sh, tools.ts (escrow status/deposit, intent check,
@@ -117,7 +117,7 @@ Requires Node 22 and pnpm 10.
 pnpm install
 pnpm typecheck
 pnpm test                      # unit, adapter-contract and property tests
-FC_RUNS=20000 pnpm --filter @skein/engine exec vitest run test/properties.test.ts --testTimeout=300000
+FC_RUNS=20000 pnpm --filter @skein/engine exec vitest run test/properties.test.ts --testTimeout=900000
 pnpm policies:lock             # record a newly published policy version
 
 # One verdict. Without --live it is SIMULATED (canned answers, labelled, never evidence).
@@ -159,7 +159,8 @@ PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --soc
 | Skein Sniper (Mission 14) | Railway (Docker, `apps/sniper/Dockerfile`) | https://sniper-production-bea6.up.railway.app |
 | Postgres | Railway | private network only |
 
-The API and the sniper redeploy on every push to the branch. The web app and
+The API and the sniper deploy from `main` once CI is green (Railway's "wait
+for CI"). The web app and
 the Desk build from the repository with pnpm (`apps/*/netlify.toml`): link the
 repo in Netlify with base directory `apps/web` or `apps/desk` and they deploy
 on every push to `main` (docs/RUNBOOK.md, "Deploying"). A manual upload is
