@@ -33,6 +33,8 @@ export interface ServiceDeps {
   fetch?: typeof fetch;
   /** DNS for the webhook address check (safeurl.ts); replaced in tests. */
   lookup?: Lookup;
+  /** Operational alerts (alerts.ts): unhandled errors are raised here. */
+  alerts?: { raise(key: string, message: string): Promise<boolean> };
 }
 
 export interface Consumer {

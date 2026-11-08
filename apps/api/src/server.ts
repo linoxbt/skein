@@ -28,7 +28,11 @@ const client = new TelegraphClient({
   allowPreSeason: config.allowPreSeason,
   ...(signer ? { signer } : {}),
 });
+// Wallet low, spend cap near, verdicts lost, unhandled errors: pushed to ALERT_WEBHOOK_URL (Slack or Discord) when set.
+const alerts = new Alerts({ url: process.env.ALERT_WEBHOOK_URL || undefined, service: "skein-api" });
+
 const service = new VerdictService({
+  alerts,
   db,
   config,
   client,
@@ -42,8 +46,6 @@ const every = (ms: number, task: () => Promise<unknown>, name: string) => {
   return setInterval(run, ms);
 };
 
-// Wallet low, spend cap near, verdicts lost: pushed to ALERT_WEBHOOK_URL (Slack or Discord) when set.
-const alerts = new Alerts({ url: process.env.ALERT_WEBHOOK_URL || undefined, service: "skein-api" });
 
 // The purchaser wallet's test-USDC balance, for the /v1/status alert.
 const chain = createPublicClient({ transport: http(config.network.rpcUrl) });

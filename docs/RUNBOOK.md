@@ -18,7 +18,8 @@ entry gives the symptom, how to confirm it, and the fix.
 Discord webhook. The API posts there, at most once per condition every six hours, when:
 - the purchaser wallet drops below `HOT_WALLET_ALERT_USDC`;
 - the day's upstream spend reaches 80% of `DAILY_CAP_USDC`;
-- verdict runs are marked lost.
+- verdict runs are marked lost;
+- a request fails with an unhandled error. The alert carries the request id.
 
 Without the variable, alerts go to the Railway log only. For the outside view,
 point an uptime monitor (for example UptimeRobot, free) at the four health
@@ -121,6 +122,15 @@ with the owner wallet:
 - **The miner owner wallet** (`MINER_REGISTRATION_KEY`, in `skein-secrets.md`):
   it cannot be changed on a registration. To move ownership, deregister
   (`deregisterMiner(5137)` returns the bond) and register again from the new wallet.
+
+## Scaling
+
+Run the API as **one replica**. Its per-IP and per-key rate limits, and the
+de-duplication of identical miner calls in flight, are held in memory, so a
+second replica would double the effective limits. Spend caps are not affected:
+they are held atomically in Postgres, so no number of replicas can overspend.
+Before adding replicas, move the rate limiters to Postgres or Redis
+(`apps/api/src/app.ts`, `RateLimiter`).
 
 ## Backups
 
