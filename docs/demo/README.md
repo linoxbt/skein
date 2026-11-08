@@ -1,4 +1,23 @@
-# Demo (2 min 33 s)
+# Demo films
+
+## skein-motion.mp4: the narrated demo (3 min 10 s)
+
+The main demo. It is motion graphics built with Remotion from the live
+product (`video/`). The narration is Kokoro-82M, voice `af_heart`; the music
+and sound effects are from Mixkit; the type and brand are the site's own.
+
+Every product screen is a capture of the live services. The Desk scene is a
+real application recorded as it ran: the agent bought
+[`vrd_mw8dfz384v6a6v094n03`](https://skeinlabs.site/v/vrd_mw8dfz384v6a6v094n03)
+through Telegraph testnet, APPROVE for AERO on Base, sealed in 5.8 s, with
+five paid receipts. The evidence and verify scenes show that same verdict.
+
+Audio is mastered to −14 LUFS, true peak −1.5 dB.
+
+Narration script (the text equivalent): `video/scripts/script.json`. In that
+file "Skein" is spelled "Skane", so the voice says it right.
+
+## skein-demo.mp4: the plain screen walkthrough (2 min 33 s)
 
 [skein-demo.mp4](skein-demo.mp4) is a screen recording of the live services,
 made on 2026-11-08. Nothing in it is mocked. The Desk application it submits

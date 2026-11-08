@@ -1,0 +1,12 @@
+node_modules/
+out/
+capture/frames*/
+capture/*.json
+# Mixkit audio may be used in videos but not redistributed as files: fetch with scripts/fetch-audio.sh
+public/sfx/
+public/sfxn/
+public/music/
+# Regenerable captures and generated voice
+public/shots/
+public/clips/
+public/vo/*.wav
