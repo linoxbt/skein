@@ -128,3 +128,21 @@ describe("the sniper", () => {
     expect(out.note).toMatch(/UNKNOWN_POLICY/);
   });
 });
+
+describe("the dashboard server", () => {
+  it("sends security headers, and rate-limits /checked.json", async () => {
+    const { createServer, rateLimiter } = await import("../src/server");
+    const { memoryStore } = await import("../src/store");
+    const app = createServer(memoryStore(), { policy: "agent-pretrade@0.2.0", minLiquidityUsd: 1, minAgeMin: 1, maxAgeMin: 2, dailyChecks: 1, ticketUsd: 1 } as never, { rail: "apiKey", attester: null, skeinWeb: "https://skeinlabs.site" });
+    const home = await app.request("/");
+    expect(home.headers.get("content-security-policy")).toContain("default-src 'self'");
+    expect(home.headers.get("x-content-type-options")).toBe("nosniff");
+    const ok = await app.request("/checked.json", { headers: { "x-forwarded-for": "203.0.113.9" } });
+    expect(ok.status).toBe(200);
+    let t = 0;
+    const take = rateLimiter(2, () => t);
+    expect([take("a"), take("a"), take("a")]).toEqual([true, true, false]);
+    t = 60_000;
+    expect(take("a")).toBe(true);
+  });
+});

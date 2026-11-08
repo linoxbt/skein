@@ -9,12 +9,13 @@ and code review), fuses them with deterministic rules, and returns APPROVE,
 REJECT, ESCALATE or ABSTAIN. Each verdict comes with reasons, the risks still
 open, confidence, cost and a verifiable bill of materials.
 
-> **Status (Nov 2, season open).** Built and tested: the decision engine and
+> **Status (Nov 8).** Built, tested and deployed: the decision engine and
 > policies, the escrow-paying Telegraph client, the purchasing pipeline and
 > CLI, the Postgres store, the HTTP API and miner endpoint (Railway), the web app
 > and Skein Desk (Netlify), `@skeinlabs/sdk`, `@skeinlabs/mcp`, miner tooling, the
-> benchmark harness and browser tests. An independent audit on Nov 2 and its
-> fixes are recorded in docs/DECISIONS.md (D14).
+> benchmark harness and browser tests. Independent audits on Nov 2 (D14) and
+> Nov 8 (production readiness, L24–L29) and their fixes are in docs/DECISIONS.md;
+> operations are in [docs/RUNBOOK.md](docs/RUNBOOK.md).
 >
 > **Live on Telegraph (Nov 7).** Skein is a registered, active miner:
 > registration **5137**, catalogue id **845301**, slug `skein-listing-verdict`,
@@ -58,6 +59,25 @@ Partner keys are free during the hackathon:
 [request one](https://github.com/linoxbt/skein/issues/new?template=partner-key.yml).
 A runnable example is in [`examples/listing-gate`](examples/listing-gate).
 
+**API reference:** the OpenAPI 3.1 document is served at
+[`/v1/openapi.json`](https://api.skeinlabs.site/v1/openapi.json); load it into
+any OpenAPI viewer or client generator. Every error has the shape
+`{ error: { code, message, requestId } }`, and every response carries `X-Request-Id`.
+
+**Webhooks** (SDK 0.3.0+) tell you when an async verdict is sealed, instead of polling:
+
+```ts
+const { secret } = await skein.setWebhook("https://you.example/skein");   // shown once: store it
+// in your handler, with the raw request body:
+import { verifyWebhook } from "@skeinlabs/sdk/webhooks";
+if (!(await verifyWebhook(rawBody, req.headers["x-skein-signature"], secret))) return res.status(401).end();
+```
+
+Deliveries are POSTs carrying `X-Skein-Event` (`verdict.done`, `verdict.refused`)
+and `X-Skein-Signature: sha256=…`, an HMAC of the body. The URL must be public
+https; it is checked again before each delivery, and redirects are not followed.
+`skein.webhook()` shows the current one, and `skein.deleteWebhook()` turns it off.
+
 ## Layout
 
 ```
@@ -75,7 +95,8 @@ packages/
   ui/         shared design tokens and components (web and Desk)
 apps/
   api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
-              /v1/status, /v1/ledger, /v1/policies, /miner/verdict; Dockerfile
+              /v1/status, /v1/ledger, /v1/policies, /v1/webhooks, /v1/openapi.json,
+              /miner/verdict; Dockerfile
   web/        Next.js 15 console: live Exploded View, verdict pages, verify, policies,
               ledger, status, integrate; Dockerfile (standalone) or Netlify
   desk/       Skein Desk: a fictional exchange's listing queue; an agent buys a verdict
@@ -138,17 +159,19 @@ PURCHASER_PRIVATE_KEY=0x… pnpm verdict --live --chain 8453 --token 0x… --soc
 | Skein Sniper (Mission 14) | Railway (Docker, `apps/sniper/Dockerfile`) | https://sniper-production-bea6.up.railway.app |
 | Postgres | Railway | private network only |
 
-The API redeploys on every push to the branch. The web app and the Desk are
-uploaded to Netlify, which builds them outside the workspace with npm; every
-upload is made by the same script, so a deployed site is always a commit:
+The API and the sniper redeploy on every push to the branch. The web app and
+the Desk build from the repository with pnpm (`apps/*/netlify.toml`): link the
+repo in Netlify with base directory `apps/web` or `apps/desk` and they deploy
+on every push to `main` (docs/RUNBOOK.md, "Deploying"). A manual upload is
+still possible, from a self-contained bundle made by the same script every
+time, so a deployed site is always a commit:
 
 ```sh
 node scripts/netlify-bundle.mjs apps/desk /tmp/desk-upload   # vendors @skein/* sources as file: deps
 ```
 
-then run Netlify's deploy command from that folder. Connecting the repo to
-Netlify (Project configuration → Build & deploy, base directory `apps/web` or
-`apps/desk`) would make it redeploy on push.
+then run Netlify's deploy command from that folder. Incidents, rollback,
+secret rotation and backups: [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ### Releasing the npm packages
 

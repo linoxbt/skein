@@ -61,7 +61,7 @@ const scoring = z
     severity_multiplier: z.tuple([fraction, fraction, fraction, fraction]).default([0.6, 0.8, 1, 1]),
   })
   .strict()
-  .default({});
+  .prefault({});
 
 const budget = z
   .object({
@@ -80,8 +80,8 @@ export const policySchema = z
     blockers: z.array(blocker).default([]),
     required: z.array(check).min(1),
     optional: z.array(check).default([]),
-    thresholds: z.record(check, threshold).default({}),
-    weights: z.record(check, z.number().min(0)),
+    thresholds: z.partialRecord(check, threshold).default({}),
+    weights: z.partialRecord(check, z.number().min(0)),
     conflicts: z.array(conflict).default([]),
     decision,
     scoring,

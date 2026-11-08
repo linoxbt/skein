@@ -110,6 +110,13 @@ Pin the attester address in your own config rather than fetching it on every cal
 | `stream(id)` | free | The verdict's live events as an async iterator |
 | `bom(id)` | free | The bill of materials: every paid input and its receipt |
 | `verify(id)` | free | Recomputes the verdict hash and the receipts' Merkle root |
+| `policies()` / `policy(ref)` | free | The published policies, or one by id or id@version |
+| `status()` / `ledger()` | free | Network, wallet and cap alerts, the attester; the public spend ledger |
+| `setWebhook(url)` / `webhook()` / `deleteWebhook()` | partner key | Get told when an async verdict is sealed; the secret is shown once |
+
+`verifyWebhook(rawBody, signatureHeader, secret)` from `@skeinlabs/sdk/webhooks`
+checks a delivery's `X-Skein-Signature` (HMAC-SHA256, constant-time, Web Crypto).
+The full HTTP API is described at https://api.skeinlabs.site/v1/openapi.json.
 
 Options: `apiUrl`, `payer`, `maxUsdcPerCall`, `retries` (2), `maxRetryWaitMs`
 (10 s), `requestTimeoutMs` (15 s), `timeoutMs` (120 s), `fetch`.

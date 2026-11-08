@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
 import { changeSinceCheck, type SniperConfig } from "./agent";
 import type { Stats, Store, TokenRecord } from "./store";
 
@@ -52,8 +53,43 @@ export async function buildFeed(store: Store, cfg: SniperConfig, meta: { rail: s
   };
 }
 
+/** A small per-key token bucket: `perMinute` requests, refilled continuously. */
+export function rateLimiter(perMinute: number, now: () => number = Date.now) {
+  const buckets = new Map<string, { tokens: number; at: number }>();
+  return (key: string): boolean => {
+    const t = now();
+    const b = buckets.get(key) ?? { tokens: perMinute, at: t };
+    b.tokens = Math.min(perMinute, b.tokens + ((t - b.at) / 60_000) * perMinute);
+    b.at = t;
+    buckets.set(key, b);
+    if (buckets.size > 10_000) buckets.delete(buckets.keys().next().value!);
+    if (b.tokens < 1) return false;
+    b.tokens -= 1;
+    return true;
+  };
+}
+
 export function createServer(store: Store, cfg: SniperConfig, meta: { rail: string; attester: string | null; skeinWeb: string }) {
   const app = new Hono();
+  // The dashboard is one page with inline script and style, reading feed.json from this origin only.
+  app.use(
+    "*",
+    secureHeaders({
+      contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'none'"],
+      },
+      crossOriginResourcePolicy: "cross-origin",
+    }),
+  );
+  const exportLimit = rateLimiter(20);
+  const clientIp = (h: (n: string) => string | undefined) => h("x-forwarded-for")?.split(",")[0]?.trim() || h("x-real-ip") || "unknown";
   app.get("/healthz", (c) => c.json({ ok: true }));
   app.get("/feed.json", async (c) => {
     c.header("access-control-allow-origin", "*");
@@ -62,10 +98,16 @@ export function createServer(store: Store, cfg: SniperConfig, meta: { rail: stri
   });
   // Every decided token since a time, for the evaluation's prospective set
   // (eval-tools prospective): the feed keeps only the latest 100.
+  // 20 exports a minute per address, at most 2,000 rows and 30 days back each.
   app.get("/checked.json", async (c) => {
+    if (!exportLimit(clientIp((n) => c.req.header(n)))) {
+      c.header("retry-after", "10");
+      return c.json({ error: { code: "RATE_LIMITED", message: "at most 20 exports a minute" } }, 429);
+    }
+    const floor = Date.now() - 30 * 86_400_000;
     const since = Date.parse(c.req.query("since") ?? "");
-    const from = Number.isFinite(since) ? new Date(since) : new Date(Date.now() - 30 * 86_400_000);
-    const rows = await store.checkedSince(from, 5000);
+    const from = new Date(Number.isFinite(since) ? Math.max(since, floor) : floor);
+    const rows = await store.checkedSince(from, 2000);
     return c.json({ since: from.toISOString(), count: rows.length, tokens: rows.map((r) => ({ ...r, change: changeSinceCheck(r) })) });
   });
   app.get("/", (c) => c.html(dashboard(meta.skeinWeb)));

@@ -30,6 +30,16 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 copyFiltered(app, out);
 
+// The repository build (netlify.toml) runs pnpm from the repo root; an upload has
+// no workspace above it and installs its vendored copy with npm instead.
+const toml = join(out, "netlify.toml");
+if (existsSync(toml)) {
+  const text = readFileSync(toml, "utf8");
+  const swapped = text.replace(/^\s*command\s*=.*$/m, '  command = "npm run build" # rewritten by scripts/netlify-bundle.mjs for an upload');
+  if (swapped === text) throw new Error("netlify.toml has no build command to rewrite");
+  writeFileSync(toml, swapped);
+}
+
 const vendored = new Set();
 const isWorkspace = (spec) => typeof spec === "string" && spec.startsWith("workspace:");
 function rewrite(pkg, vendorRel) {

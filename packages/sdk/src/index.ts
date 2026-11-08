@@ -86,6 +86,16 @@ export type Payment =
 export type VerdictResult = VerdictObject & { payment: Payment };
 
 /** Every API error, with the API's code (BUDGET_TOO_LOW, RATE_LIMITED, …) or an SDK code. */
+/** One entry of GET /v1/policies. */
+export interface PolicySummary {
+  id: string;
+  version: string;
+  ref?: string;
+  sha256?: string;
+  description?: string;
+  [k: string]: unknown;
+}
+
 export class SkeinError extends Error {
   constructor(
     readonly code: string,
@@ -212,6 +222,57 @@ export class Skein {
     return (
       await this.call<VerifyReport>("/v1/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) }, true)
     ).body;
+  }
+
+  /** Every published policy, with the SHA-256 of its file. Free. */
+  async policies(): Promise<PolicySummary[]> {
+    const body = (await this.call<{ policies?: PolicySummary[] } | PolicySummary[]>("/v1/policies")).body;
+    return Array.isArray(body) ? body : (body.policies ?? []);
+  }
+
+  /** One policy, by id (the latest version) or id@version. Free. */
+  async policy(ref: string): Promise<Record<string, unknown>> {
+    return (await this.call<Record<string, unknown>>(`/v1/policies/${encodeURIComponent(ref)}`)).body;
+  }
+
+  /** Network, wallet and cap alerts, the attester address and each check's miners. Free. */
+  async status(): Promise<Record<string, unknown> & { attester?: string | null; walletAlert?: boolean; capAlert?: boolean }> {
+    return (await this.call<Record<string, unknown> & { attester?: string | null }>("/v1/status")).body;
+  }
+
+  /** The public spend ledger. Free. */
+  async ledger(): Promise<Record<string, unknown>> {
+    return (await this.call<Record<string, unknown>>("/v1/ledger")).body;
+  }
+
+  private partnerHeaders(): Record<string, string> {
+    const payer = this.opts.payer;
+    if (payer?.kind !== "apiKey") throw new SkeinError("PAYMENT_REQUIRED", "webhooks need a partner API key (payer kind apiKey)", 402);
+    return { authorization: `Bearer ${payer.key}` };
+  }
+
+  /**
+   * Registers (or replaces) the partner's webhook. Keep the returned secret:
+   * it is shown once, and verifyWebhook (@skeinlabs/sdk/webhooks) needs it.
+   */
+  async setWebhook(url: string): Promise<{ url: string; secret: string; events: string[] }> {
+    return (
+      await this.call<{ url: string; secret: string; events: string[] }>("/v1/webhooks", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...this.partnerHeaders() },
+        body: JSON.stringify({ url }),
+      })
+    ).body;
+  }
+
+  /** The partner's active webhook (never its secret), or null. */
+  async webhook(): Promise<{ url: string; createdAt: string } | null> {
+    return (await this.call<{ webhook: { url: string; createdAt: string } | null }>("/v1/webhooks", { headers: this.partnerHeaders() })).body.webhook;
+  }
+
+  /** Turns the partner's webhook off; true when one was on. */
+  async deleteWebhook(): Promise<boolean> {
+    return (await this.call<{ deleted: boolean }>("/v1/webhooks", { method: "DELETE", headers: this.partnerHeaders() }, true)).body.deleted;
   }
 
   /** The live events of a verdict, replayed from the start; ends after done, refused or error. */

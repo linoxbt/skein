@@ -23,8 +23,9 @@
     "hono": "4.13.13",
     "pg": "8.23.1",
     "tsx": "4.23.15",
-    "zod": "3.25.76",
-    "viem": "2.57.5"
+    "undici": "7.30.2",
+    "viem": "2.57.5",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",

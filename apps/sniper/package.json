@@ -6,7 +6,7 @@
   "description": "Mission 14 (Web3 Native & DeFi): a rug-proof sniper that buys a Skein verdict before every trade on new Base launches.",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
     "start": "node --import tsx src/main.ts",
     "dev": "tsx src/main.ts"
   },

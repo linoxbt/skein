@@ -34,6 +34,8 @@ export interface ApiConfig {
   trustProxyHops: number;
   /** SHA-256 hashes of partner keys to refuse, without database access. */
   revokedKeyHashes: string[];
+  /** SHA-256 hashes of the partner keys that may use /v1/kv (first-party apps such as Skein Desk). */
+  kvKeyHashes: string[];
   /** SSE event rows older than this are pruned (they are not evidence). */
   eventRetentionDays: number;
   /** Skein's own miner registration ids, never bought from. */
@@ -72,6 +74,7 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     cacheRefreshMinAgeSec: num(env.CACHE_REFRESH_MIN_AGE_SEC, 480),
     hotWalletAlertUusdc: usdc(env.HOT_WALLET_ALERT_USDC, 2),
     trustProxyHops: num(env.TRUST_PROXY_HOPS, 1),
+    kvKeyHashes: (env.KV_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     revokedKeyHashes: (env.REVOKED_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     eventRetentionDays: num(env.EVENT_RETENTION_DAYS, 7),
     selfRegistrationIds: (env.SKEIN_SELF_REGISTRATION_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean),

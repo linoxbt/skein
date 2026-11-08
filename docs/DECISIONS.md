@@ -483,3 +483,40 @@ Three decisions by the project owner, on the tune split's findings:
   this moved VIRTUAL and GMX from REJECT to ESCALATE and changed no bad token.
 The holdout split is run once, after this commit, with these rules and
 `dex-list@0.2.0`; its result is reported as it comes.
+
+**L28. "Adding a PASS never raises risk" holds for new or at-least-as-heavy provider groups.**
+CI's deep property run (20,000 cases) found a counterexample under
+`cex-standard`. One provider had answered two light checks (holder count and
+code review, weight 0.05 each, the review a WARN). A PASS from the same
+provider for a heavier, unanswered check (holder concentration, 0.2) lifted
+the group's shared weight from 0.05 to 0.2. The review's share grew from 0.025
+to 0.033, more than the larger total offset: risk went from 136 to 143 bps.
+This is inherent in the independence rule (a provider family counts once, at
+the weight of its heaviest check, D8), not a coding error. Changing the rule
+would change the engine the holdout result was frozen under, so the claim is
+stated precisely instead. Adding a PASS never raises risk when it:
+- joins the check's deciding group;
+- answers an unanswered check from a new provider group;
+- or answers one from a group whose heaviest answered check weighs at least as
+  much (the group's shared weight stays fixed, and the risky members' shares shrink).
+
+The property test now asserts exactly this. It compares the risk before
+rounding (within 1e-9). A second CI run found 687 vs 688 bps inside the claim:
+there, mathematically equal risks rounded apart at a .5 boundary through
+floating-point error. That case is kept as a regression test.
+
+**L29. The Desk keeps its queue in Skein's Postgres, through `/v1/kv`, not in Netlify Blobs.**
+Netlify Blobs stopped answering about half the calls from the Desk's
+functions (`blobs list: no answer in 8000 ms`), on and off, whatever the
+deploy's age. On 2026-11-08, 8 of 17 board requests failed in 30 minutes, and
+later 11 of 12. Netlify's own API answered the same store at once, so the data
+was fine; the functions' access was not. A redeploy only looked like a fix.
+The Desk already depends on Skein's API, so the API gained a small key-value
+store (`GET/PUT /v1/kv`, table `kv`, migration 0004):
+- namespaced per partner key, and open only to keys listed in `KV_KEY_HASHES`;
+- conditional writes, so the Desk's `mutate()` keeps its compare-and-swap semantics.
+
+The Desk uses it with the partner key it already holds, so there is no new
+database or credential. The existing data (one application, the board index,
+two counters) was copied across with create-only writes. Afterwards, 20 of 20
+requests answered 200 in about 0.4 s. Blobs remains selectable with `DESK_STORE=blobs`.

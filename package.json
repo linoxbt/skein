@@ -23,5 +23,10 @@
     "turbo": "2.11.10",
     "typescript": "5.9.3",
     "vitest": "4.1.12"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.23": "8.5.32"
+    }
   }
 }

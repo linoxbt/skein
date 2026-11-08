@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Skein, SkeinError, type VerdictResult } from "@skeinlabs/sdk";
+import { Skein, SkeinError, type VerdictObject, type VerdictResult } from "@skeinlabs/sdk";
 import { z } from "zod";
 
 export interface SkeinMcpOptions {
@@ -49,7 +49,7 @@ export function describeVerdict(v: VerdictResult, link: string): string {
 }
 
 export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "telegraph" }): { server: McpServer; spentUsdc: () => number } {
-  const server = new McpServer({ name: "skein", version: "0.2.0" });
+  const server = new McpServer({ name: "skein", version: "0.3.0" });
   const web = opts.webUrl.replace(/\/$/, "");
   let spent = 0;
 
@@ -148,6 +148,46 @@ export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "tele
         const steps = Object.entries(r.checks).map(([k, ok]) => `${ok ? "✓" : "✗"} ${k}`);
         const body = [`${r.ok ? "VERIFIED" : "MISMATCH"}: ${r.id}`, ...steps, ...r.problems].join("\n");
         return { content: text(body), structuredContent: r as unknown as Record<string, unknown> };
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    "skein_get",
+    {
+      title: "Get a Skein verdict",
+      description: "Free. A verdict already bought, by id: its decision, reasons, open risks, cost and receipts root. Use it to re-read a verdict rather than buy a new one.",
+      inputSchema: { id: z.string().describe("Verdict id, e.g. vrd_…") },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async (args) => {
+      try {
+        const v = await opts.skein.get(args.id);
+        if ("status" in v && v.status === "running") return { content: text(`${args.id} is still running; ask again in a few seconds.`) };
+        const r = v as VerdictObject;
+        const body = [`${r.verdict} · risk ${r.riskBps} bps · confidence ${r.confidenceBps / 100}%`, r.summary, ...r.reasons.map((x: { detail: string }) => `- ${x.detail}`)].join("\n");
+        return { content: text(body), structuredContent: r as unknown as Record<string, unknown> };
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    "skein_policies",
+    {
+      title: "List Skein policies",
+      description: "Free. The published, immutable policies a verdict can be bought under (for example dex-list@0.2.0 for a DEX listing, agent-pretrade@0.2.0 for a trading agent), with each file's SHA-256.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async () => {
+      try {
+        const ps = await opts.skein.policies();
+        const body = ps.map((p) => `${p.ref ?? `${p.id}@${p.version}`}${p.description ? ` — ${String(p.description).split("\n")[0]}` : ""}`).join("\n");
+        return { content: text(body || "no policies"), structuredContent: { policies: ps } as unknown as Record<string, unknown> };
       } catch (e) {
         return fail(e);
       }

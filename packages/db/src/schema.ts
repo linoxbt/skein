@@ -251,6 +251,23 @@ export const spendLedger = pgTable(
   (t) => [index("spend_ledger_ts").on(t.ts)],
 );
 
+/**
+ * A small key-value store for first-party apps (Skein Desk), namespaced per
+ * partner key and enabled per key (KV_KEY_HASHES). Writes are conditional on
+ * the etag, so concurrent writers never lose each other's changes.
+ */
+export const kv = pgTable(
+  "kv",
+  {
+    consumerId: uuid("consumer_id").notNull().references(() => consumers.id),
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    etag: text("etag").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.consumerId, t.key] })],
+);
+
 export const webhooks = pgTable("webhooks", {
   id: uuid("id").primaryKey().defaultRandom(),
   consumerId: uuid("consumer_id").notNull().references(() => consumers.id),

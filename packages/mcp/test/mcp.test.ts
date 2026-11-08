@@ -31,10 +31,10 @@ async function connect(sessionCapUsdc = 2) {
 type Result = { content: { type: string; text: string }[]; structuredContent?: Record<string, unknown>; isError?: boolean };
 
 describe("skein mcp", () => {
-  it("lists the three tools", async () => {
+  it("lists the five tools", async () => {
     const { client } = await connect();
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(["skein_quote", "skein_verdict", "skein_verify"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(["skein_get", "skein_policies", "skein_quote", "skein_verdict", "skein_verify"]);
     expect(tools.find((t) => t.name === "skein_verdict")!.inputSchema.required).toEqual(["chainId", "token"]);
   });
 
@@ -54,7 +54,7 @@ describe("skein mcp", () => {
   it("publishes chainId as one plain string type, and reads names, ids and numbers", async () => {
     const { client } = await connect();
     const { tools } = await client.listTools();
-    for (const t of tools.filter((x) => x.name !== "skein_verify")) {
+    for (const t of tools.filter((x) => x.name === "skein_quote" || x.name === "skein_verdict")) {
       const prop = (t.inputSchema.properties as Record<string, { type?: string; anyOf?: unknown }>).chainId!;
       expect(prop.type).toBe("string");
       expect(prop.anyOf).toBeUndefined();
@@ -93,6 +93,15 @@ describe("skein mcp", () => {
     expect(r.content[0]!.text).toMatch(/^NOT_FOUND/);
     const bad = (await client.callTool({ name: "skein_verdict", arguments: { chainId: 8453, token: "0x12" } })) as Result;
     expect(bad.isError).toBe(true);
+  });
+
+  it("lists the policies and re-reads a verdict without buying it", async () => {
+    const { client } = await connect();
+    const ps = (await client.callTool({ name: "skein_policies", arguments: {} })) as Result;
+    expect(ps.isError).toBeFalsy();
+    expect(JSON.stringify(ps.content)).toContain("dex-list@0.2.0");
+    const missing = (await client.callTool({ name: "skein_get", arguments: { id: "vrd_doesnotexist" } })) as Result;
+    expect(missing.isError).toBe(true);
   });
 });
 

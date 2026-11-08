@@ -12,7 +12,7 @@ import { simulatedApi } from "@skein/api/simulated";
 import { chromium, type Page } from "playwright";
 
 const WEB = process.env.WEB_URL ?? "http://localhost:3000";
-const PAGES = ["/", "/how-it-works", "/console", "/verify", "/policies", "/ledger", "/status", "/docs"];
+const PAGES = ["/", "/how-it-works", "/tutorial", "/console", "/verify", "/policies", "/ledger", "/status", "/docs"];
 const axeSource = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
 
 const failures: string[] = [];
@@ -72,6 +72,11 @@ try {
     await phone.waitForTimeout(800);
     const sw = await phone.evaluate(() => document.documentElement.scrollWidth);
     check(sw <= 375, `375 px, no horizontal scroll: ${path} (${sw})`);
+  }
+  // Real 404 statuses, not 200 pages that say "not found".
+  for (const path of ["/v/vrd_doesnotexist", "/v/not-an-id", "/no-such-page"]) {
+    const res = await fetch(`${WEB}${path}`);
+    check(res.status === 404, `404 status: ${path} (${res.status})`);
   }
   await phone.goto(`${WEB}/`);
   await phone.getByText("Simulated").first().waitFor({ timeout: 10_000 });

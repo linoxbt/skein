@@ -8,10 +8,13 @@ import { and, asc, count, desc, eq, gte, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
+import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { ApiError, errorResponse } from "./errors";
+import { OPENAPI } from "./openapi";
+import { refuseUnsafeUrl } from "./safeurl";
 import { contextHash, FAILED_MESSAGE, normaliseContext, type Consumer, type Refusal, type RunOutcome, type VerdictEvent, type VerdictService } from "./service";
 import { privateKeyToAccount } from "viem/accounts";
 import { verifyMessage } from "viem";
@@ -170,18 +173,28 @@ export function createApp(service: VerdictService) {
     badKey: new RateLimiter(20),
     key: new RateLimiter(30),
     webhook: new RateLimiter(5),
+    kv: new RateLimiter(1200),
   };
   /** /miner/verdict: one run per token and policy at a time, however many dispatcher calls arrive. */
   const minerFlights = new Map<string, Promise<RunOutcome>>();
   const app = new Hono();
 
+  // Every request gets an id (X-Request-Id, echoed if the caller sent a sane one),
+  // one structured log line, and the id in any error body, so a report can be traced.
+  app.use("*", requestId({ limitLength: 64 }));
+  app.use("*", async (c, next) => {
+    const t0 = Date.now();
+    await next();
+    if (c.req.path === "/healthz" || c.req.path === "/readyz") return;
+    console.log(JSON.stringify({ level: "info", msg: "request", requestId: c.get("requestId"), method: c.req.method, path: c.req.path, status: c.res.status, ms: Date.now() - t0 }));
+  });
   app.use("*", secureHeaders({ crossOriginResourcePolicy: "cross-origin" }));
   app.use(
     "*",
     cors({
       origin: (origin) => (config.webOrigins.includes(origin) ? origin : null),
-      allowMethods: ["GET", "POST", "OPTIONS"],
-      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id"],
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id", "if-match", "if-none-match"],
       exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After"],
       maxAge: 600,
     }),
@@ -193,10 +206,13 @@ export function createApp(service: VerdictService) {
 
   app.onError((err, c) => {
     if (err instanceof ApiError) return errorResponse(c, err);
-    // Internals go to the log, never to the caller.
-    console.error(`${c.req.method} ${c.req.path}:`, err);
-    return c.json({ error: { code: "INTERNAL", message: "internal error" } }, 500);
+    // Internals go to the log, never to the caller; the request id links the two.
+    const id = c.get("requestId");
+    console.error(JSON.stringify({ level: "error", msg: "unhandled", requestId: id, method: c.req.method, path: c.req.path, error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err) }));
+    void service.deps.alerts?.raise("unhandled-error", `unhandled error on ${c.req.method} ${c.req.path} (request ${id}): ${err instanceof Error ? err.message : String(err)}`.slice(0, 500));
+    return c.json({ error: { code: "INTERNAL", message: "internal error", requestId: id } }, 500);
   });
+  app.notFound((c) => c.json({ error: { code: "NOT_FOUND", message: `no route ${c.req.method} ${c.req.path}`, requestId: c.get("requestId") } }, 404));
 
   const limit = (c: Context, l: RateLimiter, key: string) => {
     const wait = l.take(key);
@@ -252,6 +268,10 @@ export function createApp(service: VerdictService) {
   };
 
   app.get("/healthz", (c) => c.json({ ok: true }));
+  app.get("/v1/openapi.json", (c) => {
+    c.header("cache-control", "public, max-age=300");
+    return c.json(OPENAPI);
+  });
   app.get("/readyz", async (c) => {
     if (!service.accepting) return c.json({ ok: false, draining: true }, 503);
     await db.execute(sql`select 1`);
@@ -564,15 +584,84 @@ export function createApp(service: VerdictService) {
     } catch {
       parsed = null;
     }
-    if (!parsed || parsed.protocol !== "https:" || url.length > 500 || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(parsed.hostname)) {
-      throw new ApiError(400, "INVALID_REQUEST", "url must be a public https URL");
-    }
+    const refused = !parsed || url.length > 500 ? "not a URL of at most 500 characters" : await refuseUnsafeUrl(url, service.deps.lookup);
+    if (refused) throw new ApiError(400, "INVALID_REQUEST", `url must be a public https URL: ${refused}`);
     const secret = randomBytes(32).toString("base64url");
     await db.transaction(async (tx) => {
       await tx.update(schema.webhooks).set({ active: false }).where(eq(schema.webhooks.consumerId, consumer.id));
       await tx.insert(schema.webhooks).values({ consumerId: consumer.id, url, secret, secretHash: sha256(secret) });
     });
     return c.json({ url, secret, signature: "X-Skein-Signature: sha256=HMAC_SHA256(secret, body)", events: ["verdict.done", "verdict.refused"] }, 201);
+  });
+
+  /** The caller's active webhook, without its secret. */
+  app.get("/v1/webhooks", async (c) => {
+    const consumer = await consumerFor(c);
+    limit(c, limits.key, `key:${consumer.id}`);
+    const [hook] = await db
+      .select({ url: schema.webhooks.url, createdAt: schema.webhooks.createdAt })
+      .from(schema.webhooks)
+      .where(and(eq(schema.webhooks.consumerId, consumer.id), eq(schema.webhooks.active, true)));
+    return c.json({ webhook: hook ? { url: hook.url, createdAt: hook.createdAt } : null });
+  });
+
+  /** Turns the caller's webhook off. Idempotent. */
+  app.delete("/v1/webhooks", async (c) => {
+    const consumer = await consumerFor(c);
+    limit(c, limits.key, `key:${consumer.id}`);
+    const off = await db
+      .update(schema.webhooks)
+      .set({ active: false })
+      .where(and(eq(schema.webhooks.consumerId, consumer.id), eq(schema.webhooks.active, true)))
+      .returning({ id: schema.webhooks.id });
+    return c.json({ deleted: off.length > 0 });
+  });
+
+  /**
+   * A small key-value store for first-party apps (Skein Desk keeps its queue
+   * here). Only keys listed in KV_KEY_HASHES may use it; each key sees only its
+   * own namespace. Writes are conditional: If-None-Match: * creates, If-Match:
+   * <etag> replaces, and a lost race answers 412 so the caller re-reads.
+   */
+  const kvKey = (c: Context) => {
+    const key = c.req.query("key") ?? "";
+    if (!/^[A-Za-z0-9/_.:-]{1,200}$/.test(key)) throw new ApiError(400, "INVALID_REQUEST", "key must be 1-200 characters of letters, digits and / _ . : -");
+    return key;
+  };
+  async function kvConsumer(c: Context) {
+    const consumer = await consumerFor(c);
+    const presented = (c.req.header("authorization") ?? "").slice(7).trim();
+    if (!config.kvKeyHashes.includes(sha256(presented))) throw new ApiError(403, "FORBIDDEN", "this key may not use the key-value store");
+    limit(c, limits.kv, `key:${consumer.id}`);
+    return consumer;
+  }
+
+  app.get("/v1/kv", async (c) => {
+    const consumer = await kvConsumer(c);
+    const key = kvKey(c);
+    const [row] = await db.select({ value: schema.kv.value, etag: schema.kv.etag }).from(schema.kv).where(and(eq(schema.kv.consumerId, consumer.id), eq(schema.kv.key, key)));
+    if (!row) throw new ApiError(404, "NOT_FOUND", `no value for ${key}`);
+    return c.json({ key, value: row.value, etag: row.etag });
+  });
+
+  app.put("/v1/kv", async (c) => {
+    const consumer = await kvConsumer(c);
+    const key = kvKey(c);
+    const body = (await c.req.json().catch(() => null)) as { value?: unknown } | null;
+    if (!body || !("value" in body) || body.value === undefined) throw new ApiError(400, "INVALID_REQUEST", "send { value }");
+    const ifMatch = c.req.header("if-match");
+    const create = c.req.header("if-none-match") === "*";
+    if (!create && !ifMatch) throw new ApiError(428, "PRECONDITION_REQUIRED", "send If-None-Match: * to create, or If-Match: <etag> to replace");
+    const etag = randomBytes(12).toString("hex");
+    const written = create
+      ? await db.insert(schema.kv).values({ consumerId: consumer.id, key, value: body.value, etag }).onConflictDoNothing().returning({ etag: schema.kv.etag })
+      : await db
+          .update(schema.kv)
+          .set({ value: body.value, etag, updatedAt: now() })
+          .where(and(eq(schema.kv.consumerId, consumer.id), eq(schema.kv.key, key), eq(schema.kv.etag, ifMatch!)))
+          .returning({ etag: schema.kv.etag });
+    if (written.length === 0) throw new ApiError(412, "PRECONDITION_FAILED", create ? `${key} already exists` : `${key} changed since you read it`);
+    return c.json({ key, etag });
   });
 
   /**
