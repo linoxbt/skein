@@ -59,6 +59,21 @@ describe("the cache", () => {
   });
 });
 
+describe("errors", () => {
+  it("answers an unknown route with the JSON error shape and a request id", async () => {
+    const res = await api.app.request("/v1/nope");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string; requestId?: string } };
+    expect(body).toMatchObject({ error: { code: "NOT_FOUND" } });
+    expect(body.error.requestId).toBe(res.headers.get("x-request-id"));
+  });
+  it("echoes a caller's request id in the header and in error bodies", async () => {
+    const res = await api.app.request("/v1/verdicts/vrd_nope", { headers: { "x-request-id": "trace-123" } });
+    expect(res.headers.get("x-request-id")).toBe("trace-123");
+    expect(((await res.json()) as { error: { requestId?: string } }).error.requestId).toBe("trace-123");
+  });
+});
+
 describe("context", () => {
   it("takes a pool address or a Uniswap v4 pool id, and nothing else", async () => {
     const { post } = client(api);
@@ -147,6 +162,7 @@ describe("keys and webhooks", () => {
 
   it("delivers a signed webhook when an async verdict finishes", async () => {
     const delivered: { body: string; sig: string }[] = [];
+    api.service.deps.lookup = async () => ["93.184.216.34"];
     api.service.deps.fetch = async (_url, init) => {
       delivered.push({ body: String(init?.body), sig: new Headers(init?.headers).get("x-skein-signature") ?? "" });
       return new Response("ok");
@@ -163,7 +179,9 @@ describe("keys and webhooks", () => {
   });
 
   it("refuses a webhook URL that is not public https", async () => {
-    for (const url of ["http://x.example", "https://localhost/x", "https://169.254.169.254/latest"]) {
+    api.service.deps.lookup = async (h) => (h === "inward.example.com" ? ["10.0.0.7"] : ["93.184.216.34"]);
+    // Four, within the per-key limit (5, one used above); safeurl.test.ts covers the rest.
+    for (const url of ["http://x.example", "https://169.254.169.254/latest", "https://172.20.0.1/x", "https://inward.example.com/x"]) {
       const res = await api.app.request("/v1/webhooks", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${api.key}` }, body: JSON.stringify({ url }) });
       expect(res.status, url).toBe(400);
     }

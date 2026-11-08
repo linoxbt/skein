@@ -18,6 +18,7 @@ import { CHECK_INTENTS, type TelegraphClient } from "@skein/telegraph";
 import { and, desc, eq, gte, lt, ne } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import type { ApiConfig } from "./config";
+import { refuseUnsafeUrl, type Lookup } from "./safeurl";
 
 export interface ServiceDeps {
   db: Db;
@@ -30,6 +31,8 @@ export interface ServiceDeps {
   payerAddress?: string;
   /** Webhook delivery; replaced in tests. */
   fetch?: typeof fetch;
+  /** DNS for the webhook address check (safeurl.ts); replaced in tests. */
+  lookup?: Lookup;
 }
 
 export interface Consumer {
@@ -298,6 +301,12 @@ export class VerdictService {
     const payload = JSON.stringify({ event: `verdict.${body.status}`, runId: req.id, ...body });
     const doFetch = this.deps.fetch ?? fetch;
     for (const h of hooks) {
+      // DNS can change after registration: check the address again before sending.
+      const refused = await refuseUnsafeUrl(h.url, this.deps.lookup);
+      if (refused) {
+        console.warn(JSON.stringify({ level: "warn", msg: "webhook not delivered", reason: refused, consumer: req.consumer.id }));
+        continue;
+      }
       const sig = createHmac("sha256", h.secret).update(payload).digest("hex");
       for (let attempt = 0; attempt < 3; attempt++) {
         const ctl = new AbortController();
@@ -308,8 +317,11 @@ export class VerdictService {
             headers: { "content-type": "application/json", "x-skein-signature": `sha256=${sig}`, "x-skein-event": `verdict.${body.status}` },
             body: payload,
             signal: ctl.signal,
+            // A redirect could point anywhere, including inward: never follow one.
+            redirect: "manual",
           });
           if (res.ok) break;
+          if (res.status >= 300 && res.status < 400) break;
         } catch {
           // retried below
         } finally {

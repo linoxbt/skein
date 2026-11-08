@@ -39,5 +39,6 @@ export class ApiError extends Error {
 
 export function errorResponse(c: Context, e: ApiError) {
   for (const [k, v] of Object.entries(e.headers ?? {})) c.header(k, v);
-  return c.json({ error: { code: e.code, message: e.message, ...(e.details !== undefined ? { details: e.details } : {}) } }, e.status);
+  const requestId = (c.get as (k: string) => unknown)("requestId") as string | undefined;
+  return c.json({ error: { code: e.code, message: e.message, ...(e.details !== undefined ? { details: e.details } : {}), ...(requestId ? { requestId } : {}) } }, e.status);
 }

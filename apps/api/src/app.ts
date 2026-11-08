@@ -8,10 +8,12 @@ import { and, asc, count, desc, eq, gte, sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
+import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { ApiError, errorResponse } from "./errors";
+import { refuseUnsafeUrl } from "./safeurl";
 import { contextHash, FAILED_MESSAGE, normaliseContext, type Consumer, type Refusal, type RunOutcome, type VerdictEvent, type VerdictService } from "./service";
 import { privateKeyToAccount } from "viem/accounts";
 import { verifyMessage } from "viem";
@@ -175,6 +177,15 @@ export function createApp(service: VerdictService) {
   const minerFlights = new Map<string, Promise<RunOutcome>>();
   const app = new Hono();
 
+  // Every request gets an id (X-Request-Id, echoed if the caller sent a sane one),
+  // one structured log line, and the id in any error body, so a report can be traced.
+  app.use("*", requestId({ limitLength: 64 }));
+  app.use("*", async (c, next) => {
+    const t0 = Date.now();
+    await next();
+    if (c.req.path === "/healthz" || c.req.path === "/readyz") return;
+    console.log(JSON.stringify({ level: "info", msg: "request", requestId: c.get("requestId"), method: c.req.method, path: c.req.path, status: c.res.status, ms: Date.now() - t0 }));
+  });
   app.use("*", secureHeaders({ crossOriginResourcePolicy: "cross-origin" }));
   app.use(
     "*",
@@ -193,10 +204,12 @@ export function createApp(service: VerdictService) {
 
   app.onError((err, c) => {
     if (err instanceof ApiError) return errorResponse(c, err);
-    // Internals go to the log, never to the caller.
-    console.error(`${c.req.method} ${c.req.path}:`, err);
-    return c.json({ error: { code: "INTERNAL", message: "internal error" } }, 500);
+    // Internals go to the log, never to the caller; the request id links the two.
+    const id = c.get("requestId");
+    console.error(JSON.stringify({ level: "error", msg: "unhandled", requestId: id, method: c.req.method, path: c.req.path, error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err) }));
+    return c.json({ error: { code: "INTERNAL", message: "internal error", requestId: id } }, 500);
   });
+  app.notFound((c) => c.json({ error: { code: "NOT_FOUND", message: `no route ${c.req.method} ${c.req.path}`, requestId: c.get("requestId") } }, 404));
 
   const limit = (c: Context, l: RateLimiter, key: string) => {
     const wait = l.take(key);
@@ -564,9 +577,8 @@ export function createApp(service: VerdictService) {
     } catch {
       parsed = null;
     }
-    if (!parsed || parsed.protocol !== "https:" || url.length > 500 || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(parsed.hostname)) {
-      throw new ApiError(400, "INVALID_REQUEST", "url must be a public https URL");
-    }
+    const refused = !parsed || url.length > 500 ? "not a URL of at most 500 characters" : await refuseUnsafeUrl(url, service.deps.lookup);
+    if (refused) throw new ApiError(400, "INVALID_REQUEST", `url must be a public https URL: ${refused}`);
     const secret = randomBytes(32).toString("base64url");
     await db.transaction(async (tx) => {
       await tx.update(schema.webhooks).set({ active: false }).where(eq(schema.webhooks.consumerId, consumer.id));
