@@ -537,7 +537,9 @@ export function createApp(service: VerdictService) {
       payer: service.deps.payerAddress ?? null,
       attester: attester?.address ?? null,
       payerUsdcBalance: wallet.balanceUusdc === null ? null : usdc(wallet.balanceUusdc),
-      walletAlert: wallet.balanceUusdc !== null && wallet.balanceUusdc < config.hotWalletAlertUusdc,
+      // What purchases actually spend: the escrow, not the wallet (the alert follows it).
+      payerEscrowUsdc: wallet.escrowUusdc === null ? null : usdc(wallet.escrowUusdc),
+      walletAlert: wallet.escrowUusdc !== null && wallet.escrowUusdc < config.hotWalletAlertUusdc,
       catalogueFetchedAt: service.catalogue.fetchedAt,
       intents: Object.entries(CHECK_INTENTS).map(([check, intent]) => {
         const miners = intent ? service.catalogue.minersByIntent[intent] ?? [] : [];
@@ -758,13 +760,21 @@ export function createApp(service: VerdictService) {
   return app;
 }
 
-/** The purchaser wallet's USDC balance, refreshed by the server (null until read, or in tests). */
+/**
+ * The purchaser's balances, refreshed by the server (null until read, or in tests):
+ * escrowUusdc is the Telegraph escrow's effective balance, what purchases spend;
+ * balanceUusdc is the wallet's own test USDC, what a refill deposits from.
+ */
 export const walletState = (() => {
   let balanceUusdc: number | null = null;
+  let escrowUusdc: number | null = null;
   return {
-    get: () => ({ balanceUusdc }),
+    get: () => ({ balanceUusdc, escrowUusdc }),
     set: (v: number | null) => {
       balanceUusdc = v;
+    },
+    setEscrow: (v: number | null) => {
+      escrowUusdc = v;
     },
   };
 })();
