@@ -56,7 +56,7 @@ describe("two replicas on one database", () => {
       });
     const before = api.node.charges.length;
     const [a, b] = await Promise.all([ask(api.app), ask(replicaB)]);
-    const [ja, jb] = (await Promise.all([a.json(), b.json()])) as { id?: string; verdict: string }[];
+    const [ja, jb] = (await Promise.all([a.json(), b.json()])) as [{ id?: string; verdict: string }, { id?: string; verdict: string }];
     expect(ja.id).toBeTruthy();
     expect(jb.id).toBe(ja.id);
     // One verdict's worth of upstream purchases, not two.
