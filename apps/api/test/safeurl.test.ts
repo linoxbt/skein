@@ -35,3 +35,20 @@ describe("webhook URLs", () => {
     expect(await refuseUnsafeUrl("not a url", lookup)).toMatch(/URL/);
   });
 });
+
+describe("pinned delivery", () => {
+  it("connects to the address that was checked, whatever the hostname resolves to", async () => {
+    const { createServer } = await import("node:http");
+    const { pinnedFetch } = await import("../src/safeurl");
+    const server = createServer((req, res) => res.end(`reached ${req.headers.host}`));
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+    const port = (server.address() as { port: number }).port;
+    try {
+      // This name does not exist in DNS: only the pinned address can answer.
+      const res = await pinnedFetch("127.0.0.1", 4)(`http://hooks.nonexistent.invalid:${port}/x`, { method: "POST", body: "{}" });
+      expect(await res.text()).toBe(`reached hooks.nonexistent.invalid:${port}`);
+    } finally {
+      server.close();
+    }
+  });
+});

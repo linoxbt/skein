@@ -42,31 +42,65 @@ export function isPublicAddress(ip: string): boolean {
   return false;
 }
 
+/** A URL that passed the check, with the one public address delivery must connect to. */
+export type SafeUrl = { ok: true; address: string; family: 4 | 6 } | { ok: false; reason: string };
+
 /**
- * Null when `raw` is an https URL whose host resolves only to public
- * addresses; otherwise the reason it is refused. Checked when a webhook is
- * registered and again before each delivery (DNS can change in between).
+ * Checks that `raw` is an https URL whose host resolves only to public
+ * addresses, and returns the first of them. Delivery connects to that exact
+ * address (pinnedFetch), so a second DNS answer cannot redirect it inward
+ * (DNS rebinding). Checked at registration and again before each delivery.
  */
-export async function refuseUnsafeUrl(raw: string, lookup: Lookup = systemLookup): Promise<string | null> {
+export async function resolveSafeUrl(raw: string, lookup: Lookup = systemLookup): Promise<SafeUrl> {
   let u: URL;
   try {
     u = new URL(raw);
   } catch {
-    return "not a URL";
+    return { ok: false, reason: "not a URL" };
   }
-  if (u.protocol !== "https:") return "only https URLs are allowed";
-  if (u.username || u.password) return "credentials in the URL are not allowed";
+  if (u.protocol !== "https:") return { ok: false, reason: "only https URLs are allowed" };
+  if (u.username || u.password) return { ok: false, reason: "credentials in the URL are not allowed" };
   const host = u.hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  if (host === "localhost" || /\.(localhost|local|internal|lan|home|corp)$/.test(host) || !host.includes(".") && !isIP(host)) {
-    return "the host is not a public name";
+  if (host === "localhost" || /\.(localhost|local|internal|lan|home|corp)$/.test(host) || (!host.includes(".") && !isIP(host))) {
+    return { ok: false, reason: "the host is not a public name" };
   }
-  if (isIP(host)) return isPublicAddress(host) ? null : "the address is not public";
+  const literal = isIP(host);
+  if (literal) return isPublicAddress(host) ? { ok: true, address: host, family: literal as 4 | 6 } : { ok: false, reason: "the address is not public" };
   let addrs: string[];
   try {
     addrs = await lookup(host);
   } catch {
-    return "the host does not resolve";
+    return { ok: false, reason: "the host does not resolve" };
   }
-  if (addrs.length === 0) return "the host does not resolve";
-  return addrs.every(isPublicAddress) ? null : "the host resolves to an address that is not public";
+  if (addrs.length === 0) return { ok: false, reason: "the host does not resolve" };
+  if (!addrs.every(isPublicAddress)) return { ok: false, reason: "the host resolves to an address that is not public" };
+  return { ok: true, address: addrs[0]!, family: isIP(addrs[0]!) as 4 | 6 };
+}
+
+/** Null when `raw` is safe to call (resolveSafeUrl), otherwise the reason it is refused. */
+export async function refuseUnsafeUrl(raw: string, lookup: Lookup = systemLookup): Promise<string | null> {
+  const r = await resolveSafeUrl(raw, lookup);
+  return r.ok ? null : r.reason;
+}
+
+/**
+ * A fetch that connects only to `address`, whatever DNS says at connect time.
+ * TLS still verifies the certificate against the URL's hostname (SNI is the
+ * hostname), so pinning the address weakens nothing.
+ */
+export function pinnedFetch(address: string, family: 4 | 6): typeof fetch {
+  return (async (input: string | URL | Request, init?: RequestInit) => {
+    const { Agent, fetch: undiciFetch } = await import("undici");
+    const dispatcher = new Agent({
+      connect: {
+        lookup: (_host: string, opts: { all?: boolean }, cb: (err: Error | null, address: string | { address: string; family: number }[], family?: number) => void) =>
+          opts?.all ? cb(null, [{ address, family }]) : cb(null, address, family),
+      },
+    });
+    try {
+      return (await undiciFetch(String(input instanceof Request ? input.url : input), { ...(init as object), dispatcher } as never)) as unknown as Response;
+    } finally {
+      void dispatcher.close();
+    }
+  }) as typeof fetch;
 }

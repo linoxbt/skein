@@ -18,7 +18,7 @@ import { CHECK_INTENTS, type TelegraphClient } from "@skein/telegraph";
 import { and, desc, eq, gte, lt, ne } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import type { ApiConfig } from "./config";
-import { refuseUnsafeUrl, type Lookup } from "./safeurl";
+import { pinnedFetch, resolveSafeUrl, type Lookup } from "./safeurl";
 
 export interface ServiceDeps {
   db: Db;
@@ -301,20 +301,21 @@ export class VerdictService {
       .where(and(eq(schema.webhooks.consumerId, req.consumer.id), eq(schema.webhooks.active, true)))
       .catch(() => []);
     const payload = JSON.stringify({ event: `verdict.${body.status}`, runId: req.id, ...body });
-    const doFetch = this.deps.fetch ?? fetch;
     for (const h of hooks) {
-      // DNS can change after registration: check the address again before sending.
-      const refused = await refuseUnsafeUrl(h.url, this.deps.lookup);
-      if (refused) {
-        console.warn(JSON.stringify({ level: "warn", msg: "webhook not delivered", reason: refused, consumer: req.consumer.id }));
+      // DNS can change after registration: check the address again before sending,
+      // and connect to exactly the address checked (no second lookup to rebind).
+      const safe = await resolveSafeUrl(h.url, this.deps.lookup);
+      if (!safe.ok) {
+        console.warn(JSON.stringify({ level: "warn", msg: "webhook not delivered", reason: safe.reason, consumer: req.consumer.id }));
         continue;
       }
+      const send = this.deps.fetch ?? pinnedFetch(safe.address, safe.family);
       const sig = createHmac("sha256", h.secret).update(payload).digest("hex");
       for (let attempt = 0; attempt < 3; attempt++) {
         const ctl = new AbortController();
         const t = setTimeout(() => ctl.abort(), 5_000);
         try {
-          const res = await doFetch(h.url, {
+          const res = await send(h.url, {
             method: "POST",
             headers: { "content-type": "application/json", "x-skein-signature": `sha256=${sig}`, "x-skein-event": `verdict.${body.status}` },
             body: payload,
