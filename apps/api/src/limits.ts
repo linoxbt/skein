@@ -48,10 +48,11 @@ export class SharedRateLimiter implements Limiter {
   }
 }
 
-/** Drops buckets idle for an hour and expired flight leases. */
+/** Drops buckets idle for an hour, expired flight leases and error_log rows over 30 days old. */
 export async function pruneShared(db: Db): Promise<void> {
   await db.execute(sql`DELETE FROM rate_limits WHERE at < now() - interval '1 hour'`);
   await db.execute(sql`DELETE FROM flights WHERE expires_at < now()`);
+  await db.execute(sql`DELETE FROM error_log WHERE at < now() - interval '30 days'`);
 }
 
 /**

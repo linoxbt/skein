@@ -144,6 +144,20 @@ with the owner wallet:
   it cannot be changed on a registration. To move ownership, deregister
   (`deregisterMiner(5137)` returns the bond) and register again from the new wallet.
 
+## Alerts and errors
+
+- **Alerts** arrive as GitHub issues labelled `alert`. The uptime workflow
+  probes every 15 minutes and opens one when a check fails: API health,
+  database, purchaser escrow, spend cap, unhandled errors, web, Desk, sniper,
+  or the Telegraph miner. It mentions the owner, comments when the failures
+  change, and closes itself on recovery. `ALERT_WEBHOOK_URL` (Slack or Discord)
+  is optional and adds an immediate message from the API itself.
+- **Errors:** every unhandled API error is kept for 30 days in `error_log`
+  (message, stack, route, request id), and `/v1/status` shows
+  `errorsLastHour`. The error body a caller sees carries the same request id,
+  so a user's report leads straight to the row and the log line. `SENTRY_DSN` is
+  optional and sends the same errors to Sentry.
+
 ## Scaling
 
 The API runs as **two replicas** (Railway → `api` → Settings → Replicas).
@@ -168,8 +182,22 @@ database.
 
 ## Backups
 
-- **Postgres:** Railway → Postgres service → Backups. Check it is on and
-  scheduled for the project's plan. The data that matters is:
+- **Postgres:** the `backup` service (`apps/backup`, a Railway cron job, daily
+  at 03:17 UTC) runs `pg_dump` in custom format and uploads it to the private
+  Railway bucket `skein-backups` under `postgres/`, keeping the newest 30.
+  Railway's own volume backups need a Pro workspace, which this project is not
+  on; if it moves to Pro, turn those on too (Postgres → Backups). Each run logs
+  `backup uploaded` with the key, size and table count.
+
+  To restore: in Railway, open the bucket → Credentials, then, with those values
+  in `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL`:
+  ```sh
+  aws s3 ls s3://<bucket>/postgres/                       # pick a dump
+  aws s3 cp s3://<bucket>/postgres/skein-<time>.dump .
+  pg_restore --clean --if-exists --no-owner -d "$DATABASE_URL" skein-<time>.dump
+  ```
+  Restore into a new Postgres service first and point the API at it only once
+  `/readyz` and a `pnpm repro` of a recent verdict pass. The data that matters is:
   - `verdict_runs` and `purchases`: every paid receipt;
   - `consumers`: partner keys, stored as hashes.
 

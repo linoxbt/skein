@@ -1,7 +1,9 @@
 name: Uptime
-# Probes every public service every 15 minutes. A failed run is the alert:
-# GitHub emails the repository owner when a scheduled workflow fails, and the
-# Actions tab keeps the history. Free, no monitoring account needed.
+# Probes every public service every 15 minutes. A failure opens a GitHub issue
+# labelled "alert" (or comments on the open one when the failures change) and
+# mentions the repository owner, so it reaches the GitHub app and email; the
+# issue closes itself on recovery. The failed run also emails the owner.
+# Free, no monitoring account or webhook needed.
 # docs/RUNBOOK.md says what to do for each failing check.
 on:
   schedule:
@@ -10,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   probe:
@@ -17,28 +20,56 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Probe
+        id: probe
         shell: bash
         run: |
           set -u
           failed=0
+          : > failures.txt
           check() { # name, url, expected status, optional grep pattern that must NOT appear
             local name="$1" url="$2" want="$3" bad="${4:-}"
             local body code
             body=$(curl -sS -m 20 -w '\n%{http_code}' "$url" 2>&1) || true
             code="${body##*$'\n'}"; body="${body%$'\n'*}"
-            if [ "$code" != "$want" ]; then echo "::error::$name: HTTP $code (want $want) $url"; failed=1; return; fi
-            if [ -n "$bad" ] && grep -q "$bad" <<<"$body"; then echo "::error::$name: found $bad at $url"; failed=1; return; fi
+            if [ "$code" != "$want" ]; then echo "::error::$name: HTTP $code (want $want) $url"; echo "- **$name**: HTTP $code (want $want) $url" >> failures.txt; failed=1; return; fi
+            if [ -n "$bad" ] && grep -q "$bad" <<<"$body"; then echo "::error::$name: found $bad at $url"; echo "- **$name**: \`$bad\` at $url" >> failures.txt; failed=1; return; fi
             echo "ok $name ($code)"
           }
           check "API process"        https://api.skeinlabs.site/healthz 200
           check "API database"       https://api.skeinlabs.site/readyz 200
           check "API wallet"         https://api.skeinlabs.site/v1/status 200 '"walletAlert":true'
           check "API spend cap"      https://api.skeinlabs.site/v1/status 200 '"capAlert":true'
+          check "API errors"         https://api.skeinlabs.site/v1/status 200 '"errorsLastHour":[1-9]'
           check "Web site"           https://skeinlabs.site/ 200
           check "Web verdict 404"    https://skeinlabs.site/v/vrd_doesnotexist 404
           check "Desk queue"         https://desk.skeinlabs.site/api/applications 200
           check "Sniper"             https://sniper-production-bea6.up.railway.app/healthz 200
           check "Telegraph miner"    https://devnode.telegraphprotocol.com/api/miners/5137 200
           miner=$(curl -sS -m 20 https://devnode.telegraphprotocol.com/api/miners/5137 | grep -o '"activation_status":"[a-z]*"' || true)
-          if [ "$miner" != '"activation_status":"active"' ]; then echo "::error::Telegraph miner 5137 is not active ($miner)"; failed=1; else echo "ok miner active"; fi
+          if [ "$miner" != '"activation_status":"active"' ]; then echo "::error::Telegraph miner 5137 is not active ($miner)"; echo "- **Telegraph miner**: 5137 is not active ($miner)" >> failures.txt; failed=1; else echo "ok miner active"; fi
           exit $failed
+
+      - name: Open, update or close the alert issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -u
+          gh label create alert --color B60205 --description "Opened by the uptime probe" 2>/dev/null || true
+          open=$(gh issue list --label alert --state open --json number --jq '.[0].number // empty')
+          if [ -s failures.txt ]; then
+            list=$(cat failures.txt)
+            body=$(printf '%s\n\n@%s, what to do for each check: docs/RUNBOOK.md (Incidents). Run: %s\nErrors: `errorsLastHour` counts unhandled API errors; find them in the `error_log` table or the Railway api logs by request id.' "$list" "$OWNER" "$RUN_URL")
+            if [ -z "$open" ]; then
+              gh issue create --label alert --title "Skein alert: $(head -1 failures.txt | sed 's/^- \*\*\([^*]*\)\*\*.*/\1/') failing" --body "$body"
+            else
+              last=$(gh issue view "$open" --json body,comments --jq '(.comments | last | .body) // .body')
+              if [ "$(head -n "$(wc -l < failures.txt)" <<<"$last")" != "$list" ]; then gh issue comment "$open" --body "$body"; fi
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --comment "Recovered: every check passes. Run: $RUN_URL"
+          fi

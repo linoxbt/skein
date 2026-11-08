@@ -229,10 +229,22 @@ export function createApp(service: VerdictService) {
     const id = c.get("requestId");
     console.error(JSON.stringify({ level: "error", msg: "unhandled", requestId: id, method: c.req.method, path: c.req.path, error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err) }));
     void service.deps.errors?.capture(err, { requestId: id, route: `${c.req.method} ${c.req.path}` });
+    void logError(err, `${c.req.method} ${c.req.path}`, id);
     void service.deps.alerts?.raise("unhandled-error", `unhandled error on ${c.req.method} ${c.req.path} (request ${id}): ${err instanceof Error ? err.message : String(err)}`.slice(0, 500));
     return c.json({ error: { code: "INTERNAL", message: "internal error", requestId: id } }, 500);
   });
   app.notFound((c) => c.json({ error: { code: "NOT_FOUND", message: `no route ${c.req.method} ${c.req.path}`, requestId: c.get("requestId") } }, 404));
+
+  /** Keeps an unhandled error in error_log (30 days); never throws. */
+  const logError = async (err: unknown, route: string, requestId: string | undefined) => {
+    const e = err instanceof Error ? err : new Error(String(err));
+    const message = `${e.name}: ${e.message}`.slice(0, 1000);
+    const fingerprint = sha256(`${e.name}:${(e.message.split("\n")[0] ?? "").replace(/[0-9a-f]{8,}|\d+/gi, "#")}:${route.replace(/\/(vrd|run)_[\w-]+|\/0x[0-9a-fA-F]+/g, "/:id")}`).slice(0, 16);
+    await db
+      .insert(schema.errorLog)
+      .values({ service: "skein-api", fingerprint, message, route, requestId: requestId ?? null, stack: e.stack?.slice(0, 8000) ?? null })
+      .catch(() => {});
+  };
 
   const limit = async (c: Context, l: Limiter, key: string) => {
     const wait = await l.take(key);
@@ -675,6 +687,7 @@ export function createApp(service: VerdictService) {
     const spent = await service.spentTodayUusdc();
     const health = await intentHealth();
     const wallet = walletState.get();
+    const [errs] = await db.select({ n: count() }).from(schema.errorLog).where(gte(schema.errorLog.at, new Date(t - 3_600_000)));
     return c.json({
       network: config.networkLabel ?? config.network.caip2,
       node: config.networkLabel === "simulated" ? "local fake node" : config.network.nodeUrl,
@@ -694,6 +707,8 @@ export function createApp(service: VerdictService) {
       dailyCapUsdc: usdc(config.dailyCapUusdc),
       // Spec: stop-and-alert at 80% of the day's cap. Verdicts stop at 100% (the spend gate).
       capAlert: spent >= 0.8 * config.dailyCapUusdc,
+      // Unhandled errors in the last hour, across replicas; details in error_log and the logs.
+      errorsLastHour: errs?.n ?? 0,
       chainsAnalysed: SUPPORTED_CHAINS,
     });
   });

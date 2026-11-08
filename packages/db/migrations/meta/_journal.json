@@ -50,6 +50,13 @@
       "when": 1794125219373,
       "tag": "0006_replicas",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794126788315,
+      "tag": "0007_error_log",
+      "breakpoints": true
     }
   ]
 }

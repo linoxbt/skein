@@ -290,6 +290,26 @@ export const flights = pgTable("flights", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
+/**
+ * Unhandled errors, kept 30 days: the self-hosted half of error tracking.
+ * /v1/status shows only the last hour's count; the details stay here and in
+ * the logs (matched by request id). Sentry gets them too when SENTRY_DSN is set.
+ */
+export const errorLog = pgTable(
+  "error_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    service: text("service").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    message: text("message").notNull(),
+    route: text("route"),
+    requestId: text("request_id"),
+    stack: text("stack"),
+  },
+  (t) => [index("error_log_at").on(t.at)],
+);
+
 export const webhooks = pgTable("webhooks", {
   id: uuid("id").primaryKey().defaultRandom(),
   consumerId: uuid("consumer_id").notNull().references(() => consumers.id),
