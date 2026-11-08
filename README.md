@@ -58,6 +58,25 @@ Partner keys are free during the hackathon:
 [request one](https://github.com/linoxbt/skein/issues/new?template=partner-key.yml).
 A runnable example is in [`examples/listing-gate`](examples/listing-gate).
 
+**API reference:** the OpenAPI 3.1 document is served at
+[`/v1/openapi.json`](https://api.skeinlabs.site/v1/openapi.json); load it into
+any OpenAPI viewer or client generator. Every error has the shape
+`{ error: { code, message, requestId } }`, and every response carries `X-Request-Id`.
+
+**Webhooks** tell you when an async verdict is sealed, instead of polling:
+
+```ts
+const { secret } = await skein.setWebhook("https://you.example/skein");   // shown once: store it
+// in your handler, with the raw request body:
+import { verifyWebhook } from "@skeinlabs/sdk/webhooks";
+if (!(await verifyWebhook(rawBody, req.headers["x-skein-signature"], secret))) return res.status(401).end();
+```
+
+Deliveries are POSTs carrying `X-Skein-Event` (`verdict.done`, `verdict.refused`)
+and `X-Skein-Signature: sha256=…`, an HMAC of the body. The URL must be public
+https; it is checked again before each delivery, and redirects are not followed.
+`skein.webhook()` shows the current one, and `skein.deleteWebhook()` turns it off.
+
 ## Layout
 
 ```
@@ -75,7 +94,8 @@ packages/
   ui/         shared design tokens and components (web and Desk)
 apps/
   api/        Hono API: /v1/verdicts (+ /bom, /events SSE), /v1/verify, /v1/quote,
-              /v1/status, /v1/ledger, /v1/policies, /miner/verdict; Dockerfile
+              /v1/status, /v1/ledger, /v1/policies, /v1/webhooks, /v1/openapi.json,
+              /miner/verdict; Dockerfile
   web/        Next.js 15 console: live Exploded View, verdict pages, verify, policies,
               ledger, status, integrate; Dockerfile (standalone) or Netlify
   desk/       Skein Desk: a fictional exchange's listing queue; an agent buys a verdict

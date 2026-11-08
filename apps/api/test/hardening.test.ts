@@ -178,6 +178,18 @@ describe("keys and webhooks", () => {
     expect(JSON.parse(hit.body)).toMatchObject({ event: "verdict.done", id: started.id });
   });
 
+  it("shows the caller's webhook without its secret, and turns it off", async () => {
+    api.service.deps.lookup = async () => ["93.184.216.34"];
+    const auth = { authorization: `Bearer ${api.key}` };
+    const get = async () => (await (await api.app.request("/v1/webhooks", { headers: auth })).json()) as { webhook: { url: string; secret?: string } | null };
+    expect((await get()).webhook?.url).toBe("https://hooks.example.com/skein");
+    expect(JSON.stringify(await get())).not.toContain("secret");
+    const del = (await (await api.app.request("/v1/webhooks", { method: "DELETE", headers: auth })).json()) as { deleted: boolean };
+    expect(del.deleted).toBe(true);
+    expect((await get()).webhook).toBeNull();
+    expect((await api.app.request("/v1/webhooks", { headers: {} })).status).toBe(402);
+  });
+
   it("refuses a webhook URL that is not public https", async () => {
     api.service.deps.lookup = async (h) => (h === "inward.example.com" ? ["10.0.0.7"] : ["93.184.216.34"]);
     // Four, within the per-key limit (5, one used above); safeurl.test.ts covers the rest.

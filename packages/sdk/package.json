@@ -1,12 +1,13 @@
 {
   "name": "@skeinlabs/sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "TypeScript client for Skein token listing verdicts: verdict(), quote(), verify(), stream(), typed errors, retries and a spend cap checked before any payment. Pays with a partner key or per call through Telegraph.",
   "exports": {
     ".": "./src/index.ts",
     "./telegraph": "./src/telegraph.ts",
-    "./attest": "./src/attest.ts"
+    "./attest": "./src/attest.ts",
+    "./webhooks": "./src/webhooks.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -48,7 +49,11 @@
         "types": "./dist/attest.d.ts",
         "import": "./dist/attest.js"
       },
-      "./package.json": "./package.json"
+      "./package.json": "./package.json",
+      "./webhooks": {
+        "types": "./dist/webhooks.d.ts",
+        "import": "./dist/webhooks.js"
+      }
     },
     "types": "./dist/index.d.ts"
   },

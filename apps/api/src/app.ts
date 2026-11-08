@@ -13,6 +13,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { ApiError, errorResponse } from "./errors";
+import { OPENAPI } from "./openapi";
 import { refuseUnsafeUrl } from "./safeurl";
 import { contextHash, FAILED_MESSAGE, normaliseContext, type Consumer, type Refusal, type RunOutcome, type VerdictEvent, type VerdictService } from "./service";
 import { privateKeyToAccount } from "viem/accounts";
@@ -191,7 +192,7 @@ export function createApp(service: VerdictService) {
     "*",
     cors({
       origin: (origin) => (config.webOrigins.includes(origin) ? origin : null),
-      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
       allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id"],
       exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After"],
       maxAge: 600,
@@ -265,6 +266,10 @@ export function createApp(service: VerdictService) {
   };
 
   app.get("/healthz", (c) => c.json({ ok: true }));
+  app.get("/v1/openapi.json", (c) => {
+    c.header("cache-control", "public, max-age=300");
+    return c.json(OPENAPI);
+  });
   app.get("/readyz", async (c) => {
     if (!service.accepting) return c.json({ ok: false, draining: true }, 503);
     await db.execute(sql`select 1`);
@@ -585,6 +590,29 @@ export function createApp(service: VerdictService) {
       await tx.insert(schema.webhooks).values({ consumerId: consumer.id, url, secret, secretHash: sha256(secret) });
     });
     return c.json({ url, secret, signature: "X-Skein-Signature: sha256=HMAC_SHA256(secret, body)", events: ["verdict.done", "verdict.refused"] }, 201);
+  });
+
+  /** The caller's active webhook, without its secret. */
+  app.get("/v1/webhooks", async (c) => {
+    const consumer = await consumerFor(c);
+    limit(c, limits.key, `key:${consumer.id}`);
+    const [hook] = await db
+      .select({ url: schema.webhooks.url, createdAt: schema.webhooks.createdAt })
+      .from(schema.webhooks)
+      .where(and(eq(schema.webhooks.consumerId, consumer.id), eq(schema.webhooks.active, true)));
+    return c.json({ webhook: hook ? { url: hook.url, createdAt: hook.createdAt } : null });
+  });
+
+  /** Turns the caller's webhook off. Idempotent. */
+  app.delete("/v1/webhooks", async (c) => {
+    const consumer = await consumerFor(c);
+    limit(c, limits.key, `key:${consumer.id}`);
+    const off = await db
+      .update(schema.webhooks)
+      .set({ active: false })
+      .where(and(eq(schema.webhooks.consumerId, consumer.id), eq(schema.webhooks.active, true)))
+      .returning({ id: schema.webhooks.id });
+    return c.json({ deleted: off.length > 0 });
   });
 
   /**
