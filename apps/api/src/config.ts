@@ -1,4 +1,5 @@
 import { networkFromEnv, type NetworkConfig } from "@skein/telegraph";
+import { x402FromEnv, type X402Config } from "./x402";
 
 export interface ApiConfig {
   port: number;
@@ -36,10 +37,14 @@ export interface ApiConfig {
   revokedKeyHashes: string[];
   /** SHA-256 hashes of the partner keys that may use /v1/kv (first-party apps such as Skein Desk). */
   kvKeyHashes: string[];
+  /** Where rate-limit buckets live: postgres (shared by every replica, the default) or memory (one process). */
+  rateLimitStore: "postgres" | "memory";
   /** SSE event rows older than this are pruned (they are not evidence). */
   eventRetentionDays: number;
   /** Skein's own miner registration ids, never bought from. */
   selfRegistrationIds: string[];
+  /** Pay-per-verdict on POST /v1/verdicts without a partner key; off unless X402_PAY_TO is set. */
+  x402?: X402Config;
 }
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -74,9 +79,14 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     cacheRefreshMinAgeSec: num(env.CACHE_REFRESH_MIN_AGE_SEC, 480),
     hotWalletAlertUusdc: usdc(env.HOT_WALLET_ALERT_USDC, 2),
     trustProxyHops: num(env.TRUST_PROXY_HOPS, 1),
+    rateLimitStore: env.RATE_LIMIT_STORE === "memory" ? "memory" : "postgres",
     kvKeyHashes: (env.KV_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     revokedKeyHashes: (env.REVOKED_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     eventRetentionDays: num(env.EVENT_RETENTION_DAYS, 7),
     selfRegistrationIds: (env.SKEIN_SELF_REGISTRATION_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    ...(() => {
+      const x = x402FromEnv(env);
+      return x ? { x402: x } : {};
+    })(),
   };
 }

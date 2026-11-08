@@ -16,6 +16,7 @@
     "@hono/node-server": "2.1.5",
     "@skein/db": "workspace:*",
     "@skein/engine": "workspace:*",
+    "@skein/errors": "workspace:*",
     "@skein/pipeline": "workspace:*",
     "@skein/policies": "workspace:*",
     "@skein/telegraph": "workspace:*",

@@ -32,11 +32,32 @@ open, confidence, cost and a verifiable bill of materials.
 > let one scam through. Skein abstained on 8 of 20. Small sample, current-state
 > basis: see [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
 >
-> **Not done yet:** x402 payment on the direct API is not built, and the
-> prospective benchmark (the sniper's launches, labelled 72 hours later) starts
-> producing cases from Nov 11. See docs/REVIEWER_GUIDE.md for what to try.
+> **Pay per verdict, no account (x402).** With `X402_PAY_TO` set, `POST
+> /v1/verdicts` without a partner key answers 402 with standard x402 terms
+> (0.25 USDC on Base Sepolia), and any x402 client pays and gets the verdict.
+> The payment settles only once a verdict is sealed (docs/DECISIONS.md L30).
+>
+> **Not done yet:** the prospective benchmark (the sniper's launches, labelled
+> 72 hours later) starts producing cases from Nov 11. See
+> docs/REVIEWER_GUIDE.md for what to try.
 
 ## Use it
+
+Without an account, pay per verdict with any x402 client:
+
+```ts
+import { wrapFetchWithPayment } from "x402-fetch";
+import { privateKeyToAccount } from "viem/accounts";
+
+// x402-fetch refuses to pay over 0.10 USDC unless told otherwise; a verdict is 0.25.
+const pay = wrapFetchWithPayment(fetch, privateKeyToAccount(process.env.PAYER_KEY as `0x${string}`), 250_000n);
+const res = await pay("https://api.skeinlabs.site/v1/verdicts", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ subject: { chainId: 8453, token: "0x…" } }),
+});
+// 200 with the signed verdict; X-PAYMENT-RESPONSE carries the settlement transaction.
+```
 
 **[Tutorial: build a listing gate with Skein →](https://skeinlabs.site/tutorial)**
 From a free quote to a verified paid verdict, paying per call through

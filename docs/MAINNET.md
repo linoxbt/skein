@@ -16,9 +16,11 @@ not code, plus the steps below.
    registration), host the YAML at a stable HTTPS URL, then
    `miner/tools.ts register` and record the registration ID in
    `SKEIN_SELF_REGISTRATION_IDS`.
-5. **Payments in.** Charging partners on the direct API (x402 on `/v1/verdicts`)
-   is not built; until it is, the direct API is partner-key only and revenue
-   comes through Telegraph.
+5. **Payments in.** x402 on `/v1/verdicts` is built (L30). For mainnet set
+   `X402_NETWORK=base`, `X402_PAY_TO` to a wallet you control, and
+   `X402_FACILITATOR_URL` to a facilitator that settles on Base mainnet (the
+   public x402.org facilitator is for testnets). Check the price
+   (`X402_PRICE_USDC`) against upstream cost and `X402_DAILY_CAP_USDC`.
 6. **Database.** A non-owner role for the API with INSERT and SELECT only on
    the evidence tables, and backups with point-in-time restore.
 7. **Policies.** Freeze the tuned thresholds as a new policy version
