@@ -483,3 +483,21 @@ Three decisions by the project owner, on the tune split's findings:
   this moved VIRTUAL and GMX from REJECT to ESCALATE and changed no bad token.
 The holdout split is run once, after this commit, with these rules and
 `dex-list@0.2.0`; its result is reported as it comes.
+
+**L28. "Adding a PASS never raises risk" holds for new or at-least-as-heavy provider groups.**
+CI's deep property run (20,000 cases) found a counterexample under
+`cex-standard`. One provider had answered two light checks (holder count and
+code review, weight 0.05 each, the review a WARN). A PASS from the same
+provider for a heavier, unanswered check (holder concentration, 0.2) lifted
+the group's shared weight from 0.05 to 0.2. The review's share grew from 0.025
+to 0.033, more than the larger total offset: risk went from 136 to 143 bps.
+This is inherent in the independence rule (a provider family counts once, at
+the weight of its heaviest check, D8), not a coding error. Changing the rule
+would change the engine the holdout result was frozen under, so the claim is
+stated precisely instead. Adding a PASS never raises risk when it:
+- joins the check's deciding group;
+- answers an unanswered check from a new provider group;
+- or answers one from a group whose heaviest answered check weighs at least as
+  much (the group's shared weight stays fixed, and the risky members' shares shrink).
+
+The property test now asserts exactly this, and CI no longer fails on random seeds.
