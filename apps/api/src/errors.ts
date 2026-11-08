@@ -22,6 +22,9 @@ export type ErrorCode =
   | "VERDICT_FAILED"
   | "LOST"
   | "PAYLOAD_TOO_LARGE"
+  | "FORBIDDEN"
+  | "PRECONDITION_REQUIRED"
+  | "PRECONDITION_FAILED"
   | "INTERNAL";
 
 /** Every error body is { error: { code, message, details } }. */

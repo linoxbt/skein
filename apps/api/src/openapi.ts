@@ -136,6 +136,21 @@ export const OPENAPI = {
       },
       delete: { summary: "Turn the caller's webhook off", security: [{ partnerKey: [] }], responses: { "200": { description: "{ deleted: boolean }" }, "401": error } },
     },
+    "/v1/kv": {
+      get: {
+        summary: "Read one value from the caller's key-value namespace (first-party apps only: KV_KEY_HASHES)",
+        security: [{ partnerKey: [] }],
+        parameters: [{ name: "key", in: "query", required: true, schema: { type: "string", pattern: "^[A-Za-z0-9/_.:-]{1,200}$" } }],
+        responses: { "200": { description: "{ key, value, etag }" }, "403": error, "404": error },
+      },
+      put: {
+        summary: "Write one value, conditionally: If-None-Match: * creates, If-Match: <etag> replaces",
+        security: [{ partnerKey: [] }],
+        parameters: [{ name: "key", in: "query", required: true, schema: { type: "string" } }],
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["value"], properties: { value: {} } } } } },
+        responses: { "200": { description: "{ key, etag }" }, "403": error, "412": error, "428": error },
+      },
+    },
     "/miner/verdict": {
       post: {
         summary: "Telegraph's miner endpoint (FRAUD_RISK_GENERAL). Called by the network's dispatcher only.",

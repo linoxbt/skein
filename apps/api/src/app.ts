@@ -173,6 +173,7 @@ export function createApp(service: VerdictService) {
     badKey: new RateLimiter(20),
     key: new RateLimiter(30),
     webhook: new RateLimiter(5),
+    kv: new RateLimiter(1200),
   };
   /** /miner/verdict: one run per token and policy at a time, however many dispatcher calls arrive. */
   const minerFlights = new Map<string, Promise<RunOutcome>>();
@@ -192,8 +193,8 @@ export function createApp(service: VerdictService) {
     "*",
     cors({
       origin: (origin) => (config.webOrigins.includes(origin) ? origin : null),
-      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id"],
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id", "if-match", "if-none-match"],
       exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After"],
       maxAge: 600,
     }),
@@ -614,6 +615,53 @@ export function createApp(service: VerdictService) {
       .where(and(eq(schema.webhooks.consumerId, consumer.id), eq(schema.webhooks.active, true)))
       .returning({ id: schema.webhooks.id });
     return c.json({ deleted: off.length > 0 });
+  });
+
+  /**
+   * A small key-value store for first-party apps (Skein Desk keeps its queue
+   * here). Only keys listed in KV_KEY_HASHES may use it; each key sees only its
+   * own namespace. Writes are conditional: If-None-Match: * creates, If-Match:
+   * <etag> replaces, and a lost race answers 412 so the caller re-reads.
+   */
+  const kvKey = (c: Context) => {
+    const key = c.req.query("key") ?? "";
+    if (!/^[A-Za-z0-9/_.:-]{1,200}$/.test(key)) throw new ApiError(400, "INVALID_REQUEST", "key must be 1-200 characters of letters, digits and / _ . : -");
+    return key;
+  };
+  async function kvConsumer(c: Context) {
+    const consumer = await consumerFor(c);
+    const presented = (c.req.header("authorization") ?? "").slice(7).trim();
+    if (!config.kvKeyHashes.includes(sha256(presented))) throw new ApiError(403, "FORBIDDEN", "this key may not use the key-value store");
+    limit(c, limits.kv, `key:${consumer.id}`);
+    return consumer;
+  }
+
+  app.get("/v1/kv", async (c) => {
+    const consumer = await kvConsumer(c);
+    const key = kvKey(c);
+    const [row] = await db.select({ value: schema.kv.value, etag: schema.kv.etag }).from(schema.kv).where(and(eq(schema.kv.consumerId, consumer.id), eq(schema.kv.key, key)));
+    if (!row) throw new ApiError(404, "NOT_FOUND", `no value for ${key}`);
+    return c.json({ key, value: row.value, etag: row.etag });
+  });
+
+  app.put("/v1/kv", async (c) => {
+    const consumer = await kvConsumer(c);
+    const key = kvKey(c);
+    const body = (await c.req.json().catch(() => null)) as { value?: unknown } | null;
+    if (!body || !("value" in body) || body.value === undefined) throw new ApiError(400, "INVALID_REQUEST", "send { value }");
+    const ifMatch = c.req.header("if-match");
+    const create = c.req.header("if-none-match") === "*";
+    if (!create && !ifMatch) throw new ApiError(428, "PRECONDITION_REQUIRED", "send If-None-Match: * to create, or If-Match: <etag> to replace");
+    const etag = randomBytes(12).toString("hex");
+    const written = create
+      ? await db.insert(schema.kv).values({ consumerId: consumer.id, key, value: body.value, etag }).onConflictDoNothing().returning({ etag: schema.kv.etag })
+      : await db
+          .update(schema.kv)
+          .set({ value: body.value, etag, updatedAt: now() })
+          .where(and(eq(schema.kv.consumerId, consumer.id), eq(schema.kv.key, key), eq(schema.kv.etag, ifMatch!)))
+          .returning({ etag: schema.kv.etag });
+    if (written.length === 0) throw new ApiError(412, "PRECONDITION_FAILED", create ? `${key} already exists` : `${key} changed since you read it`);
+    return c.json({ key, etag });
   });
 
   /**

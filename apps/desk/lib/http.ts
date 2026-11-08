@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 /** The shape every Desk API error has: the same as Skein's API. */
 export const errorResponse = (status: number, code: string, message: string) => NextResponse.json({ error: { code, message } }, { status });
 
-/** True for a failure of the Desk's store (Netlify Blobs, or the file store in development). */
-export const isStoreFailure = (e: unknown) => e instanceof Error && /^blobs |ENOENT|EACCES|BlobsInternalError|MissingBlobsEnvironmentError/.test(`${e.name} ${e.message}`.replace(/^Error /, ""));
+/** True for a failure of the Desk's store (Skein's /v1/kv, Netlify Blobs, or the file store in development). */
+export const isStoreFailure = (e: unknown) => e instanceof Error && /^(blobs|store) |ENOENT|EACCES|BlobsInternalError|MissingBlobsEnvironmentError/.test(`${e.name} ${e.message}`.replace(/^Error /, ""));
 
 /**
  * Runs a route handler so a failure never reaches the client as an empty 500:
