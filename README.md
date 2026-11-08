@@ -41,6 +41,9 @@ open, confidence, cost and a verifiable bill of materials.
 > 72 hours later) starts producing cases from Nov 11. See
 > docs/REVIEWER_GUIDE.md for what to try.
 
+**[Watch the 2½-minute demo →](docs/demo/skein-demo.mp4)**: a real listing
+application, decided by an agent that pays Telegraph miners, then verified.
+
 ## Use it
 
 Without an account, pay per verdict with any x402 client:
