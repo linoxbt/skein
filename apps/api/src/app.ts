@@ -745,6 +745,15 @@ export function createApp(service: VerdictService) {
       LEFT JOIN ${schema.findings} f ON f.verdict_id = v.id AND f."check" = r->>'check'
       WHERE v.verdict = 'ABSTAIN' AND r->>'code' IN ('MISSING_REQUIRED_CHECK', 'LOW_COVERAGE')
       GROUP BY 1, 2, 3, 4 ORDER BY n DESC LIMIT 25`);
+    // The same mix over rolling windows: the all-time mix still carries the first days' payment outage.
+    const windows = await db
+      .select({
+        verdict: schema.verdicts.verdict,
+        h24: sql<number>`count(*) FILTER (WHERE ${schema.verdicts.createdAt} > now() - interval '24 hours')::int`,
+        h72: sql<number>`count(*) FILTER (WHERE ${schema.verdicts.createdAt} > now() - interval '72 hours')::int`,
+      })
+      .from(schema.verdicts)
+      .groupBy(schema.verdicts.verdict);
     const [ab] = await db.select({ n: count(), last7d: sql<number>`count(*) FILTER (WHERE ${schema.verdicts.createdAt} > now() - interval '7 days')::int` }).from(schema.verdicts).where(eq(schema.verdicts.verdict, "ABSTAIN"));
     const causeRows = ((causes as unknown as { rows?: unknown[] }).rows ?? (causes as unknown as unknown[])) as { code: string; check: string; status: string; note: string; n: number; last7d: number }[];
     return {
@@ -754,6 +763,8 @@ export function createApp(service: VerdictService) {
       revenueOwedUsdc: usdc(Number(owed?.s ?? 0)),
       receipts: spend?.receipts ?? 0,
       minersUsed: Number(miners?.n ?? 0),
+      last24h: Object.fromEntries(windows.map((w) => [w.verdict, Number(w.h24)])),
+      last72h: Object.fromEntries(windows.map((w) => [w.verdict, Number(w.h72)])),
       abstain: { total: ab?.n ?? 0, last7d: Number(ab?.last7d ?? 0), causes: causeRows.map((r) => ({ ...r, n: Number(r.n), last7d: Number(r.last7d) })) },
       recent,
     };
