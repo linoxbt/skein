@@ -55,6 +55,10 @@ export interface Ledger {
   receipts: number;
   minersUsed: number;
   recent: { id: string; verdict: string; createdAt: string }[];
+  /** The same mix over rolling windows (absent on older API builds). */
+  last24h?: Record<string, number>;
+  last72h?: Record<string, number>;
+  abstain?: { total: number; last7d: number; causes: { code: string; check: string; status: string; note: string; n: number; last7d: number }[] };
 }
 export const getLedger = () => call<Ledger>("/v1/ledger");
 

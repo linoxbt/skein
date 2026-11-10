@@ -77,4 +77,15 @@ describe("probe", () => {
     const beats = await pg.query<{ name: string; detail: string }>(`SELECT name, detail FROM heartbeats WHERE name = 'probe'`);
     expect(beats.rows[0]!.detail).toContain("failing");
   });
+
+  it("keeps checking and alerting when its database is broken", async () => {
+    const broken = { query: async () => { throw new Error('relation "heartbeats" does not exist'); } };
+    const w = world(new Set(["api"]));
+    const alerter = new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: broken, fetch: w.f });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await runOnce({ ctx: { fetch: w.f, db: broken, now: Date.now }, alerter, db: broken, retryMs: 1 });
+    expect(r.failing.map((x) => x.key).sort()).toEqual(["api", "backup"]);
+    expect(r.failing.find((x) => x.key === "backup")!.reason).toContain("heartbeats");
+    expect(w.pushes.length).toBeGreaterThanOrEqual(2); // alerts still went out, deduplicated in memory
+  });
 });
