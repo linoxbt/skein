@@ -421,6 +421,7 @@ packages/
   sdk/         @skeinlabs/sdk: typed client, retries, spend cap, webhooks; API key or Telegraph rail
   mcp/         @skeinlabs/mcp: stdio MCP server (skein_verdict, skein_quote, skein_verify)
   errors/      Sentry-compatible error reporter, no dependencies
+  alerts/      alerts to ntfy, Slack or Discord, deduplicated across processes in Postgres
   ui/          design tokens and shared components (web and Desk)
 apps/
   api/         Hono API, miner endpoint, x402, shared rate limits; Dockerfile
@@ -428,6 +429,7 @@ apps/
   desk/        Skein Desk, the agent-run listing queue; Netlify
   sniper/      Skein Sniper, the Mission 14 agent; Dockerfile
   backup/      nightly pg_dump to a private bucket (Railway cron)
+  probe/       checks everything every 10 minutes and pushes alerts (Railway cron)
 miner/         miner YAML, validation, escrow and registration tools
 eval/          benchmark harness (run, report, baselines, bootstrap) and replayable verdicts
 e2e/           browser tests: console flow, verify, 375 px layout, axe WCAG 2 AA
@@ -446,7 +448,7 @@ local stack uses an in-memory database.
 ```sh
 pnpm install
 pnpm typecheck
-pnpm test                       # about 300 tests: engine, client, pipeline, API, SDK, MCP, Desk, sniper
+pnpm test                       # over 300 tests: engine, client, pipeline, API (as the restricted DB role), SDK, MCP, Desk, sniper, probe
 ```
 
 **Run the whole stack locally.** It needs no accounts and no money; all of
@@ -496,6 +498,7 @@ pnpm policies:lock                                      # record a newly publish
 | Skein Sniper | Railway | https://sniper-production-bea6.up.railway.app |
 | Postgres | Railway | private network only |
 | Backups | Railway cron and bucket | nightly, 30 kept |
+| Probe | Railway cron | every 10 minutes |
 
 - **Continuous delivery.** The API and sniper deploy from `main` only after
   CI is green. Both Netlify sites build from the repository on every merge.
@@ -505,11 +508,16 @@ pnpm policies:lock                                      # record a newly publish
   streams and spend holds all live in Postgres, so any number of API
   instances behaves as one.
 - **Observability.**
-  - An uptime probe runs every 15 minutes and opens and closes GitHub issues
-    labelled `alert`.
+  - A probe on Railway checks every service, the escrow, the spend cap, the
+    database role, the Telegraph miner and the nightly backup every 10
+    minutes.
+  - It pushes alerts and recoveries to ntfy, Slack or Discord, deduplicated
+    across replicas in Postgres. GitHub issues are the second line.
   - Unhandled errors are kept for 30 days in `error_log`, counted in
     `/v1/status`, and sent to Sentry when `SENTRY_DSN` is set.
-  - The API also sends optional Slack or Discord alerts.
+- **Load.** Tested at 400 simultaneous paid verdicts across two replicas on
+  real Postgres. No 5xx, every purchase matched to a charge, idempotency and
+  spend caps exact ([docs/LOADTEST.md](docs/LOADTEST.md)).
 - **Releases.** `@skeinlabs/sdk` and `@skeinlabs/mcp` are published with npm
   provenance by the *Release packages* workflow.
 - **Partner keys.** `node scripts/issue-partner-key.mjs "Name" team 2 ./name.key`
@@ -535,6 +543,9 @@ Incidents, rollback, secret rotation, restores and scaling are covered in
 - **Outbound requests.** Webhook URLs are resolved and checked against
   private, loopback and metadata ranges, then pinned to the checked address.
   Redirects are never followed.
+- **Database role.** The API's runtime queries run as `skein_app`. It can only
+  insert into and read evidence, has no DDL and no RLS bypass, and the whole
+  test suite runs under it.
 - **Data.** Evidence tables are append-only, row-level security is on, and
   internals never reach an error response; logs link to them by request id.
 - **Supply chain.** Application dependencies are pinned to exact versions.

@@ -1,0 +1,72 @@
+name: Prospective benchmark
+# Every day: label the launches the sniper checked at least 72 hours ago by what
+# happened to them after the verdict (eval/src/label.ts), import the verdicts it
+# bought before the outcome, and score them. The cases, runs and report live on
+# the data/prospective branch, so this never pushes to main or redeploys anything.
+# Nothing is bought: the verdicts already exist, and labels come from public
+# DEX Screener data. eval/README.md explains the method.
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prospective
+  cancel-in-progress: false
+
+jobs:
+  label-and-score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Restore the data branch
+        run: |
+          set -eu
+          if git fetch --depth=1 origin data/prospective 2>/dev/null; then
+            git worktree add ../data FETCH_HEAD --detach
+          else
+            mkdir -p ../data && git -C ../data init -q
+          fi
+          mkdir -p ../data/runs
+          [ -f ../data/prospective.json ] && cp ../data/prospective.json eval/sources/prospective.json || true
+          mkdir -p eval/runs-prospective && cp -r ../data/runs/. eval/runs-prospective/ 2>/dev/null || true
+      - name: Label launches checked 72 hours ago or more
+        run: pnpm --filter @skein/eval eval-tools prospective eval/sources/prospective.json
+      - name: Import the verdicts bought before the outcome
+        run: |
+          if [ -f eval/sources/prospective.json ]; then
+            pnpm --filter @skein/eval eval import eval/sources/prospective.json --out eval/runs-prospective
+          fi
+      - name: Score
+        run: |
+          set -eu
+          if [ -f eval/sources/prospective.json ] && [ -n "$(ls -A eval/runs-prospective 2>/dev/null)" ]; then
+            pnpm --silent --filter @skein/eval eval report eval/sources/prospective.json eval/runs-prospective > ../report.md
+          else
+            printf '# Prospective benchmark\n\nNo launch has reached its 72-hour outcome yet.\n' > ../report.md
+          fi
+          cat ../report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish to data/prospective
+        run: |
+          set -eu
+          cp eval/sources/prospective.json ../data/prospective.json 2>/dev/null || true
+          rm -rf ../data/runs && mkdir -p ../data/runs && cp -r eval/runs-prospective/. ../data/runs/ 2>/dev/null || true
+          cp ../report.md ../data/REPORT.md
+          printf '# Skein prospective benchmark data\n\nWritten daily by .github/workflows/prospective.yml on main. See REPORT.md.\n' > ../data/README.md
+          cd ../data
+          git config user.name "skein-prospective"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -q -m "Prospective benchmark: $(date -u +%F)"
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/data/prospective

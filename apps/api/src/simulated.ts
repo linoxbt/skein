@@ -10,7 +10,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
-import { MIGRATIONS_DIR, schema, type Db } from "@skein/db";
+import { APP_ROLE, appRoleSql, MIGRATIONS_DIR, schema, type Db } from "@skein/db";
 import { catalogueFromSnapshot } from "@skein/pipeline";
 import { TelegraphClient, TESTNET, viemSigner } from "@skein/telegraph";
 import { FakeNode, type Behaviour } from "@skein/telegraph/testing";
@@ -24,11 +24,22 @@ export const DEV_KEY = "sk_dev_local_simulated";
 
 const str = (v: unknown) => (typeof v === "string" ? v.toLowerCase() : "");
 
-export async function simulatedApi(opts: { env?: Record<string, string | undefined>; fast?: boolean; config?: Partial<ApiConfig> } = {}) {
-  const pg = new PGlite();
-  await migrate(drizzle(pg), { migrationsFolder: MIGRATIONS_DIR });
-  const db = drizzle(pg, { schema }) as unknown as Db;
-  await db.insert(schema.consumers).values({ name: "local dev", kind: "team", apiKeyHash: createHash("sha256").update(DEV_KEY).digest("hex"), dailyCapUusdc: 100_000_000 });
+export async function simulatedApi(opts: { env?: Record<string, string | undefined>; fast?: boolean; config?: Partial<ApiConfig>; db?: Db } = {}) {
+  let db = opts.db;
+  if (!db) {
+    const pg = new PGlite();
+    await migrate(drizzle(pg), { migrationsFolder: MIGRATIONS_DIR });
+    // Run as the production runtime role (packages/db/src/roles.ts): every test then proves
+    // the API needs nothing beyond its grants.
+    await pg.exec(appRoleSql(null));
+    await pg.exec(`SET ROLE ${APP_ROLE}`);
+    db = drizzle(pg, { schema }) as unknown as Db;
+  }
+  // With a shared database (the load test's replicas), the dev key is seeded once.
+  await db
+    .insert(schema.consumers)
+    .values({ name: "local dev", kind: "team", apiKeyHash: createHash("sha256").update(DEV_KEY).digest("hex"), dailyCapUusdc: 100_000_000 })
+    .onConflictDoNothing({ target: schema.consumers.apiKeyHash });
 
   const jitter = (min: number, max: number) => (opts.fast ? 0 : Math.round(min + Math.random() * (max - min)));
   const node = new FakeNode({
