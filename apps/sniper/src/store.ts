@@ -119,15 +119,22 @@ export function memoryStore(): Store {
 export async function pgStore(databaseUrl: string): Promise<Store> {
   const { default: pg } = await import("pg");
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 3 });
-  await pool.query(`create table if not exists sniper_tokens (
-    token text primary key,
-    status text not null,
-    seen_at timestamptz not null,
-    checked_at timestamptz,
-    rec jsonb not null
-  )`);
-  await pool.query("create index if not exists sniper_tokens_status on sniper_tokens (status, seen_at)");
-  await pool.query("create index if not exists sniper_tokens_checked on sniper_tokens (checked_at desc)");
+  try {
+    await pool.query(`create table if not exists sniper_tokens (
+      token text primary key,
+      status text not null,
+      seen_at timestamptz not null,
+      checked_at timestamptz,
+      rec jsonb not null
+    )`);
+    await pool.query("create index if not exists sniper_tokens_status on sniper_tokens (status, seen_at)");
+    await pool.query("create index if not exists sniper_tokens_checked on sniper_tokens (checked_at desc)");
+  } catch (e) {
+    // In production the sniper runs as skein_sniper, which may use its table but not create it
+    // (insufficient_privilege, 42501): carry on when the table is already there.
+    if ((e as { code?: string }).code !== "42501") throw e;
+    await pool.query("select 1 from sniper_tokens limit 1");
+  }
   const rows = (r: { rows: { rec: TokenRecord }[] }) => r.rows.map((x) => x.rec);
   return {
     async add(l, at) {
