@@ -1,4 +1,4 @@
-import { appRoleSql, appRoleUrl, derivedPassword, MIGRATIONS_DIR, schema, type Db } from "@skein/db";
+import { appRoleSql, appRoleUrl, bundledMigrations, derivedPassword, migrationsReadSql, MIGRATIONS_DIR, schema, sniperRoleSql, type Db } from "@skein/db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
@@ -34,12 +34,16 @@ export function connect(url: string, caCert = process.env.DATABASE_CA_CERT): { d
  * cannot race. With `appPassword`, also creates or updates the runtime role
  * and sets its grants (packages/db/src/roles.ts) under the same lock.
  */
-export async function runMigrations(pool: pg.Pool, appPassword?: string): Promise<void> {
+export async function runMigrations(pool: pg.Pool, appPassword?: string, sniperPassword?: string): Promise<void> {
   const lock = await pool.connect();
   try {
     await lock.query("select pg_advisory_lock(7405300)");
     await migrate(drizzle(pool), { migrationsFolder: MIGRATIONS_DIR });
-    if (appPassword) await lock.query(appRoleSql(appPassword));
+    if (appPassword) {
+      await lock.query(appRoleSql(appPassword));
+      await lock.query(migrationsReadSql());
+    }
+    if (sniperPassword) await lock.query(sniperRoleSql(sniperPassword));
   } finally {
     await lock.query("select pg_advisory_unlock(7405300)").catch(() => {});
     lock.release();
@@ -53,13 +57,21 @@ export async function runMigrations(pool: pg.Pool, appPassword?: string): Promis
  * cannot be set up or reached, the API stays up on the owner connection and
  * says so in `role` (shown at /v1/status, alerted on by the probe).
  */
-export async function connectForRuntime(ownerUrl: string): Promise<{ db: Db; pool: pg.Pool; role: "skein_app" | "owner" | "owner (fallback)" }> {
+export async function connectForRuntime(ownerUrl: string): Promise<{ db: Db; pool: pg.Pool; role: string }> {
+  // Production: the migrate job (src/migrate.ts) holds the owner's credentials, and DATABASE_URL here is
+  // already skein_app's. The API only waits until the migrations this build needs have run.
+  if (process.env.DATABASE_MIGRATIONS === "external") {
+    const app = connect(ownerUrl);
+    await waitForMigrations(app.pool);
+    const [row] = (await app.pool.query<{ u: string }>("select current_user as u")).rows;
+    return { ...app, role: row?.u ?? "unknown" };
+  }
   const owner = connect(ownerUrl);
   if (process.env.DB_RUNTIME_ROLE === "owner") {
     await runMigrations(owner.pool);
     return { ...owner, role: "owner" };
   }
-  const password = derivedPassword(decodeURIComponent(new URL(ownerUrl).password));
+  const password = process.env.DB_APP_PASSWORD || derivedPassword(decodeURIComponent(new URL(ownerUrl).password));
   try {
     await runMigrations(owner.pool, password);
     const app = connect(appRoleUrl(ownerUrl, password));
@@ -70,5 +82,28 @@ export async function connectForRuntime(ownerUrl: string): Promise<{ db: Db; poo
     console.error(JSON.stringify({ level: "error", msg: "runtime role unavailable, using the owner connection", error: (e as Error).message }));
     await runMigrations(owner.pool);
     return { ...owner, role: "owner (fallback)" };
+  }
+}
+
+/** How many migrations have run: drizzle records each in drizzle.__drizzle_migrations. */
+export async function appliedMigrations(q: { query(sql: string): Promise<{ rows: Record<string, unknown>[] }> }): Promise<number> {
+  const r = await q.query(`select count(*)::int as n from drizzle.__drizzle_migrations`);
+  return Number(r.rows[0]?.n ?? 0);
+}
+
+/**
+ * Waits (up to `timeoutMs`) until the database has every migration this build
+ * ships. A replica that starts before the migrate job finishes waits here; its
+ * health check fails meanwhile, so Railway keeps the previous deployment serving.
+ */
+export async function waitForMigrations(q: { query(sql: string): Promise<{ rows: Record<string, unknown>[] }> }, timeoutMs = Number(process.env.MIGRATION_WAIT_MS ?? 100_000), stepMs = 3_000): Promise<void> {
+  const want = bundledMigrations();
+  const until = Date.now() + timeoutMs;
+  for (;;) {
+    const have = await appliedMigrations(q).catch(() => 0);
+    if (have >= want) return;
+    if (Date.now() > until) throw new Error(`the database has ${have} of ${want} migrations; the migrate job has not run for this build`);
+    console.log(JSON.stringify({ level: "info", msg: "waiting for migrations", have, want }));
+    await new Promise((r) => setTimeout(r, stepMs));
   }
 }
