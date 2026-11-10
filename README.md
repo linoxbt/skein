@@ -543,9 +543,11 @@ Incidents, rollback, secret rotation, restores and scaling are covered in
 - **Outbound requests.** Webhook URLs are resolved and checked against
   private, loopback and metadata ranges, then pinned to the checked address.
   Redirects are never followed.
-- **Database role.** The API's runtime queries run as `skein_app`. It can only
-  insert into and read evidence, has no DDL and no RLS bypass, and the whole
-  test suite runs under it.
+- **Database roles.** Only a one-shot migrate job and the backup hold the
+  database owner's credentials. The API and probe run as `skein_app`, which
+  can only insert into and read evidence, with no DDL and no RLS bypass; the
+  whole test suite runs under it. The sniper runs as `skein_sniper`, limited
+  to its own table.
 - **Data.** Evidence tables are append-only, row-level security is on, and
   internals never reach an error response; logs link to them by request id.
 - **Supply chain.** Application dependencies are pinned to exact versions.

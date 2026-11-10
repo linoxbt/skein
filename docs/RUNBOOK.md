@@ -176,23 +176,32 @@ with the owner wallet:
 
 ## Database roles
 
-- **Owner.** Migrations run as the database owner (`DATABASE_URL`), under an
-  advisory lock. Under the same lock the API then creates or updates the role
-  `skein_app` and sets its grants exactly (`packages/db/src/roles.ts`).
-- **Runtime.** Every runtime query runs as `skein_app`. Its password is
-  derived from the owner's, so there is no second secret to rotate.
-- **What the role can do.** It can only insert into and read the evidence
-  tables (verdicts, purchases, findings, spend ledger). It has no DDL, cannot
-  create roles, and does not bypass row-level security; each table has a
-  policy for it alone.
-- **Tests.** The whole API suite runs as this role, and a test fails CI when
-  a new table has no privileges decided.
-- **Fallback.** If the role cannot be set up, the API keeps working on the
-  owner connection. `/v1/status` then shows `dbRole: "owner (fallback)"` and
-  the probe alerts. `DB_RUNTIME_ROLE=owner` turns the role off on purpose.
-- **Limit.** The process still holds the owner's credentials, for
-  migrations. The role stops a buggy or injected query, not a compromised
-  process.
+No internet-facing service holds the database owner's credentials.
+
+| Service | Connects as | Can |
+|---|---|---|
+| `migrate` (runs once per deploy) | owner | apply migrations; create the roles; set their passwords and grants |
+| `backup` (nightly cron) | owner | `pg_dump` |
+| `api` (2 replicas), `probe` | `skein_app` | insert-only on the evidence tables (verdicts, purchases, findings, spend ledger); read and write its operational tables; no DDL, no RLS bypass |
+| `sniper` | `skein_sniper` | read, insert and update its own `sniper_tokens` table; nothing of Skein's |
+
+- **Migrations.** The migrate job (`apps/api/src/migrate.ts`, same image as
+  the API) applies migrations and sets the grants exactly
+  (`packages/db/src/roles.ts`), under an advisory lock. It then exits.
+- **Waiting.** API replicas start with `DATABASE_MIGRATIONS=external` and wait,
+  for up to 100 s, until the database has every migration their build ships.
+  Their health check fails meanwhile, so Railway keeps the previous deployment
+  serving.
+- **Passwords.** Shared Railway variables `DB_APP_PASSWORD` and
+  `DB_SNIPER_PASSWORD` hold random 64-hex passwords. Each service references
+  them in its own `DATABASE_URL`.
+- **Rotating a role's password:** set a new value on the shared variable, run
+  the migrate job, then redeploy the services that use it.
+- **Tests.** The whole API suite runs as `skein_app`, and a test fails CI when
+  a new table has no privileges decided. `/v1/status` shows `dbRole`, and the
+  probe alerts when it is not `skein_app`.
+- **Local stack.** Without `DATABASE_MIGRATIONS=external`, the API migrates
+  itself as the owner, then switches to `skein_app`.
 
 ## Load
 

@@ -83,3 +83,26 @@ export function appRoleSql(password: string | null): string {
   out.push(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${r}`);
   return out.join(";\n") + ";";
 }
+
+/**
+ * The sniper's role: its own table only (sniper_tokens, created by the sniper
+ * on first start). No access to Skein's tables. Applied by the migrate job;
+ * a database without the table yet gets the role and no grant.
+ */
+export const SNIPER_ROLE = "skein_sniper";
+export function sniperRoleSql(password: string): string {
+  const r = ident(SNIPER_ROLE);
+  return [
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${lit(SNIPER_ROLE)}) THEN CREATE ROLE ${r}; END IF; END $$`,
+    `ALTER ROLE ${r} LOGIN PASSWORD ${lit(password)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`,
+    `GRANT USAGE ON SCHEMA public TO ${r}`,
+    `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${r}`,
+    `DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'sniper_tokens') THEN GRANT SELECT, INSERT, UPDATE ON sniper_tokens TO ${r}; END IF; END $$`,
+  ].join(";\n") + ";";
+}
+
+/** Lets the runtime role read which migrations ran, so a replica can wait for the migrate job. */
+export function migrationsReadSql(role = APP_ROLE): string {
+  const r = ident(role);
+  return `DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'drizzle') THEN EXECUTE 'GRANT USAGE ON SCHEMA drizzle TO ${r}'; EXECUTE 'GRANT SELECT ON ALL TABLES IN SCHEMA drizzle TO ${r}'; END IF; END $$;`;
+}

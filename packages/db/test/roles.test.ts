@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, describe, expect, it } from "vitest";
-import { APP_ROLE, appRoleSql, appRoleUrl, derivedPassword, MIGRATIONS_DIR, PRIVILEGES } from "../src/index";
+import { APP_ROLE, appRoleSql, appRoleUrl, bundledMigrations, derivedPassword, migrationsReadSql, MIGRATIONS_DIR, PRIVILEGES, SNIPER_ROLE, sniperRoleSql } from "../src/index";
 
 let pg: PGlite;
 beforeAll(async () => {
@@ -64,5 +64,37 @@ describe("the API's runtime role", () => {
     expect(u.password).toBe(derivedPassword("p@ss"));
     expect(u.host).toBe("postgres.railway.internal:5432");
     expect(u.pathname).toBe("/railway");
+  });
+
+  it("can read which migrations ran (to wait for the migrate job), and nothing else in that schema", async () => {
+    await pg.exec(migrationsReadSql());
+    await pg.exec(`SET ROLE ${APP_ROLE}`);
+    try {
+      const r = await pg.query<{ n: number }>(`select count(*)::int as n from drizzle.__drizzle_migrations`);
+      expect(r.rows[0]!.n).toBe(bundledMigrations());
+      await expect(pg.query(`delete from drizzle.__drizzle_migrations`)).rejects.toThrow(/permission denied/);
+    } finally {
+      await pg.exec(`RESET ROLE`);
+    }
+  });
+});
+
+describe("the sniper's role", () => {
+  it("reads and writes its own table, and nothing of Skein's", async () => {
+    await pg.exec(`CREATE TABLE IF NOT EXISTS sniper_tokens (token text primary key, status text not null, seen_at timestamptz not null, checked_at timestamptz, rec jsonb not null)`);
+    await pg.exec(sniperRoleSql("sniper-pw"));
+    await pg.exec(sniperRoleSql("sniper-pw-2")); // idempotent
+    await pg.exec(`SET ROLE ${SNIPER_ROLE}`);
+    try {
+      await pg.query(`insert into sniper_tokens values ('0x1', 'seen', now(), null, '{}')`);
+      await pg.query(`update sniper_tokens set status = 'decided' where token = '0x1'`);
+      expect((await pg.query(`select * from sniper_tokens`)).rows).toHaveLength(1);
+      await expect(pg.query(`delete from sniper_tokens`)).rejects.toThrow(/permission denied/);
+      await expect(pg.query(`select * from verdicts`)).rejects.toThrow(/permission denied/);
+      await expect(pg.query(`select * from consumers`)).rejects.toThrow(/permission denied/);
+      await expect(pg.query(`create table x (id int)`)).rejects.toThrow(/permission denied/);
+    } finally {
+      await pg.exec(`RESET ROLE`);
+    }
   });
 });
