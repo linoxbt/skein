@@ -14,24 +14,44 @@ entry gives the symptom, how to confirm it, and the fix.
 | Skein Desk | Netlify, site `skein-desk` | https://desk.skeinlabs.site | `GET /api/applications` returns 200 JSON |
 | Telegraph miner | registration 5137, catalogue id 845301 | `GET https://devnode.telegraphprotocol.com/api/miners/5137` | `activation_status: "active"` |
 
-**Alerts.** Set `ALERT_WEBHOOK_URL` on the Railway `api` service to a Slack or
-Discord webhook. The API posts there, at most once per condition every six hours, when:
-- the purchaser wallet drops below `HOT_WALLET_ALERT_USDC`;
+**Alerts.** Alerts go to `ALERT_WEBHOOK_URL`, set on the Railway `api` and
+`probe` services. It takes one or more comma-separated destinations:
+- an [ntfy](https://ntfy.sh) topic URL, which pushes to a phone with no
+  account: open the topic URL or subscribe in the ntfy app;
+- a Slack incoming webhook;
+- a Discord webhook.
+
+Alert state lives in Postgres (`alert_state`), shared by both API replicas and
+the probe. A condition alerts once when it starts and again every three hours
+while it lasts, and sends one "recovered" message when it clears.
+
+**The probe** (`apps/probe`, Railway service `probe`) runs every 10 minutes.
+It retries each check once, five seconds apart, before calling it failed. It
+checks:
+- the API process and its database;
+- the purchaser escrow and the daily spend cap;
+- that the API queries as the restricted role `skein_app`;
+- unhandled API errors in the last hour;
+- the web site, its 404s, the Desk queue and the sniper;
+- that Telegraph miner 5137 is `active`;
+- that the nightly backup ran within 26 hours.
+
+Each run is recorded in `heartbeats`, and `/v1/status` shows `probeAt`,
+`backupAt` and the alerts open now (`alertsOpen`).
+
+The API raises its own alerts too:
+- the purchaser escrow drops below `HOT_WALLET_ALERT_USDC`;
 - the day's upstream spend reaches 80% of `DAILY_CAP_USDC`;
 - verdict runs are marked lost;
-- a request fails with an unhandled error. The alert carries the request id.
+- a request fails with an unhandled error (with the request id).
 
-Without the variable, alerts go to the Railway log only.
+Without `ALERT_WEBHOOK_URL`, alerts go to the Railway log only.
 
-**Uptime.** `.github/workflows/uptime.yml` probes every service every 15
-minutes from GitHub. It fails the run, and GitHub emails the repository owner,
-when any of these happen:
-- the API, its database, the web site, the Desk queue or the sniper stops answering;
-- an unknown verdict stops returning 404;
-- `/v1/status` shows a wallet or cap alert;
-- Telegraph registration 5137 is no longer `active`.
-
-The Actions tab keeps the history. Run it by hand with "Run workflow".
+**Uptime (second line).** `.github/workflows/uptime.yml` checks the same
+things from GitHub and opens a GitHub issue labelled `alert` when one fails.
+GitHub runs scheduled workflows far less often than asked, in practice hours
+apart, so its main job is to catch the probe itself stopping: it fails when
+`probeAt` is over 40 minutes old.
 
 **Logs.** Railway service → Deployments → View logs. The API writes one JSON
 line per request, carrying the `requestId` that is also sent in every error
@@ -146,17 +166,47 @@ with the owner wallet:
 
 ## Alerts and errors
 
-- **Alerts** arrive as GitHub issues labelled `alert`. The uptime workflow
-  probes every 15 minutes and opens one when a check fails: API health,
-  database, purchaser escrow, spend cap, unhandled errors, web, Desk, sniper,
-  or the Telegraph miner. It mentions the owner, comments when the failures
-  change, and closes itself on recovery. `ALERT_WEBHOOK_URL` (Slack or Discord)
-  is optional and adds an immediate message from the API itself.
+- **Alerts:** pushed by the probe and the API to `ALERT_WEBHOOK_URL`, with
+  GitHub issues as the second line (see the top of this runbook).
 - **Errors:** every unhandled API error is kept for 30 days in `error_log`
   (message, stack, route, request id), and `/v1/status` shows
   `errorsLastHour`. The error body a caller sees carries the same request id,
   so a user's report leads straight to the row and the log line. `SENTRY_DSN` is
   optional and sends the same errors to Sentry.
+
+## Database roles
+
+- **Owner.** Migrations run as the database owner (`DATABASE_URL`), under an
+  advisory lock. Under the same lock the API then creates or updates the role
+  `skein_app` and sets its grants exactly (`packages/db/src/roles.ts`).
+- **Runtime.** Every runtime query runs as `skein_app`. Its password is
+  derived from the owner's, so there is no second secret to rotate.
+- **What the role can do.** It can only insert into and read the evidence
+  tables (verdicts, purchases, findings, spend ledger). It has no DDL, cannot
+  create roles, and does not bypass row-level security; each table has a
+  policy for it alone.
+- **Tests.** The whole API suite runs as this role, and a test fails CI when
+  a new table has no privileges decided.
+- **Fallback.** If the role cannot be set up, the API keeps working on the
+  owner connection. `/v1/status` then shows `dbRole: "owner (fallback)"` and
+  the probe alerts. `DB_RUNTIME_ROLE=owner` turns the role off on purpose.
+- **Limit.** The process still holds the owner's credentials, for
+  migrations. The role stops a buggy or injected query, not a compromised
+  process.
+
+## Load
+
+`apps/api/scripts/loadtest.ts` runs two replicas on one real Postgres, as
+`skein_app`, against fake Telegraph nodes. It covers:
+- 400 simultaneous paid verdicts;
+- an idempotency storm;
+- a race on a spend cap;
+- 600 simultaneous reads.
+
+It then checks, in the database, that every purchase matches a charge, that
+the ledger balances, that idempotency and the cap held, and that there were
+no 5xx. Latest results: [LOADTEST.md](LOADTEST.md). Pool size per replica:
+`DATABASE_POOL_MAX` (default 20).
 
 ## Scaling
 
@@ -175,7 +225,7 @@ behaves as one:
 - **Spend caps:** atomic holds in `spend_holds`.
 
 Per replica, and harmless: catalogue refresh, the lost-run sweep, wallet
-and cap checks (an alert can arrive once from each replica), and draining on
+and cap checks (alerts are deduplicated in Postgres, so one message goes out), and draining on
 SIGTERM. `RATE_LIMIT_STORE=memory` puts rate limits back in process, for one
 replica only. `apps/api/test/replicas.test.ts` runs two replicas on one
 database.

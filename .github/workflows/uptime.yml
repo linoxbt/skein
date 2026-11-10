@@ -1,5 +1,8 @@
 name: Uptime
-# Probes every public service every 15 minutes. A failure opens a GitHub issue
+# The second line of defence. The Railway probe (apps/probe) checks everything
+# every 10 minutes and pushes alerts; GitHub runs this workflow far less often
+# than its cron asks (hours apart), so this mainly watches the probe itself.
+# Probes every public service. A failure opens a GitHub issue
 # labelled "alert" (or comments on the open one when the failures change) and
 # mentions the repository owner, so it reaches the GitHub app and email; the
 # issue closes itself on recovery. The failed run also emails the owner.
@@ -40,6 +43,11 @@ jobs:
           check "API wallet"         https://api.skeinlabs.site/v1/status 200 '"walletAlert":true'
           check "API spend cap"      https://api.skeinlabs.site/v1/status 200 '"capAlert":true'
           check "API errors"         https://api.skeinlabs.site/v1/status 200 '"errorsLastHour":[1-9]'
+          # Watch the watcher: the Railway probe runs every 10 minutes and records each run.
+          probe=$(curl -sS -m 20 https://api.skeinlabs.site/v1/status | grep -o '"probeAt":"[^"]*"' | cut -d'"' -f4 || true)
+          if [ -z "$probe" ] || [ $(( $(date -u +%s) - $(date -u -d "$probe" +%s) )) -gt 2400 ]; then
+            echo "::error::the Railway probe has not run for over 40 minutes (last: ${probe:-never})"; echo "- **Probe**: the Railway probe has not run for over 40 minutes (last: ${probe:-never})" >> failures.txt; failed=1
+          else echo "ok probe ran at $probe"; fi
           check "Web site"           https://skeinlabs.site/ 200
           check "Web verdict 404"    https://skeinlabs.site/v/vrd_doesnotexist 404
           check "Desk queue"         https://desk.skeinlabs.site/api/applications 200

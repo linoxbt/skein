@@ -1,0 +1,23 @@
+{
+  "name": "@skein/probe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Checks every public Skein service every 10 minutes (Railway cron) and pushes alerts.",
+  "scripts": {
+    "start": "node --import tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000"
+  },
+  "dependencies": {
+    "@skein/alerts": "workspace:*",
+    "pg": "8.23.1",
+    "tsx": "4.23.15"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.9",
+    "@skein/db": "workspace:*",
+    "@types/pg": "8.23.1",
+    "drizzle-orm": "0.45.4"
+  }
+}

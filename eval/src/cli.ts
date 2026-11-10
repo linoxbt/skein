@@ -3,7 +3,7 @@
 // pnpm --filter @skein/eval eval rescore <cases.json> <runs dir> --split tune   re-grade stored tune runs with the
 //   current adapters, from the answers already bought (free; tune only: a holdout run is scored as it was bought)
 // pnpm --filter @skein/eval eval import <cases.json> --out <dir>   prospective cases: fetch the verdict bought
-//   before the outcome (its verdictId) from the Skein API (SKEIN_API_KEY), rather than buy a new one
+//   before the outcome (its verdictId) from the Skein API (verdicts are public; SKEIN_API_KEY is optional), rather than buy a new one
 //
 // run buys one live verdict per case (real Telegraph inputs, paid from the
 // purchaser's escrow) and stores it; it refuses without --live --yes and stops
@@ -103,7 +103,6 @@ if (cmd === "run") {
 } else if (cmd === "import") {
   const key = process.env.SKEIN_API_KEY;
   const api = (process.env.SKEIN_API_URL ?? "https://api.skeinlabs.site").replace(/\/$/, "");
-  if (!key) throw new Error("SKEIN_API_KEY is required to read stored verdicts");
   const out = resolve(cwd, values.out ?? "eval/runs");
   mkdirSync(out, { recursive: true });
   let n = 0;
@@ -111,7 +110,8 @@ if (cmd === "run") {
     const file = join(out, `${c.id}.json`);
     if (existsSync(file)) continue;
     const get = async (path: string) => {
-      const r = await fetch(`${api}${path}`, { headers: { authorization: `Bearer ${key}` } });
+      // Verdicts are public by id; a key only raises the read rate limit.
+      const r = await fetch(`${api}${path}`, key ? { headers: { authorization: `Bearer ${key}` } } : {});
       if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
       return r.json() as Promise<Record<string, any>>;
     };

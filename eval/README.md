@@ -71,7 +71,8 @@ PURCHASER_PRIVATE_KEY=0x… pnpm --filter @skein/eval eval run eval/cases.json -
 
 # Prospective cases: label launches the sniper checked 72+ hours ago, then score the verdicts it bought then
 pnpm --filter @skein/eval eval-tools prospective eval/sources/prospective.json
-SKEIN_API_KEY=sk_… pnpm --filter @skein/eval eval import eval/sources/prospective.json --out eval/runs
+pnpm --filter @skein/eval eval import eval/sources/prospective.json --out eval/runs-prospective
+# This runs every day on its own: .github/workflows/prospective.yml, results on the data/prospective branch
 
 # Score Skein and the baselines on the stored runs (Markdown, 95% bootstrap intervals)
 pnpm --filter @skein/eval eval report eval/cases.json eval/runs --split holdout

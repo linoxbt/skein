@@ -21,6 +21,9 @@ tables=$(pg_restore --list "$file" | grep -c " TABLE DATA " || true)
 aws s3 cp "$file" "s3://$BUCKET/$key" --only-show-errors
 rm -f "$file"
 log info "backup uploaded" ",\"key\":\"$key\",\"bytes\":$bytes,\"tables\":$tables,\"seconds\":$(( $(date +%s) - started ))"
+# Heartbeat for the probe (alerts when the last backup is over 26 h old) and /v1/status.
+psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 -c "INSERT INTO heartbeats (name, at, detail) VALUES ('backup', now(), '$key $bytes bytes') ON CONFLICT (name) DO UPDATE SET at = EXCLUDED.at, detail = EXCLUDED.detail" \
+  || log error "backup heartbeat not recorded"
 
 keys=$(aws s3 ls "s3://$BUCKET/postgres/" | awk '{print $4}' | grep '^skein-.*\.dump$' | sort)
 count=$(printf '%s\n' "$keys" | grep -c . || true)

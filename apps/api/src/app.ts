@@ -276,10 +276,19 @@ export function createApp(service: VerdictService) {
   // Every served verdict is signed. The signature is deterministic (RFC 6979),
   // so signing on read gives the same attestation every time, with nothing stored.
   const attester = config.attestationKey ? privateKeyToAccount(config.attestationKey) : null;
+  // Deterministic, so a signature is computed once per message and reused (bounded).
+  const signed = new Map<string, Promise<`0x${string}`>>();
   const attest = async (v: VerdictObject): Promise<Attestation | null> => {
     if (!attester) return null;
     const message = attestationMessage(v);
-    return { scheme: ATTESTATION_SCHEME, signer: attester.address, message, signature: await attester.signMessage({ message }) };
+    let sig = signed.get(message);
+    if (!sig) {
+      if (signed.size >= 2000) signed.delete(signed.keys().next().value!);
+      sig = attester.signMessage({ message });
+      signed.set(message, sig);
+      sig.catch(() => signed.delete(message));
+    }
+    return { scheme: ATTESTATION_SCHEME, signer: attester.address, message, signature: await sig };
   };
 
   // x402: pay per verdict without a partner key (x402.ts). Every x402 payer
@@ -688,6 +697,8 @@ export function createApp(service: VerdictService) {
     const health = await intentHealth();
     const wallet = walletState.get();
     const [errs] = await db.select({ n: count() }).from(schema.errorLog).where(gte(schema.errorLog.at, new Date(t - 3_600_000)));
+    const beats = Object.fromEntries((await db.select().from(schema.heartbeats)).map((h) => [h.name, h.at.toISOString()]));
+    const failing = await db.select({ key: schema.alertState.key, since: schema.alertState.since }).from(schema.alertState).where(eq(schema.alertState.failing, true));
     return c.json({
       network: config.networkLabel ?? config.network.caip2,
       node: config.networkLabel === "simulated" ? "local fake node" : config.network.nodeUrl,
@@ -709,6 +720,11 @@ export function createApp(service: VerdictService) {
       capAlert: spent >= 0.8 * config.dailyCapUusdc,
       // Unhandled errors in the last hour, across replicas; details in error_log and the logs.
       errorsLastHour: errs?.n ?? 0,
+      // Scheduled jobs' last runs (the probe every 10 min, the backup nightly) and the alerts open now.
+      dbRole: service.deps.dbRole ?? null,
+      probeAt: beats.probe ?? null,
+      backupAt: beats.backup ?? null,
+      alertsOpen: failing.map((f) => ({ key: f.key, since: f.since?.toISOString() ?? null })),
       chainsAnalysed: SUPPORTED_CHAINS,
     });
   });
@@ -719,6 +735,18 @@ export function createApp(service: VerdictService) {
     const [miners] = await db.select({ n: sql<string>`count(distinct ${schema.purchases.minerId})` }).from(schema.purchases);
     const [owed] = await db.select({ s: sql<string>`coalesce(sum(${schema.spendLedger.amountUusdc}), 0)` }).from(schema.spendLedger).where(eq(schema.spendLedger.kind, "revenue_owed"));
     const recent = await db.select({ id: schema.verdicts.id, verdict: schema.verdicts.verdict, createdAt: schema.verdicts.createdAt }).from(schema.verdicts).orderBy(desc(schema.verdicts.createdAt)).limit(10);
+    // Why verdicts abstained: each required check that had no real answer, with that finding's status and
+    // first note (timeout, purchase failure, no miner, …), all time and in the last 7 days.
+    const causes = await db.execute(sql`
+      SELECT r->>'code' AS code, coalesce(r->>'check', '') AS "check", coalesce(f.status, '') AS status, coalesce(f.notes->>0, '') AS note,
+             count(*)::int AS n, count(*) FILTER (WHERE v.created_at > now() - interval '7 days')::int AS last7d
+      FROM ${schema.verdicts} v
+      CROSS JOIN LATERAL jsonb_array_elements(v.reasons) r
+      LEFT JOIN ${schema.findings} f ON f.verdict_id = v.id AND f."check" = r->>'check'
+      WHERE v.verdict = 'ABSTAIN' AND r->>'code' IN ('MISSING_REQUIRED_CHECK', 'LOW_COVERAGE')
+      GROUP BY 1, 2, 3, 4 ORDER BY n DESC LIMIT 25`);
+    const [ab] = await db.select({ n: count(), last7d: sql<number>`count(*) FILTER (WHERE ${schema.verdicts.createdAt} > now() - interval '7 days')::int` }).from(schema.verdicts).where(eq(schema.verdicts.verdict, "ABSTAIN"));
+    const causeRows = ((causes as unknown as { rows?: unknown[] }).rows ?? (causes as unknown as unknown[])) as { code: string; check: string; status: string; note: string; n: number; last7d: number }[];
     return {
       network: config.networkLabel ?? config.network.caip2,
       verdicts: Object.fromEntries(byVerdict.map((r) => [r.verdict, r.n])),
@@ -726,6 +754,7 @@ export function createApp(service: VerdictService) {
       revenueOwedUsdc: usdc(Number(owed?.s ?? 0)),
       receipts: spend?.receipts ?? 0,
       minersUsed: Number(miners?.n ?? 0),
+      abstain: { total: ab?.n ?? 0, last7d: Number(ab?.last7d ?? 0), causes: causeRows.map((r) => ({ ...r, n: Number(r.n), last7d: Number(r.last7d) })) },
       recent,
     };
   });
