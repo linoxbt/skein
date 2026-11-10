@@ -25,6 +25,7 @@ export async function runOnce(opts: { checks?: Check[]; ctx: Ctx; alerter: Alert
       await opts.alerter.raise(`probe:${c.key}`, `${c.name}: ${r.reason}`);
     }
   }
-  if (opts.db) await beat(opts.db, "probe", report.failing.length ? `failing: ${report.failing.map((f) => f.key).join(", ")}` : "all ok");
+  // The heartbeat is best effort: a database problem must not stop the alerts above (it fails the backup check instead).
+  if (opts.db) await beat(opts.db, "probe", report.failing.length ? `failing: ${report.failing.map((f) => f.key).join(", ")}` : "all ok").catch((e: Error) => console.error(JSON.stringify({ level: "error", msg: "probe heartbeat not recorded", error: e.message })));
   return report;
 }

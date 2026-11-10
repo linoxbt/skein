@@ -105,9 +105,18 @@ export const CHECKS: Check[] = [
 
 /** Runs a check twice, a few seconds apart, before calling it failed: one blip is not an outage. */
 export async function confirm(check: Check, ctx: Ctx, retryMs = 5_000): Promise<Result> {
-  const first = await check.run(ctx);
+  const first = await safe(check, ctx);
   if (first.ok) return first;
   await new Promise((r) => setTimeout(r, retryMs));
   resetStatusCache();
-  return check.run(ctx);
+  return safe(check, ctx);
+}
+
+/** A check that throws (its database is down, a table is missing) is a failed check, never a failed run. */
+async function safe(check: Check, ctx: Ctx): Promise<Result> {
+  try {
+    return await check.run(ctx);
+  } catch (e) {
+    return { ok: false, reason: `the check itself failed: ${(e as Error).message}` };
+  }
 }

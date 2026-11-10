@@ -94,6 +94,39 @@ export default function LedgerPage() {
             );
           })}
         </ul>
+        {l?.last72h ? <RecentMix label="Last 72 hours" mix={l.last72h} /> : null}
+        {l?.last24h ? <RecentMix label="Last 24 hours" mix={l.last24h} /> : null}
+        {l?.abstain?.causes.length ? (
+          <div className="mt-14">
+            <Lead tag="Why verdicts abstained" />
+            <p className="mt-2 max-w-3xl text-ink-2">
+              An ABSTAIN names the required check that had no real answer, and is charged at upstream cost only. Most of the total comes from
+              the first days on the network, before the fixes recorded in docs/DECISIONS.md (L24, Nov 7); the windows above show the rate now.
+            </p>
+            <table className="mt-6 w-full max-w-4xl font-mono text-[13px]">
+              <thead>
+                <tr className="text-left text-ink-2">
+                  <th className="py-2 pr-4 font-normal">check</th>
+                  <th className="py-2 pr-4 font-normal">status</th>
+                  <th className="py-2 pr-4 font-normal">why</th>
+                  <th className="py-2 pr-4 text-right font-normal">all time</th>
+                  <th className="py-2 text-right font-normal">last 7 days</th>
+                </tr>
+              </thead>
+              <tbody>
+                {l.abstain.causes.slice(0, 8).map((c) => (
+                  <tr key={`${c.check}-${c.status}-${c.note}`} className="border-t border-rule">
+                    <td className="py-2 pr-4">{c.check || "coverage"}</td>
+                    <td className="py-2 pr-4">{c.status || "—"}</td>
+                    <td className="py-2 pr-4 text-ink-2">{c.note.replace(/_/g, " ") || "—"}</td>
+                    <td className="py-2 pr-4 text-right">{c.n}</td>
+                    <td className="py-2 text-right">{c.last7d}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </Section>
 
       {/* Recent verdicts. */}
@@ -141,5 +174,17 @@ export default function LedgerPage() {
         </div>
       </section>
     </>
+  );
+}
+
+/** One line: a window's verdict counts and its ABSTAIN rate. */
+function RecentMix({ label, mix }: { label: string; mix: Record<string, number> }) {
+  const n = ORDER.reduce((a, v) => a + (mix[v] ?? 0), 0);
+  if (!n) return null;
+  return (
+    <p className="mt-6 font-mono text-[13px] text-ink-2">
+      <span className="text-ink">{label}:</span> {n} verdicts ·{" "}
+      {ORDER.map((v) => `${v} ${mix[v] ?? 0}`).join(" · ")} · ABSTAIN rate {Math.round(((mix.ABSTAIN ?? 0) / n) * 100)}%
+    </p>
   );
 }
