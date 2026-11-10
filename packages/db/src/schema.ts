@@ -291,6 +291,25 @@ export const flights = pgTable("flights", {
 });
 
 /**
+ * Alert state shared by every process (API replicas, the probe): what is
+ * failing, since when, and when it was last sent (packages/alerts).
+ */
+export const alertState = pgTable("alert_state", {
+  key: text("key").primaryKey(),
+  failing: boolean("failing").notNull().default(false),
+  since: timestamp("since", { withTimezone: true }),
+  lastSent: timestamp("last_sent", { withTimezone: true }),
+  detail: text("detail"),
+});
+
+/** The last run of each scheduled job (probe, backup), so a job that stops is noticed. */
+export const heartbeats = pgTable("heartbeats", {
+  name: text("name").primaryKey(),
+  at: timestamp("at", { withTimezone: true }).notNull(),
+  detail: text("detail"),
+});
+
+/**
  * Unhandled errors, kept 30 days: the self-hosted half of error tracking.
  * /v1/status shows only the last hour's count; the details stay here and in
  * the logs (matched by request id). Sentry gets them too when SENTRY_DSN is set.

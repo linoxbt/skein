@@ -1,0 +1,19 @@
+{
+  "name": "@skein/alerts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Operational alerts to ntfy, Slack or Discord, deduplicated across processes through Postgres.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --hookTimeout=120000 --testTimeout=120000"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.9",
+    "@skein/db": "workspace:*",
+    "drizzle-orm": "0.45.4"
+  }
+}

@@ -21,7 +21,9 @@ not code, plus the steps below.
    `X402_FACILITATOR_URL` to a facilitator that settles on Base mainnet (the
    public x402.org facilitator is for testnets). Check the price
    (`X402_PRICE_USDC`) against upstream cost and `X402_DAILY_CAP_USDC`.
-6. **Database.** A non-owner role for the API with INSERT and SELECT only on
-   the evidence tables, and backups with point-in-time restore.
+6. **Database.** Done: the API queries as `skein_app`, insert-only on the
+   evidence tables (RUNBOOK, "Database roles"). Still to do: move migrations
+   to a separate pre-deploy step, so the runtime process never holds the
+   owner's credentials. Add point-in-time restore on top of the nightly dumps.
 7. **Policies.** Freeze the tuned thresholds as a new policy version
    (`pnpm policies:lock`) before the first mainnet verdict.

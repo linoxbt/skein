@@ -136,8 +136,14 @@ x402 payments use Base Sepolia.
   CI), the payment client, the pipeline, the API (replicas, x402, idempotency),
   the SDK, MCP and Desk, plus browser and accessibility tests. All run in CI on
   every change, and Railway deploys only green builds.
-- **Operations.** Two API replicas, nightly database backups, uptime alerts
-  every 15 minutes, and an error log. See `docs/RUNBOOK.md`.
+- **Operations:**
+  - two API replicas, querying as a least-privilege database role;
+  - nightly backups;
+  - a probe every 10 minutes that pushes alerts and recoveries;
+  - an error log.
+
+  It was load-tested at 400 simultaneous verdicts across two replicas, with
+  every money invariant holding (`docs/LOADTEST.md`). See `docs/RUNBOOK.md`.
 
 ## Apps & Agents commercial summary
 

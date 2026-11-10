@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parsePolicy, type Policy } from "@skein/engine";
 import { parse } from "yaml";
@@ -15,7 +15,29 @@ export interface PolicyRecord {
   sha256: string;
 }
 
+/**
+ * Parsed files, reused while each file's size and modification time are
+ * unchanged: a request no longer re-reads, re-hashes and re-parses every
+ * policy. An edited file has a new mtime, so it is loaded (and re-checked
+ * against the lock) again.
+ */
+const cache = new Map<string, { stamp: string; record: PolicyRecord }>();
+const stampOf = (path: string) => {
+  const s = statSync(path);
+  return `${s.size}:${s.mtimeMs}`;
+};
+
 function load(file: string): PolicyRecord {
+  const path = `${POLICY_DIR}${file}`;
+  const stamp = stampOf(path);
+  const hit = cache.get(file);
+  if (hit && hit.stamp === stamp) return hit.record;
+  const record = loadUncached(file);
+  cache.set(file, { stamp, record });
+  return record;
+}
+
+function loadUncached(file: string): PolicyRecord {
   const bytes = readFileSync(`${POLICY_DIR}${file}`);
   const yaml = bytes.toString("utf8");
   const policy = parsePolicy(parse(yaml));
@@ -64,6 +86,9 @@ export function getPolicy(ref: string): PolicyRecord {
   })[versions.length - 1]!;
 }
 
+let lockCache: { stamp: string; lock: Record<string, string> } | null = null;
 export function readLock(): Record<string, string> {
-  return JSON.parse(readFileSync(LOCK_FILE, "utf8")) as Record<string, string>;
+  const stamp = stampOf(LOCK_FILE);
+  if (lockCache?.stamp !== stamp) lockCache = { stamp, lock: JSON.parse(readFileSync(LOCK_FILE, "utf8")) as Record<string, string> };
+  return { ...lockCache.lock };
 }

@@ -32,6 +32,9 @@ importers:
       '@hono/node-server':
         specifier: 2.1.5
         version: 2.1.5(hono@4.13.13)
+      '@skein/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@skein/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -130,6 +133,31 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  apps/probe:
+    dependencies:
+      '@skein/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: 0.5.9
+        version: 0.5.9
+      '@skein/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(@electric-sql/pglite@0.5.9)(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
 
   apps/sniper:
     dependencies:
@@ -243,6 +271,18 @@ importers:
       yaml:
         specifier: 2.8.4
         version: 2.8.4
+
+  packages/alerts:
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: 0.5.9
+        version: 0.5.9
+      '@skein/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(@electric-sql/pglite@0.5.9)(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
 
   packages/db:
     dependencies:

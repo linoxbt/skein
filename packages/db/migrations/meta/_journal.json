@@ -57,6 +57,13 @@
       "when": 1794126788315,
       "tag": "0007_error_log",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794324735558,
+      "tag": "0008_alerts",
+      "breakpoints": true
     }
   ]
 }

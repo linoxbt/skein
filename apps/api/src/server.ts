@@ -4,7 +4,7 @@ import { TelegraphClient, viemSigner } from "@skein/telegraph";
 import { createPublicClient, erc20Abi, http, parseAbi } from "viem";
 import { createApp, walletState } from "./app";
 import { configFromEnv } from "./config";
-import { connect, runMigrations } from "./db";
+import { connectForRuntime } from "./db";
 import { parseSeedConsumers, revokeKeys, seedConsumers } from "./seed";
 import { VerdictService } from "./service";
 import { createReporter } from "@skein/errors";
@@ -14,8 +14,8 @@ import { pruneShared } from "./limits";
 const config = configFromEnv();
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is required");
-const { db, pool } = connect(url);
-await runMigrations(pool);
+const { db, pool, role: dbRole } = await connectForRuntime(url);
+console.log(JSON.stringify({ level: "info", msg: "database connected", role: dbRole }));
 const seeded = await seedConsumers(db, parseSeedConsumers(process.env.SEED_CONSUMERS));
 const revoked = await revokeKeys(db, config.revokedKeyHashes);
 if (seeded.added.length || seeded.updated.length || seeded.revoked || revoked) {
@@ -30,8 +30,9 @@ const client = new TelegraphClient({
   allowPreSeason: config.allowPreSeason,
   ...(signer ? { signer } : {}),
 });
-// Wallet low, spend cap near, verdicts lost, unhandled errors: pushed to ALERT_WEBHOOK_URL (Slack or Discord) when set.
-const alerts = new Alerts({ url: process.env.ALERT_WEBHOOK_URL || undefined, service: "skein-api" });
+// Wallet low, spend cap near, verdicts lost, unhandled errors: pushed to ALERT_WEBHOOK_URL (ntfy, Slack or
+// Discord), with the alert state in Postgres so two replicas send one message, and a recovery when it clears.
+const alerts = new Alerts({ url: process.env.ALERT_WEBHOOK_URL || undefined, service: "skein-api", repeatMs: 3 * 3_600_000, db: pool });
 
 // Error tracking: SENTRY_DSN (Sentry or any Sentry-compatible service); off when unset.
 const errors = createReporter({ dsn: process.env.SENTRY_DSN, service: "skein-api", environment: process.env.RAILWAY_ENVIRONMENT_NAME ?? "production", release: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) });
@@ -42,6 +43,7 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtExceptionMonitor", (err) => void errors.capture(err, { kind: "uncaughtException" }));
 
 const service = new VerdictService({
+  dbRole,
   alerts,
   errors,
   db,
@@ -74,7 +76,7 @@ const timers = [
   every(5 * 60_000, async () => {
     const spent = await service.spentTodayUusdc();
     if (spent >= 0.8 * config.dailyCapUusdc) await alerts.raise("cap", `upstream spend today is ${spent / 1e6} USDC, at or over 80% of the ${config.dailyCapUusdc / 1e6} USDC daily cap`);
-    else alerts.clear("cap");
+    else await alerts.clear("cap", "upstream spend is back under 80% of the daily cap");
   }, "spend cap"),
   every(60 * 60_000, () => service.pruneEvents(), "event pruning"),
   // Idle rate-limit buckets and expired flight leases (limits.ts).
@@ -91,7 +93,7 @@ const timers = [
         walletState.setEscrow(Number(e));
         if (Number(e) < config.hotWalletAlertUusdc) {
           await alerts.raise("wallet", `the purchaser's Telegraph escrow holds ${Number(e) / 1e6} test USDC (wallet ${Number(b) / 1e6}), below ${config.hotWalletAlertUusdc / 1e6}: deposit more (docs/RUNBOOK.md)`);
-        } else alerts.clear("wallet");
+        } else await alerts.clear("wallet", "the purchaser's escrow is back above the alert level");
       }, "wallet balance")]
     : []),
 ];

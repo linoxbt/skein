@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",
+    "@skein/alerts": "workspace:*",
     "@skein/db": "workspace:*",
     "@skein/engine": "workspace:*",
     "@skein/errors": "workspace:*",

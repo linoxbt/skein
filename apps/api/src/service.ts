@@ -22,6 +22,8 @@ import { pinnedFetch, resolveSafeUrl, type Lookup } from "./safeurl";
 
 export interface ServiceDeps {
   db: Db;
+  /** The database role runtime queries use (db.ts connectForRuntime); shown at /v1/status. */
+  dbRole?: string;
   config: ApiConfig;
   client: Pick<TelegraphClient, "ask" | "listMiners"> & Partial<Pick<TelegraphClient, "verifySignal">>;
   catalogue?: Catalogue;
