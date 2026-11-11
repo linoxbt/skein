@@ -76,6 +76,12 @@ coin_drop 1936
 positive 2867
 confirm_tone 937
 correct 2358
+deep_impact2 488
+trailer_whoosh_impact 2289
+laser_swoosh 1576
+suspense_hit 632
+brass_transition 2353
+drum_hit 2918
 LIST
 for f in sfx/*.mp3; do
   n=$(basename "$f" .mp3)
@@ -84,4 +90,5 @@ for f in sfx/*.mp3; do
   ffmpeg -v error -y -i "$f" -af "volume=$(python3 -c "print(-2.0-($mv))")dB" -ar 48000 -ac 2 "sfxn/$n.wav"
 done
 [ -s music/bed.mp3 ] || curl -sf -o music/bed.mp3 "https://assets.mixkit.co/music/598/598.mp3"
+[ -s music/teaser.mp3 ] || curl -sf -o music/teaser.mp3 "https://assets.mixkit.co/music/1150/1150.mp3"   # "No Warning", Michael Ramir C. (the teaser)
 echo "sfx: $(ls sfxn | wc -l)"
