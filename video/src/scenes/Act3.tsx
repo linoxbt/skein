@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, random, useCurrentFrame } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { C, F } from "../theme";
 import { said, scene } from "../timeline";
 import { Browser, clamp, Count, ease, Grain, Mark, Scroll, Tag, useSpring, Warp, Words } from "../ui";
@@ -16,12 +16,12 @@ const LAUNCHES = [
 ];
 const VC: Record<string, string> = { REJECT: C.reject, ESCALATE: C.escalate, ABSTAIN: C.abstain, APPROVE: C.approve };
 
-/** 8. Mission 14: the sniper buys a verdict before every trade, and dodged every launch it checked. */
+/** 8. Mission 14: the sniper buys a verdict before every trade; its record, and how it is labelled. */
 export const Sniper: React.FC = () => {
   const frame = useCurrentFrame();
   const s = scene("sniper");
-  const tOf = said("sniper", "Of a hundred");
-  const tFell = said("sniper", "The tokens it skipped");
+  const tOf = said("sniper", "It has checked");
+  const tFell = said("sniper", "every launch is labelled");
   const stats = interpolate(frame, [tOf - 6, tOf + 10], [0, 1], clamp);
   const fell = interpolate(frame, [tFell - 4, tFell + 12], [0, 1], { ...clamp, easing: ease });
   return (
@@ -54,9 +54,8 @@ export const Sniper: React.FC = () => {
       </div>
       <div style={{ position: "absolute", left: 110, bottom: 110, display: "flex", gap: 70, opacity: stats, transform: `translateY(${(1 - stats) * 40}px)` }}>
         {[
-          ["Launches checked", 160, C.text],
-          ["Dodged", 160, C.thread],
-          ["Bought", 0, C.text],
+          ["Launches checked", 280, C.text],
+          ["Bought", 0, C.thread],
         ].map(([label, n, col]) => (
           <div key={label as string}>
             <div style={{ fontFamily: F.mono, fontSize: 22, color: C.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>
@@ -65,13 +64,11 @@ export const Sniper: React.FC = () => {
         ))}
       </div>
       <div style={{ position: "absolute", right: 110, bottom: 90, opacity: fell, transform: `scale(${0.9 + fell * 0.1})`, textAlign: "right" }}>
-        <div style={{ fontFamily: F.mono, fontSize: 22, color: C.muted, letterSpacing: "0.08em" }}>MEDIAN CHANGE OF SKIPPED TOKENS</div>
-        <div style={{ fontFamily: F.display, fontSize: 210, fontWeight: 300, letterSpacing: "-0.06em", color: C.reject, lineHeight: 1 }}>
-          −<Count to={99.99} decimals={2} delay={tFell} dur={40} />%
+        <div style={{ fontFamily: F.mono, fontSize: 22, color: C.muted, letterSpacing: "0.08em" }}>EVERY LAUNCH LABELLED</div>
+        <div style={{ fontFamily: F.display, fontSize: 210, fontWeight: 300, letterSpacing: "-0.06em", color: C.text, lineHeight: 1 }}>
+          <Count to={72} delay={tFell} dur={40} /> h
         </div>
-        <svg width="620" height="120" style={{ marginTop: 6 }}>
-          <polyline fill="none" stroke={C.reject} strokeWidth="4" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - fell} points={Array.from({ length: 30 }, (_, k) => `${k * 21},${10 + (k < 8 ? random(`c${k}`) * 20 : 10 + (k - 8) * 4.6 + random(`c${k}`) * 6)}`).join(" ")} />
-        </svg>
+        <div style={{ fontFamily: F.mono, fontSize: 22, color: C.muted, letterSpacing: "0.08em", marginTop: 10 }}>LATER · PUBLISHED DAILY</div>
       </div>
       <Grain />
     </AbsoluteFill>

@@ -83,7 +83,7 @@ const MAX_ABSTAIN_SHARE = Number(process.env.PROBE_MAX_ABSTAIN_SHARE ?? 0.5);
 const MIN_PURCHASES = Number(process.env.PROBE_MIN_PURCHASES ?? 10);
 const MAX_PURCHASE_ERROR_SHARE = Number(process.env.PROBE_MAX_PURCHASE_ERROR_SHARE ?? 0.5);
 
-type Quality = { windowHours: number; verdicts: number; abstain: number; purchases: number; purchaseErrors: number };
+type Quality = { windowHours: number; verdicts: number; abstain: number; abstainFailed?: number; purchases: number; purchaseErrors: number };
 const quality = (s: Record<string, unknown>) => (s.quality && typeof s.quality === "object" ? (s.quality as Quality) : null);
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
@@ -94,11 +94,13 @@ export const CHECKS: Check[] = [
   status("cap", "Daily spend cap", (s) => (s.capAlert === true ? `spent ${s.spentTodayUsdc} of ${s.dailyCapUsdc} USDC today` : null)),
   status("db-role", "Least-privilege database role", (s) => (typeof s.dbRole === "string" && s.dbRole !== "skein_app" ? `the API is querying as "${s.dbRole}", not skein_app: see the API's startup log` : null)),
   status("errors", "Unhandled API errors", (s) => (Number(s.errorsLastHour) > 0 ? `${s.errorsLastHour} unhandled error(s) in the last hour: see error_log or the API logs by request id` : null)),
+  // Counts only ABSTAINs caused by failed purchases: a policy may abstain by design.
   status("abstain", "ABSTAIN share", (s) => {
     const q = quality(s);
     if (!q || q.verdicts < MIN_VERDICTS) return null;
-    const share = q.abstain / q.verdicts;
-    return share > MAX_ABSTAIN_SHARE ? `${q.abstain} of ${q.verdicts} verdicts in the last ${q.windowHours} h were ABSTAIN (${pct(share)}, limit ${pct(MAX_ABSTAIN_SHARE)}): see /v1/ledger abstain.causes` : null;
+    const failed = q.abstainFailed ?? q.abstain;
+    const share = failed / q.verdicts;
+    return share > MAX_ABSTAIN_SHARE ? `${failed} of ${q.verdicts} verdicts in the last ${q.windowHours} h were ABSTAIN on a failed purchase (${pct(share)}, limit ${pct(MAX_ABSTAIN_SHARE)}): see /v1/ledger abstain.causes` : null;
   }),
   status("purchases", "Upstream purchases", (s) => {
     const q = quality(s);

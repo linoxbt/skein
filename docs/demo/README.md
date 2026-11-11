@@ -1,6 +1,6 @@
 # Demo films
 
-## skein-motion.mp4: the narrated demo (3 min 10 s)
+## skein-motion.mp4: the narrated demo (3 min 13 s)
 
 The main demo. It is motion graphics built with Remotion from the live
 product (`video/`). The narration is Kokoro-82M, voice `af_heart`; the music
@@ -50,7 +50,9 @@ Captions, in order (the text equivalent of the video):
 11. The ledger: every verdict and every upstream receipt, from 9 miners so far.
     Skein is also miner 5137, selling verdicts to other agents.
 12. Skein Sniper (Mission 14) buys a verdict before every trade on new Base
-    launches. It dodged every launch it checked.
+    launches. It has checked 280 and bought none. That is a strict gate, not
+    foresight, so every launch is labelled 72 hours later and the results are
+    published daily.
 13. Open APIs: live miner health, latency and spend caps. Use the SDK, the MCP
     server, x402 payments, or Telegraph itself.
 14. Try it: skeinlabs.site/tutorial, `npm i @skeinlabs/sdk`,

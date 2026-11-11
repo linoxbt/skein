@@ -5,6 +5,9 @@
 //   LOADTEST_DATABASE_URL=postgresql://postgres:…@127.0.0.1:5432/skein \
 //     npx tsx scripts/loadtest.ts [--report ../../docs/LOADTEST.md]
 //
+// LOADTEST_BURST (default 400) sizes phase A, and phase D at 1.5 times that;
+// CI runs it at 100 on every build (.github/workflows/ci.yml, job loadtest).
+//
 // Four phases, then invariants checked against the database:
 //   A. 400 paid verdicts at once, 20 partner keys, spread across both replicas
 //   B. an idempotency storm: 25 keys, each sent 8 times at once to both replicas
@@ -19,6 +22,8 @@ import { simulatedApi } from "../src/simulated";
 
 const url = process.env.LOADTEST_DATABASE_URL;
 if (!url) throw new Error("set LOADTEST_DATABASE_URL to an empty Postgres database (owner credentials)");
+const BURST = Number(process.env.LOADTEST_BURST ?? 400);
+const READS = Math.round(BURST * 1.5);
 const reportPath = process.argv.includes("--report") ? process.argv[process.argv.indexOf("--report") + 1] : undefined;
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -86,16 +91,16 @@ const phase = async (name: string, jobs: (() => Promise<Hit>)[]) => {
   return { hs, s: summary(name, hs, performance.now() - t0) };
 };
 
-console.log("phase A: 400 verdicts at once");
-const pA = await phase("A. 400 paid verdicts at once (20 keys, 2 replicas)", Array.from({ length: 400 }, (_, i) => () => verdict(i, keys[i % 20]!, `a-${i}`, hexToken(i, "a"))));
+console.log(`phase A: ${BURST} verdicts at once`);
+const pA = await phase(`A. ${BURST} paid verdicts at once (20 keys, 2 replicas)`, Array.from({ length: BURST }, (_, i) => () => verdict(i, keys[i % 20]!, `a-${i}`, hexToken(i, "a"))));
 console.log("phase B: idempotency storm");
 const pB = await phase("B. idempotency storm: 25 keys × 8 identical requests", Array.from({ length: 200 }, (_, i) => () => verdict(i, stormKeys[i % 25]!, `b-${i % 25}`, hexToken(i % 25, "b"))));
 console.log("phase C: spend-cap race");
 const pC = await phase("C. spend-cap race: 40 at once on a 0.30 USDC cap", Array.from({ length: 40 }, (_, i) => () => verdict(i, tight, `c-${i}`, hexToken(i, "c"))));
 const anId = pA.hs.find((h) => h.id)?.id ?? "vrd_x";
 const reads = ["/v1/status", "/v1/ledger", `/v1/verdicts/${anId}`, `/v1/verdicts/${anId}/bom`, "/v1/quote?chain=8453&token=0x4200000000000000000000000000000000000006", "/v1/policies"];
-console.log("phase D: 600 reads");
-const pD = await phase("D. 600 public reads at once", Array.from({ length: 600 }, (_, i) => () => read(i, reads[i % reads.length]!)));
+console.log(`phase D: ${READS} reads`);
+const pD = await phase(`D. ${READS} public reads at once`, Array.from({ length: READS }, (_, i) => () => read(i, reads[i % reads.length]!)));
 
 // Invariants, from the database and both fake nodes.
 const q = async <T>(sql: string, p: unknown[] = []) => (await ownerPool.query(sql, p)).rows as T[];

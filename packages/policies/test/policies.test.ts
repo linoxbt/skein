@@ -4,7 +4,7 @@ import { getPolicy, listAllPolicyFiles, listPolicies, readLock } from "../src/in
 describe("policies", () => {
   it("every policy file parses and is named after its id@version", () => {
     const all = listPolicies();
-    expect(all.map((p) => p.ref)).toEqual(["agent-pretrade@0.1.0", "agent-pretrade@0.2.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
+    expect(all.map((p) => p.ref)).toEqual(["agent-pretrade@0.1.0", "agent-pretrade@0.2.0", "agent-pretrade@0.3.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
   });
 
   it("published policies are immutable: each file matches its locked SHA-256", () => {

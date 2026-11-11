@@ -1,6 +1,6 @@
 # Skein motion demo
 
-The 3 min 10 s narrated demo film at `docs/demo/skein-motion.mp4`, built with
+The 3 min 13 s narrated demo film at `docs/demo/skein-motion.mp4`, built with
 [Remotion](https://www.remotion.dev) (React → video). Every product screen in
 it is a capture of the live services. The Desk scene is a real application
 that bought a real verdict through Telegraph testnet while it was recorded:

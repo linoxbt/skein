@@ -44,3 +44,36 @@ jobs:
           NEXT_PUBLIC_SKEIN_API: http://localhost:8787
       # The console flow, verify, 375 px and axe (WCAG 2 A/AA), against the simulated API.
       - run: pnpm --filter @skein/e2e e2e
+
+  # A smaller version of docs/LOADTEST.md on every build: two API replicas on a
+  # real PostgreSQL, runtime queries as skein_app, simulated Telegraph nodes
+  # (nothing paid). Fails if any money or idempotency invariant breaks.
+  loadtest:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: skein
+        ports: ["5432:5432"]
+        options: >-
+          --name pg --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Raise max_connections (two replica pools plus the owner's)
+        run: |
+          docker exec pg psql -U postgres -c "ALTER SYSTEM SET max_connections = 300"
+          docker restart pg
+          for i in $(seq 1 30); do docker exec pg pg_isready -U postgres && break; sleep 1; done
+      - run: pnpm --filter @skein/api exec tsx scripts/loadtest.ts
+        timeout-minutes: 15
+        env:
+          LOADTEST_BURST: "100"
+          LOADTEST_DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/skein

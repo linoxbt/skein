@@ -1,0 +1,60 @@
+{
+  "$comment": "Railway service settings Skein runs with, checked against the live project by scripts/railway-drift.mjs. Change a setting here and in Railway together.",
+  "project": "59c5fa5d-4a32-473d-bfa1-fdd4cfa36997",
+  "environment": "b803d990-2a86-4260-b629-f406166d8474",
+  "services": {
+    "api": {
+      "id": "71ed3a9b-269b-484e-bba1-37ffde298910",
+      "repo": "linoxbt/skein",
+      "dockerfilePath": "apps/api/Dockerfile",
+      "healthcheckPath": "/readyz",
+      "healthcheckTimeout": 120,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 5,
+      "drainingSeconds": 120,
+      "replicas": 2
+    },
+    "migrate": {
+      "id": "29c14752-9ea5-40c1-8ca3-418fa8edc7c3",
+      "repo": "linoxbt/skein",
+      "dockerfilePath": "apps/api/Dockerfile",
+      "startCommand": "node --import tsx src/migrate.ts",
+      "restartPolicyType": "NEVER",
+      "restartPolicyMaxRetries": 10
+    },
+    "sniper": {
+      "id": "32bd2c63-a0a4-43ef-8a20-efc38cefebc1",
+      "repo": "linoxbt/skein",
+      "dockerfilePath": "apps/sniper/Dockerfile",
+      "healthcheckPath": "/healthz",
+      "healthcheckTimeout": 60,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "watchPatterns": [
+        "apps/sniper/**",
+        "packages/sdk/**",
+        "pnpm-lock.yaml"
+      ]
+    },
+    "probe": {
+      "id": "7882cd87-6b7f-4a0a-b22d-e62982546410",
+      "repo": "linoxbt/skein",
+      "dockerfilePath": "apps/probe/Dockerfile",
+      "cronSchedule": "*/10 * * * *",
+      "restartPolicyType": "NEVER",
+      "restartPolicyMaxRetries": 10
+    },
+    "backup": {
+      "id": "bea3a703-35ef-4b1c-8d95-ce2b88f116de",
+      "repo": "linoxbt/skein",
+      "dockerfilePath": "apps/backup/Dockerfile",
+      "cronSchedule": "17 3 * * *",
+      "restartPolicyType": "NEVER",
+      "restartPolicyMaxRetries": 10
+    },
+    "Postgres": {
+      "id": "504aba16-1ed4-4cdc-8031-f853418b9e6c",
+      "image": "ghcr.io/railwayapp-templates/postgres-ssl:18"
+    }
+  }
+}

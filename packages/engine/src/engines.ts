@@ -1,5 +1,6 @@
 import type { Policy } from "./policy";
 import { evaluate as evaluate0_1_0 } from "./frozen/v0_1_0/seal";
+import { evaluate as evaluate0_2_0 } from "./frozen/v0_2_0/seal";
 import { ENGINE_VERSION, evaluate, receiptsOf, type SealedVerdict } from "./seal";
 import type { Finding, Subject } from "./types";
 
@@ -12,6 +13,7 @@ type Evaluate = (policy: Policy, subject: Subject, findings: readonly Finding[],
  */
 export const ENGINES: Readonly<Record<string, Evaluate>> = {
   "0.1.0": (policy, subject, findings, receipts) => evaluate0_1_0(policy, subject, findings, receipts) as SealedVerdict,
+  "0.2.0": (policy, subject, findings, receipts, opts) => evaluate0_2_0(policy, subject, findings, receipts, opts) as SealedVerdict,
   [ENGINE_VERSION]: (policy, subject, findings, receipts, opts) => evaluate(policy, subject, findings, receipts, opts),
 };
 

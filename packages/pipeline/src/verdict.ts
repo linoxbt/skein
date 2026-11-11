@@ -15,6 +15,7 @@ import {
 } from "@skein/engine";
 import { CHECK_INTENTS, SERVED_INTENTS, type AskOutcome, type AskRequest, type SignalStatus, type TelegraphClient } from "@skein/telegraph";
 import { availability, candidates, groupOf, quotes, type Catalogue } from "./catalogue";
+import { screenAddresses, sdnFinding } from "./ofac";
 import type { PoolResolver } from "./pool";
 import { buildRequest, forCandidate, type VerdictContext } from "./requests";
 
@@ -146,6 +147,23 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
   }
 
   const unpurchased: Finding[] = p.dropped.map((d) => ({ ...unavailable(d.check), notes: [`dropped_${d.reason.toLowerCase()}`] }));
+
+  // OFAC SDN address screen, before anything is bought: an exact match on the
+  // token, the deployer or a treasury address is a certain sanctions FAIL, so
+  // the paid name screen is not bought for it.
+  const sdn = screenAddresses({
+    token: subject.token,
+    deployer: ctx.deployer,
+    ...Object.fromEntries((ctx.treasuryAddresses ?? []).map((a, i) => [`treasury[${i}]`, a])),
+  });
+  if (sdn.length) {
+    const i = unpurchased.findIndex((f) => f.check === "sanctions");
+    if (i >= 0) unpurchased.splice(i, 1);
+    const f = sdnFinding(sdn);
+    unpurchased.push(f);
+    emit({ type: "finding", finding: f });
+  }
+  const toBuy = sdn.length ? p.purchases.filter((x) => x.check !== "sanctions") : p.purchases;
   const purchases: PurchaseRecord[] = [];
   const started = Date.now();
   const deadline = started + (deps.deadlineMs ?? 90_000);
@@ -279,12 +297,12 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
     if (!routed && r.finding?.status === "UNKNOWN" && r.next < cands.length) retries.push({ pp, built: built.req, cands, next: r.next });
   };
 
-  const settled = await Promise.allSettled(p.purchases.map(buyOne));
+  const settled = await Promise.allSettled(toBuy.map(buyOne));
   for (const [i, r] of settled.entries()) {
     // buyOne records its own failures; a rejection here is a bug or a failed
     // onPurchase write. Keep the check visible as an ERROR rather than lose the verdict.
-    if (r.status === "rejected" && !purchases.some((x) => x.check === p.purchases[i]!.check)) {
-      skip(p.purchases[i]!.check, "internal_error");
+    if (r.status === "rejected" && !purchases.some((x) => x.check === toBuy[i]!.check)) {
+      skip(toBuy[i]!.check, "internal_error");
     }
   }
 
