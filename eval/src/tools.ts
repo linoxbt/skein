@@ -20,7 +20,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { casesFileSchema } from "./cases";
-import { decodeSymbol, labelOutcome, OUTCOME_HOURS, PROSPECTIVE_SINCE, splitFor, type Outcome } from "./label";
+import { decodeSymbol, labelOutcome, OUTCOME_HOURS, PROSPECTIVE_SINCE, prospectiveId, splitFor, type Outcome } from "./label";
 
 const CHAINS: Record<string, number> = { ethereum: 1, eth: 1, bsc: 56, bnb: 56, base: 8453, arbitrum: 42161 };
 // Endpoints that serve old block headers (many public ones prune history), first that answers wins.
@@ -213,9 +213,12 @@ if ((cmd as string) === "prospective") {
   const { tokens } = (await res.json()) as {
     tokens: { token: string; status: string; verdictId?: string | null; verdict?: string | null; checkedAt?: string | null; priceAtCheck?: number | null; liquidityAtCheck?: number | null; marketUrl?: string | null; symbol?: string | null }[];
   };
-  const due = tokens.filter(
-    (t) => t.status === "decided" && t.verdictId && t.checkedAt && Date.parse(t.checkedAt) >= Date.parse(since) && now - Date.parse(t.checkedAt) >= OUTCOME_HOURS * 3_600_000 && !known.has(t.token.toLowerCase()),
-  );
+  const due = tokens.filter((t) => {
+    const ok = t.status === "decided" && t.verdictId && t.checkedAt && Date.parse(t.checkedAt) >= Date.parse(since) && now - Date.parse(t.checkedAt) >= OUTCOME_HOURS * 3_600_000 && !known.has(t.token.toLowerCase());
+    // One case per token, even if the sniper checked it twice.
+    if (ok) known.add(t.token.toLowerCase());
+    return ok;
+  });
   // Market data now, from DEX Screener (30 tokens a call); the deepest Base pair per token.
   const market = new Map<string, { price: number | null; liquidity: number; url: string | null }>();
   for (let i = 0; i < due.length; i += 30) {
@@ -238,7 +241,7 @@ if ((cmd as string) === "prospective") {
     const o: Outcome = { priceAtCheck: t.priceAtCheck ?? null, priceNow: m?.price ?? null, liquidityAtCheck: t.liquidityAtCheck ?? null, liquidityNow: m ? m.liquidity : null };
     const { label, why } = labelOutcome(o);
     const blk = await blockAt(urls[0]!, Math.floor(Date.parse(t.checkedAt!) / 1000));
-    const id = `pro-${token.slice(2, 14)}`;
+    const id = prospectiveId(token);
     const fmt = (v: number | null) => (v === null ? "none" : String(Number(v.toPrecision(4))));
     file.cases.push({
       id,
