@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeSymbol, labelOutcome, splitFor } from "../src/label";
+import { decodeSymbol, labelOutcome, prospectiveId, splitFor } from "../src/label";
 
 const at = { priceAtCheck: 1e-6, liquidityAtCheck: 50_000 };
 
@@ -34,5 +34,15 @@ describe("symbol()", () => {
     expect(decodeSymbol(abi)).toBe("BALD");
     expect(decodeSymbol("0x" + Buffer.from("MKR").toString("hex").padEnd(64, "0"))).toBe("MKR");
     expect(decodeSymbol("0x")).toBeNull();
+  });
+});
+
+describe("prospective case ids", () => {
+  it("tell vanity launches with a shared prefix apart, and fit the case id format", () => {
+    const a = prospectiveId("0xB20000000000000000000000000000000000aBcD");
+    const b = prospectiveId("0xb200000000000000000000000000000000001234");
+    expect(a).not.toBe(b);
+    expect(a).toBe("pro-b20000000000000000000000000000000000abcd");
+    expect(a).toMatch(/^[a-z0-9-]{3,64}$/);
   });
 });

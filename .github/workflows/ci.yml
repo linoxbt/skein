@@ -34,7 +34,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @skein/e2e exec playwright install --with-deps chromium
+      # --with-deps installs system packages through apt. When Ubuntu's mirrors
+      # are unreachable from the runner (as on 2026-11-11), fall back to the
+      # browser alone: the runner image already ships Chrome's libraries.
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @skein/e2e exec playwright install --with-deps chromium || pnpm --filter @skein/e2e exec playwright install chromium
       - run: pnpm --filter @skein/web build
         env:
           NEXT_PUBLIC_SKEIN_API: http://localhost:8787

@@ -2,6 +2,13 @@
 import { createHash } from "node:crypto";
 
 /** Holdout is decided once, from the id alone: about a third of cases, never chosen by looking at results. */
+/**
+ * A prospective case's id: the whole token address. Its first 12 hex digits
+ * were not enough: vanity launches share prefixes such as 0xb20000000000, and
+ * the duplicate ids failed the whole daily import.
+ */
+export const prospectiveId = (token: string): string => `pro-${token.toLowerCase().replace(/^0x/, "")}`;
+
 export const splitFor = (id: string): "tune" | "holdout" => (createHash("sha256").update(id).digest()[0]! % 3 === 0 ? "holdout" : "tune");
 
 /** When the sniper's verdicts started to come from the fixed pipeline and agent-pretrade@0.2.0 (DECISIONS L24, L26). */
