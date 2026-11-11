@@ -1,0 +1,98 @@
+{
+  "caseId": "pro-ad2c181440fc50a667289b1b8b71654597e3b4be",
+  "importedFrom": "vrd_mw76d2rf2x3m1b6f391f",
+  "boughtAt": "2026-11-08T01:50:01.572Z",
+  "policyRef": "agent-pretrade@0.2.0",
+  "wallMs": 5658,
+  "verdict": {
+    "findings": [
+      {
+        "check": "wash_trading",
+        "status": "UNKNOWN",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7378",
+          "signalHash": "0xbfc6f253a4ae1f5e5009ef5d5dfb4326ee5b3bd78267f01c6b1ce80aa889a393",
+          "receiptHash": "0x63bce02e872d11faeba3d851cf18197e9f4bb91aa4b852aa5b28ec66970e8784"
+        },
+        "notes": [
+          "no_transfers_in_window"
+        ]
+      },
+      {
+        "check": "contract_audit",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.6,
+        "sourceGroup": "gopluslabs.io",
+        "evidence": {
+          "minerId": "200001",
+          "signalHash": "0x04f3bd5a5f38e25efb7aa2701f77041abf9e093afa220a93da21f626fc693be3",
+          "receiptHash": "0x057f94e7c9ed8711fa52bf5ee7fcf1056a8da225aa4e6b5f31b8167c071ccb9f"
+        },
+        "notes": [
+          "tax_not_reported"
+        ]
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "PASS",
+        "severity": 0,
+        "metric": "liquidity_usd",
+        "value": 136678.57,
+        "unit": "USD",
+        "confidence": 0.7,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7373",
+          "signalHash": "0x37f5e015a7c96f0e5cd087135a632ca09c08bfec2d750d073869023c503c804e",
+          "receiptHash": "0x94671c87abb18286b86d6cc73e84ecfe55c3b89d614e8adc6cc0e94891f82c9c"
+        },
+        "notes": []
+      },
+      {
+        "check": "holder_count",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "sanctions",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "ABSTAIN",
+      "coverageBps": 7500
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "amountUusdc": 10000,
+      "durationMs": 2808
+    },
+    {
+      "check": "liquidity_depth",
+      "amountUusdc": 10000,
+      "durationMs": 5437
+    },
+    {
+      "check": "wash_trading",
+      "amountUusdc": 10000,
+      "durationMs": 3111
+    }
+  ]
+}
