@@ -1,0 +1,58 @@
+[
+  {
+    "id": "v01",
+    "text": "Every day, thousands of new tokens go live. Some are honest. Many are traps. Honeypots you can never sell. Liquidity that vanishes overnight. Wallets on a sanctions list."
+  },
+  {
+    "id": "v02",
+    "text": "This is Skane. One request, every thread. A listing verdict for any token on Ethereum, Base, BNB Chain or Arbitrum, built from intelligence that is bought, fused, and proven."
+  },
+  {
+    "id": "v03",
+    "text": "Today, a listing team stitches together five vendors, five scores and five invoices, and an analyst still has to make the call. It is slow. It is expensive. And afterwards, nobody can prove why the decision was made."
+  },
+  {
+    "id": "v04",
+    "text": "Skane asks once. It plans the checks a policy needs, then buys each one from the best ranked miner on the Telegraph network, paying through the Telegraph escrow. Contract audit. Sanctions. Holders. Liquidity. Wash trading. Every answer comes back with a receipt."
+  },
+  {
+    "id": "v05",
+    "text": "Fixed, versioned rules fuse those answers into one of four decisions. Approve. Reject. Escalate to a human. Or abstain, when the evidence simply is not there. Never a guess."
+  },
+  {
+    "id": "v06",
+    "text": "Here it is, live. An exchange's listing desk receives an application for Aerodrome, on Base. The desk agent buys a Skane verdict. Five paid receipts. Five and a half seconds. Five cents of intelligence. Approved, and shortlisted, with no human in the loop."
+  },
+  {
+    "id": "v07",
+    "text": "Now, something it must never approve. This address belongs to the Lazarus Group. Skane checks it against the US Treasury's sanctions list, address by address. The match is exact. Rejected, with full confidence, and the evidence names the list entry."
+  },
+  {
+    "id": "v08",
+    "text": "Every verdict carries a bill of materials. Which miner answered, what it cost, its receipt, and its signal. All rolled into a single Merkle root, and signed."
+  },
+  {
+    "id": "v09",
+    "text": "And you do not have to trust any of it. Paste a verdict into verify, and Skane replays it from the raw answers it paid for. The answers. The policy. The receipts. The engine. The signature. Every step matches."
+  },
+  {
+    "id": "v10",
+    "text": "The same engine guards trading agents. Skane Sniper watches every new launch on Base, and buys a verdict before it would ever trade. Its backtest found the signal that matters. Launches with a contract audit warning went to zero, twenty two times out of twenty three. So that is now a hard stop."
+  },
+  {
+    "id": "v11",
+    "text": "And it is measured in the open. Every launch is labelled seventy two hours after its verdict. Of the first forty, twenty seven went bad. Skane approved none of them. Simpler rules, on the same data, let more than one in five through."
+  },
+  {
+    "id": "v12",
+    "text": "It runs like production. Two API replicas. Hard spend caps. A probe every ten minutes that pages a human. Nightly backups, and a public status page."
+  },
+  {
+    "id": "v13",
+    "text": "Use it however you build. A single REST call. The TypeScript SDK. An MCP server for Claude or Cursor. Pay per verdict with x four oh two. Or ask for it on Telegraph itself, where Skane is a registered miner."
+  },
+  {
+    "id": "v14",
+    "text": "Skane. One request. Every thread. Try it today, at skane labs dot site."
+  }
+]

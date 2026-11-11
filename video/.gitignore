@@ -10,3 +10,11 @@ public/music/
 public/shots/
 public/clips/
 public/vo/*.wav
+# Film v2: same rules (Mixkit audio fetched by scripts/fetch-audio-v2.sh; captures and voice regenerable)
+capture/v2/
+public/v2/sfx/
+public/v2/sfxn/
+public/v2/music/
+public/v2/shots/
+public/v2/clips/*.mp4
+public/v2/vo/*.wav
