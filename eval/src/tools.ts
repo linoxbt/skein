@@ -21,6 +21,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { casesFileSchema } from "./cases";
 import { decodeSymbol, labelOutcome, OUTCOME_HOURS, PROSPECTIVE_SINCE, prospectiveId, splitFor, type Outcome } from "./label";
+import { blockAt, rpc } from "./chain";
 
 const CHAINS: Record<string, number> = { ethereum: 1, eth: 1, bsc: 56, bnb: 56, base: 8453, arbitrum: 42161 };
 // Endpoints that serve old block headers (many public ones prune history), first that answers wins.
@@ -30,35 +31,6 @@ const RPC: Record<number, string[]> = {
   8453: ["https://mainnet.base.org", "https://base.drpc.org"],
   42161: ["https://arb1.arbitrum.io/rpc", "https://arbitrum.drpc.org"],
 };
-
-async function rpc<T>(url: string, method: string, params: unknown[]): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-      const body = (await res.json()) as { result?: T; error?: { message: string } };
-      if (body.error) throw new Error(body.error.message);
-      return body.result as T;
-    } catch (e) {
-      if (attempt >= 3) throw e;
-      await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
-    }
-  }
-}
-
-/** The highest block whose timestamp is at or before `at` (seconds), by binary search. */
-export async function blockAt(url: string, at: number): Promise<{ number: number; timestamp: number }> {
-  const ts = async (n: number) => Number((await rpc<{ timestamp: string }>(url, "eth_getBlockByNumber", [`0x${n.toString(16)}`, false])).timestamp);
-  let hi = Number(await rpc<string>(url, "eth_blockNumber", []));
-  if ((await ts(hi)) <= at) return { number: hi, timestamp: await ts(hi) };
-  let lo = 1;
-  if ((await ts(lo)) > at) throw new Error("that time is before the chain's first block");
-  while (hi - lo > 1) {
-    const mid = Math.floor((lo + hi) / 2);
-    if ((await ts(mid)) <= at) lo = mid;
-    else hi = mid;
-  }
-  return { number: lo, timestamp: await ts(lo) };
-}
 
 const cwd = process.env.INIT_CWD ?? process.cwd();
 const [cmd, a, b] = process.argv.slice(2);
@@ -234,13 +206,24 @@ if ((cmd as string) === "prospective") {
     }
   }
   const labelledAt = new Date(now).toISOString();
+  let skipped = 0;
   const urls = process.env.RPC_URL_8453 ? [process.env.RPC_URL_8453] : RPC[8453]!;
   for (const t of due) {
     const token = t.token.toLowerCase();
     const m = market.get(token);
     const o: Outcome = { priceAtCheck: t.priceAtCheck ?? null, priceNow: m?.price ?? null, liquidityAtCheck: t.liquidityAtCheck ?? null, liquidityNow: m ? m.liquidity : null };
     const { label, why } = labelOutcome(o);
-    const blk = await blockAt(urls[0]!, Math.floor(Date.parse(t.checkedAt!) / 1000));
+    let blk: { number: number } | null = null;
+    for (const url of urls) {
+      blk = await blockAt(url, Math.floor(Date.parse(t.checkedAt!) / 1000)).catch((e: Error) => (console.warn(`block lookup for ${token} via ${url}: ${e.message}`), null));
+      if (blk) break;
+    }
+    // No node answered: leave this launch for tomorrow's run rather than fail every other one.
+    if (!blk) {
+      known.delete(token);
+      skipped++;
+      continue;
+    }
     const id = prospectiveId(token);
     const fmt = (v: number | null) => (v === null ? "none" : String(Number(v.toPrecision(4))));
     file.cases.push({
@@ -262,7 +245,7 @@ if ((cmd as string) === "prospective") {
   writeFileSync(out, `${JSON.stringify(file, null, 1)}\n`);
   const tally = (l: string) => due.filter((t) => labelOutcome({ priceAtCheck: t.priceAtCheck ?? null, priceNow: market.get(t.token.toLowerCase())?.price ?? null, liquidityAtCheck: t.liquidityAtCheck ?? null, liquidityNow: market.get(t.token.toLowerCase())?.liquidity ?? null }).label === l).length;
   const waiting = tokens.filter((t) => t.status === "decided" && t.checkedAt && Date.parse(t.checkedAt) >= Date.parse(since) && now - Date.parse(t.checkedAt) < OUTCOME_HOURS * 3_600_000).length;
-  console.log(`${due.length} new prospective cases (bad ${tally("bad")}, ambiguous ${tally("ambiguous")}); ${waiting} more checked since ${since} are not ${OUTCOME_HOURS} h old yet`);
+  console.log(`${due.length - skipped} new prospective cases (of ${due.length} due: bad ${tally("bad")}, ambiguous ${tally("ambiguous")}; ${skipped} left for the next run, no block found); ${waiting} more checked since ${since} are not ${OUTCOME_HOURS} h old yet`);
 }
 
 const SHORT: Record<number, string> = { 1: "eth", 56: "bsc", 8453: "base", 42161: "arb" };
