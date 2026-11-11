@@ -1,21 +1,46 @@
 # Demo films
 
-## skein-motion.mp4: the narrated demo (3 min 13 s)
+## skein-motion.mp4: the narrated demo film (3 min 48 s)
 
-The main demo. It is motion graphics built with Remotion from the live
-product (`video/`). The narration is Kokoro-82M, voice `af_heart`; the music
-and sound effects are from Mixkit; the type and brand are the site's own.
+The main demo. It is a motion film built with Remotion from the live product
+(`video/src/v2`). The type, colours, mark and thread motifs are the site's
+own. Captions are burned in.
 
-Every product screen is a capture of the live services. The Desk scene is a
-real application recorded as it ran: the agent bought
-[`vrd_mw8dfz384v6a6v094n03`](https://skeinlabs.site/v/vrd_mw8dfz384v6a6v094n03)
-through Telegraph testnet, APPROVE for AERO on Base, sealed in 5.8 s, with
-five paid receipts. The evidence and verify scenes show that same verdict.
+**Live events.** Two were recorded on Nov 11, 2026, against the production
+services on Telegraph testnet:
+- **The Desk.** A listing application for Aerodrome (AERO) on Base bought
+  [`vrd_mwcfyu0y04360z153f1b`](https://skeinlabs.site/v/vrd_mwcfyu0y04360z153f1b):
+  APPROVE, 5.4 s, five paid receipts, 0.05 USDC upstream. The desk shortlisted
+  it.
+- **The console.** It screened an address on the OFAC SDN list (Lazarus
+  Group, uid 27307) and got
+  [`vrd_mwcfy2nj685b1z0e264a`](https://skeinlabs.site/v/vrd_mwcfy2nj685b1z0e264a):
+  REJECT at full confidence. The evidence names the SDN entry and the list
+  file's sha256.
 
-Audio is mastered to −14 LUFS, true peak −1.5 dB.
+Both verdicts recompute on `/verify`.
 
-Narration script (the text equivalent): `video/scripts/script.json`. In that
-file "Skein" is spelled "Skane", so the voice says it right.
+**Real data.** Every number comes from the live services or the repository.
+- The miners, costs and receipt hashes are the AERO verdict's.
+- The cold-open wall is real Base launches the Sniper checked. Red means the
+  launch went to zero afterwards.
+- The backtest is `eval/FINDINGS-sniper.md`.
+- The benchmark is the first prospective run, published on the
+  `data/prospective` branch.
+
+The vendor panel in the problem scene is illustrative, and labelled so.
+
+**Sound.**
+- **Narration:** Kokoro-82M, voice `af_heart`. Word timings come from
+  faster-whisper, so visuals and effects land on the spoken word.
+- **Music:** "We Will Get It" by Eugenio Mininni (Mixkit). It is edited so its
+  break falls under "twenty-seven went bad" and its climax lands on "approved
+  none of them".
+- **Effects:** about 200 cues from Mixkit's library.
+- **Master:** −14 LUFS, true peak −1.5 dB.
+
+Narration script (the text equivalent): `video/scripts/script-v2.json`. In
+that file "Skein" is spelled "Skane", so the voice says it right.
 
 ## skein-demo.mp4: the plain screen walkthrough (2 min 33 s)
 
