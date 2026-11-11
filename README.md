@@ -137,7 +137,7 @@ flowchart LR
 
    | # | Condition | Verdict |
    |---|---|---|
-   | 1 | A blocker hits (a sanctions match, a honeypot) | `REJECT` |
+   | 1 | A blocker hits (a honeypot, for example) | `REJECT` |
    | 2 | A required check has no real answer | `ABSTAIN`, naming the check |
    | 3 | Coverage is below the policy minimum | `ABSTAIN` |
    | 4 | `riskBps` ≥ the reject threshold | `REJECT` |
@@ -385,12 +385,17 @@ rule differs:
 The sample is small and judged on the tokens' current state; method and
 caveats are in [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
 
-**Skein Sniper:**
-- 160 Base launches checked, 160 dodged;
-- the skipped tokens it tracked afterwards fell a median of 99.99%.
+**Skein Sniper.** Live figures are at
+[`/feed.json`](https://sniper-production-bea6.up.railway.app/feed.json)
+(`allTime`, and `book.medianSkippedChange`). On Nov 11 it had checked 240
+launches and bought none.
 
-The live feed is at
-[`/feed.json`](https://sniper-production-bea6.up.railway.app/feed.json).
+That is not a measure of foresight. On launches minutes old, the
+`agent-pretrade` policy's holder-count floor fails almost every token.
+`medianSkippedChange` moves with the market: −99.99% on Nov 8 and −6.1% on
+Nov 11. The point-in-time test is the prospective benchmark, which labels
+each launch 72 hours after its verdict (daily, on the `data/prospective`
+branch).
 
 ---
 
@@ -500,8 +505,11 @@ pnpm policies:lock                                      # record a newly publish
 | Backups | Railway cron and bucket | nightly, 30 kept |
 | Probe | Railway cron | every 10 minutes |
 
-- **Continuous delivery.** The API and sniper deploy from `main` only after
-  CI is green. Both Netlify sites build from the repository on every merge.
+- **Continuous delivery.**
+  - Railway deploys the API, sniper, probe, backup and migrate services from
+    `main` only after CI is green (Railway's "wait for CI").
+  - The two Netlify sites build on every merge to `main` and do not wait for
+    CI.
 - **CI** runs typecheck, all tests (with 20,000-case property tests),
   browser and accessibility tests, and `pnpm audit` on every change.
 - **Replicas.** Rate limits, Telegraph flight leases, idempotency, event
@@ -515,11 +523,13 @@ pnpm policies:lock                                      # record a newly publish
     across replicas in Postgres. GitHub issues are the second line.
   - Unhandled errors are kept for 30 days in `error_log`, counted in
     `/v1/status`, and sent to Sentry when `SENTRY_DSN` is set.
-- **Load.** Tested at 400 simultaneous paid verdicts across two replicas on
-  real Postgres. No 5xx, every purchase matched to a charge, idempotency and
-  spend caps exact ([docs/LOADTEST.md](docs/LOADTEST.md)).
-- **Releases.** `@skeinlabs/sdk` and `@skeinlabs/mcp` are published with npm
-  provenance by the *Release packages* workflow.
+- **Load.** Two API instances on real PostgreSQL, against simulated
+  Telegraph nodes (nothing paid, one process). The test ran 400 simultaneous
+  verdicts with no 5xx; every purchase matched a charge, and idempotency and
+  spend caps were exact ([docs/LOADTEST.md](docs/LOADTEST.md)).
+- **Releases.** The *Release packages* workflow publishes with npm provenance.
+  Versions 0.1.0 to 0.3.0 of `@skeinlabs/sdk` and `@skeinlabs/mcp` were
+  published by hand and carry none.
 - **Partner keys.** `node scripts/issue-partner-key.mjs "Name" team 2 ./name.key`
   prints a `SEED_CONSUMERS` entry. Only the key's hash is ever stored.
 
@@ -551,7 +561,8 @@ Incidents, rollback, secret rotation, restores and scaling are covered in
 - **Data.** Evidence tables are append-only, row-level security is on, and
   internals never reach an error response; logs link to them by request id.
 - **Supply chain.** Application dependencies are pinned to exact versions.
-  CI fails on high-severity advisories, and npm packages carry provenance.
+  CI fails on high-severity advisories. npm provenance comes with the next
+  release through the workflow; the current versions have none.
 
 Found a vulnerability? Please open a private security advisory on this
 repository rather than a public issue.
@@ -563,10 +574,18 @@ repository rather than a public issue.
 - **Testnet.** Payments and registration run on the Telegraph testnet.
   Tokens are analysed on mainnets (Ethereum, Base, BNB Chain and Arbitrum).
   The mainnet checklist is in [docs/MAINNET.md](docs/MAINNET.md).
+- **Sanctions.** The only sanctions intent on Telegraph screens names, not
+  addresses. Skein sends it the deployer's or the token's address, so a clean
+  answer means little: it counts toward coverage at low confidence, and it
+  can't block a verdict on its own. An address-based screen (the OFAC SDN list
+  of digital-currency addresses) is being added.
 - **Holder concentration.** No Telegraph intent supplies top-10
   concentration yet, so `cex-standard` refuses rather than guess.
 - **Upstream availability.** When a required miner fails, the verdict is
-  `ABSTAIN`, it names the check, and it is charged at upstream cost only.
+  `ABSTAIN` and names the check. What an ABSTAIN costs depends on the channel:
+  - an x402 caller pays nothing (the payment is not settled);
+  - partner keys are free;
+  - a Telegraph buyer pays the network's price, which Skein does not control.
 - **Prospective benchmark.** Sniper launches labelled 72 hours later begin
   producing cases on Nov 11.
 - **x402 settlement** has been tested with real signatures and a fake

@@ -77,6 +77,15 @@ export const resetStatusCache = () => {
 };
 
 const BACKUP_MAX_AGE_H = Number(process.env.PROBE_BACKUP_MAX_AGE_H ?? 26);
+/** Quality alarms, over /v1/status's 3-hour window; small samples are not judged. */
+const MIN_VERDICTS = Number(process.env.PROBE_MIN_VERDICTS ?? 5);
+const MAX_ABSTAIN_SHARE = Number(process.env.PROBE_MAX_ABSTAIN_SHARE ?? 0.5);
+const MIN_PURCHASES = Number(process.env.PROBE_MIN_PURCHASES ?? 10);
+const MAX_PURCHASE_ERROR_SHARE = Number(process.env.PROBE_MAX_PURCHASE_ERROR_SHARE ?? 0.5);
+
+type Quality = { windowHours: number; verdicts: number; abstain: number; purchases: number; purchaseErrors: number };
+const quality = (s: Record<string, unknown>) => (s.quality && typeof s.quality === "object" ? (s.quality as Quality) : null);
+const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export const CHECKS: Check[] = [
   http("api", "API process", `${API}/healthz`),
@@ -85,6 +94,18 @@ export const CHECKS: Check[] = [
   status("cap", "Daily spend cap", (s) => (s.capAlert === true ? `spent ${s.spentTodayUsdc} of ${s.dailyCapUsdc} USDC today` : null)),
   status("db-role", "Least-privilege database role", (s) => (typeof s.dbRole === "string" && s.dbRole !== "skein_app" ? `the API is querying as "${s.dbRole}", not skein_app: see the API's startup log` : null)),
   status("errors", "Unhandled API errors", (s) => (Number(s.errorsLastHour) > 0 ? `${s.errorsLastHour} unhandled error(s) in the last hour: see error_log or the API logs by request id` : null)),
+  status("abstain", "ABSTAIN share", (s) => {
+    const q = quality(s);
+    if (!q || q.verdicts < MIN_VERDICTS) return null;
+    const share = q.abstain / q.verdicts;
+    return share > MAX_ABSTAIN_SHARE ? `${q.abstain} of ${q.verdicts} verdicts in the last ${q.windowHours} h were ABSTAIN (${pct(share)}, limit ${pct(MAX_ABSTAIN_SHARE)}): see /v1/ledger abstain.causes` : null;
+  }),
+  status("purchases", "Upstream purchases", (s) => {
+    const q = quality(s);
+    if (!q || q.purchases < MIN_PURCHASES) return null;
+    const share = q.purchaseErrors / q.purchases;
+    return share > MAX_PURCHASE_ERROR_SHARE ? `${q.purchaseErrors} of ${q.purchases} purchases in the last ${q.windowHours} h failed (${pct(share)}, limit ${pct(MAX_PURCHASE_ERROR_SHARE)}): read a recent verdict's /bom errors` : null;
+  }),
   http("web", "Web console", `${WEB}/`),
   http("web-404", "Web 404 pages", `${WEB}/v/vrd_doesnotexist`, 404),
   http("desk", "Skein Desk queue", `${DESK}/api/applications`),

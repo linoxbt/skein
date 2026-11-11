@@ -85,6 +85,16 @@ export function subjectFromText(text: string): { token: string; chain?: string }
 }
 
 /** FRAUD_RISK_GENERAL's risk_level, as the intent proposal maps it: a blocker REJECT is CRITICAL. */
+/**
+ * The 0-1 risk_score Telegraph buyers read. An ABSTAIN means "not enough
+ * evidence", never "no risk": it reports at least 0.5, the middle of MEDIUM,
+ * so a buyer that thresholds on the score cannot read a failed check as safe.
+ */
+export function riskScore(verdict: string, riskBps: number): number {
+  const r = riskBps / 10_000;
+  return verdict === "ABSTAIN" ? Math.max(0.5, r) : r;
+}
+
 export function riskLevel(verdict: string, reasons: readonly { code: string }[]): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
   if (verdict === "APPROVE") return "LOW";
   if (verdict === "REJECT") return reasons.some((r) => r.code.startsWith("BLOCKER_")) ? "CRITICAL" : "HIGH";
@@ -214,7 +224,7 @@ export function createApp(service: VerdictService) {
       origin: (origin) => (config.webOrigins.includes(origin) ? origin : null),
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowHeaders: ["authorization", "content-type", "idempotency-key", "last-event-id", "if-match", "if-none-match", "x-payment"],
-      exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After", "X-PAYMENT-RESPONSE"],
+      exposeHeaders: ["X-Skein-Verdict-Hash", "X-Skein-Bom-Root", "X-Skein-Cache", "Retry-After", "X-PAYMENT-RESPONSE", "X-Skein-Payment"],
       maxAge: 600,
     }),
   );
@@ -326,8 +336,14 @@ export function createApp(service: VerdictService) {
    * nonce makes a second on-chain settlement impossible anyway. Returns a 402
    * response when settlement fails, or null with X-PAYMENT-RESPONSE set.
    */
-  const settle = async (c: Context, runId: string, paid: Paid): Promise<Response | null> => {
+  const settle = async (c: Context, runId: string, paid: Paid, verdictId: string): Promise<Response | null> => {
     const a = paid.payment.payload.authorization;
+    // An ABSTAIN is not an answer: the payment is never settled, so the authorization lapses and the caller pays nothing.
+    const [v] = await db.select({ verdict: schema.verdicts.verdict }).from(schema.verdicts).where(eq(schema.verdicts.id, verdictId));
+    if (v?.verdict === "ABSTAIN") {
+      c.header("X-Skein-Payment", "not-settled; verdict ABSTAIN");
+      return null;
+    }
     const prefix = `x402:${runId}:`;
     const [prior] = await db
       .select({ ref: schema.spendLedger.ref })
@@ -444,7 +460,7 @@ export function createApp(service: VerdictService) {
       // Idempotent replay: the original outcome, never charged again.
       if (claim.existing.requestHash !== requestHash) throw new ApiError(409, "IDEMPOTENCY_CONFLICT", "this Idempotency-Key was used with a different body");
       if (paid && claim.existing.status === "done" && claim.existing.verdictId) {
-        const unpaid = await settle(c, claim.existing.id, paid);
+        const unpaid = await settle(c, claim.existing.id, paid, claim.existing.verdictId);
         if (unpaid) return unpaid;
       }
       return fromRun(c, claim.existing, { replayed: true });
@@ -454,7 +470,7 @@ export function createApp(service: VerdictService) {
     if (cached) {
       await finishRun(db, id, { status: "done", verdictId: cached.id, at: now() });
       if (paid) {
-        const unpaid = await settle(c, id, paid);
+        const unpaid = await settle(c, id, paid, cached.id);
         if (unpaid) return unpaid;
       }
       c.header("X-Skein-Cache", "hit");
@@ -485,7 +501,7 @@ export function createApp(service: VerdictService) {
     if (out.kind === "refused") throw refusalError(out.refusal);
     if (out.kind === "failed") throw new ApiError(503, "VERDICT_FAILED", out.message, { id });
     if (paid) {
-      const unpaid = await settle(c, id, paid);
+      const unpaid = await settle(c, id, paid, out.id);
       if (unpaid) return unpaid;
     }
     return sendVerdict(c, out.id);
@@ -673,6 +689,25 @@ export function createApp(service: VerdictService) {
     });
   });
 
+  /**
+   * Service quality over the last 3 hours, for the probe: a burst of
+   * ABSTAINs or failed purchases is an outage even when every process is up
+   * (on Nov 10 a change in the node's 402 made every purchase fail for a day).
+   */
+  const QUALITY_WINDOW_H = 3;
+  const quality = memo(30_000, async () => {
+    const since = new Date(now().getTime() - QUALITY_WINDOW_H * 3_600_000);
+    const [v] = await db
+      .select({ n: count(), abstain: sql<string>`count(*) filter (where ${schema.verdicts.verdict} = 'ABSTAIN')` })
+      .from(schema.verdicts)
+      .where(gte(schema.verdicts.createdAt, since));
+    const [p] = await db
+      .select({ n: count(), errors: sql<string>`count(*) filter (where ${schema.purchases.error} is not null)` })
+      .from(schema.purchases)
+      .where(gte(schema.purchases.createdAt, since));
+    return { windowHours: QUALITY_WINDOW_H, verdicts: v?.n ?? 0, abstain: Number(v?.abstain ?? 0), purchases: p?.n ?? 0, purchaseErrors: Number(p?.errors ?? 0) };
+  });
+
   /** Latency and failure per intent over 24 h, from the purchase log. */
   const intentHealth = memo(30_000, async () => {
     const since = new Date(now().getTime() - 86_400_000);
@@ -725,6 +760,7 @@ export function createApp(service: VerdictService) {
       probeAt: beats.probe ?? null,
       backupAt: beats.backup ?? null,
       alertsOpen: failing.map((f) => ({ key: f.key, since: f.since?.toISOString() ?? null })),
+      quality: await quality(),
       chainsAnalysed: SUPPORTED_CHAINS,
     });
   });
@@ -904,7 +940,7 @@ export function createApp(service: VerdictService) {
         verdict: v.verdict,
         // Plan B (FRAUD_RISK_GENERAL) reads its response fields: risk_level, risk_score, signals, summary.
         risk_level: riskLevel(v.verdict, reasons),
-        risk_score: v.riskBps / 10_000,
+        risk_score: riskScore(v.verdict, v.riskBps),
         signals: [...reasons.map((r) => r.detail), ...(v.openRisks as string[]).map((r) => `open: ${r}`)],
         confidence: v.confidenceBps / 10_000,
         summary: v.summary,
@@ -923,7 +959,7 @@ export function createApp(service: VerdictService) {
     };
     const abstain = (code: string, detail: string, extra: Record<string, unknown> = {}) =>
       c.json({
-        verdict: "ABSTAIN", risk_level: "MEDIUM", risk_score: 0, signals: [detail], confidence: 0, summary: `Abstained: ${detail}`,
+        verdict: "ABSTAIN", risk_level: "MEDIUM", risk_score: riskScore("ABSTAIN", 0), signals: [detail], confidence: 0, summary: `Abstained: ${detail}`,
         reasons: [{ code, detail }], open_risks: [], verdict_code: 0, risk_bps: 0, confidence_bps: 0, bom_root: null, cached: false, ...extra,
       });
 

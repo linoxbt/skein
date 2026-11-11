@@ -27,6 +27,29 @@ const LIVE = JSON.parse(readFileSync(new URL("./fixtures/live-402-7302.json", im
 const TEMPLATE: string = LIVE.body.accepts[1].extra.message;
 const swap = (from: string, to: string) => TEMPLATE.replace(from, to);
 
+// The same ask on 2026-11-11: the node now also offers "exact" payments on Base Sepolia and Solana devnet.
+const MULTI = JSON.parse(readFileSync(new URL("./fixtures/live-402-7302-multichain.json", import.meta.url), "utf8"));
+
+describe("the multi-chain 402 (fixture)", () => {
+  const header = Buffer.from(JSON.stringify(MULTI.paymentRequiredHeader)).toString("base64");
+  const expected = { caip2: TESTNET.caip2, diamond: TESTNET.diamond, usdc: TESTNET.usdc, maxUusdc: 50_000, resource: "/v1/ask/7302" };
+
+  it("checks only the assets on the escrow's own chain, and signs it", async () => {
+    const c = readChallenge(header, MULTI.body)!;
+    expect(c.assets).toEqual([TESTNET.usdc]);
+    const out = await signEscrowPayment({ accept: c.escrow, assets: c.assets, signer: viemSigner(KEY), nowSec: 1_793_000_000, nonce: "n-2", expected });
+    expect(out.amountUusdc).toBe(10_000);
+  });
+
+  it("still refuses a foreign asset on the escrow's chain", async () => {
+    const hdr = structuredClone(MULTI.paymentRequiredHeader);
+    const same = hdr.accepts.find((a: { scheme: string; network: string }) => a.scheme === "exact" && a.network === TESTNET.caip2);
+    same.asset = "0x0000000000000000000000000000000000000bad";
+    const c = readChallenge(Buffer.from(JSON.stringify(hdr)).toString("base64"), null)!;
+    await expect(signEscrowPayment({ accept: c.escrow, assets: c.assets, signer: viemSigner(KEY), nowSec: 1_793_000_000, nonce: "n-3", expected })).rejects.toThrow(ChallengeMismatchError);
+  });
+});
+
 describe("the live 402 (fixture)", () => {
   it("parses the header and body the node actually sends", () => {
     const header = Buffer.from(JSON.stringify(LIVE.paymentRequiredHeader)).toString("base64");
