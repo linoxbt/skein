@@ -35,7 +35,7 @@ function world(broken: Set<string>, status: Record<string, unknown> = {}) {
 
 describe("probe", () => {
   it("covers every public service, the escrow, the cap, errors, the miner and the backup", () => {
-    expect(CHECKS.map((c) => c.key)).toEqual(["api", "api-db", "escrow", "cap", "db-role", "errors", "web", "web-404", "desk", "sniper", "miner", "backup"]);
+    expect(CHECKS.map((c) => c.key)).toEqual(["api", "api-db", "escrow", "cap", "db-role", "errors", "abstain", "purchases", "web", "web-404", "desk", "sniper", "miner", "backup"]);
   });
 
   it("alerts once when something breaks, stays quiet while it stays broken, and says when it recovers", async () => {
@@ -76,6 +76,23 @@ describe("probe", () => {
     expect(bodies).toMatch(/last backup ran 30\.\d h ago/);
     const beats = await pg.query<{ name: string; detail: string }>(`SELECT name, detail FROM heartbeats WHERE name = 'probe'`);
     expect(beats.rows[0]!.detail).toContain("failing");
+  });
+
+  it("alerts on a burst of ABSTAINs or failed purchases, and ignores small samples", async () => {
+    const quality = { windowHours: 3, verdicts: 12, abstain: 12, purchases: 48, purchaseErrors: 48 };
+    const w = world(new Set(), { quality });
+    const alerter = new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: pg, fetch: w.f });
+    await beat(pg, "backup");
+    const r = await runOnce({ ctx: { fetch: w.f, db: pg, now: Date.now }, alerter, db: pg, retryMs: 1 });
+    expect(r.failing.map((x) => x.key).sort()).toEqual(["abstain", "purchases"]);
+    const bodies = w.pushes.map((p) => p.body).join("\n");
+    expect(bodies).toContain("12 of 12 verdicts in the last 3 h were ABSTAIN");
+    expect(bodies).toContain("48 of 48 purchases in the last 3 h failed");
+
+    const small = world(new Set(), { quality: { windowHours: 3, verdicts: 2, abstain: 2, purchases: 4, purchaseErrors: 4 } });
+    const quiet = await runOnce({ ctx: { fetch: small.f, db: pg, now: Date.now }, alerter: new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: pg, fetch: small.f }), db: pg, retryMs: 1 });
+    expect(quiet.failing.map((x) => x.key)).not.toContain("abstain");
+    expect(quiet.failing.map((x) => x.key)).not.toContain("purchases");
   });
 
   it("keeps checking and alerting when its database is broken", async () => {

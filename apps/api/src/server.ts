@@ -104,16 +104,26 @@ console.log(
     `catalogue ${Object.values(service.catalogue.minersByIntent).flat().length} miners`,
 );
 
-// Railway sends SIGTERM on every redeploy. Stop taking work, let running
-// verdicts store their result (their purchases are already written), then close.
+// Railway sends SIGTERM on every redeploy. Stop taking connections, let every
+// running verdict finish (up to its own deadline) and every open request send
+// its answer (a paid one settles after its verdict), then close the pool.
+// Railway's draining window (infra/railway.json, drainingSeconds) is longer
+// than this, so the process is never killed mid-settlement.
+const SHUTDOWN_GRACE_MS = config.verdictDeadlineMs + 20_000;
 let stopping = false;
 const shutdown = async (signal: string) => {
   if (stopping) return;
   stopping = true;
-  console.log(`${signal}: draining ${service.running.size} running verdict(s)`);
+  console.log(`${signal}: draining ${service.running.size} running verdict(s), up to ${SHUTDOWN_GRACE_MS / 1000} s`);
   for (const t of timers) clearInterval(t);
-  server.close();
-  await service.drain(45_000);
+  const closed = new Promise<void>((resolve) => server.close(() => resolve()));
+  // Keep-alive sockets with no request in flight would hold close() open.
+  (server as unknown as { closeIdleConnections?: () => void }).closeIdleConnections?.();
+  const deadline = Date.now() + SHUTDOWN_GRACE_MS;
+  await service.drain(SHUTDOWN_GRACE_MS);
+  const idle = setInterval(() => (server as unknown as { closeIdleConnections?: () => void }).closeIdleConnections?.(), 500);
+  await Promise.race([closed, new Promise((r) => setTimeout(r, Math.max(0, deadline - Date.now())))]);
+  clearInterval(idle);
   await pool.end().catch(() => {});
   process.exit(0);
 };

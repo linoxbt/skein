@@ -126,8 +126,9 @@ with the owner wallet:
 - **API and sniper (Railway)** deploy from `main`, and only after GitHub
   reports CI green on the commit (Railway's "wait for CI", `checkSuites`, set
   2026-11-08). A red build never reaches production. Each service builds from
-  its own Dockerfile path (`RAILWAY_DOCKERFILE_PATH`). Database migrations run
-  at start, under an advisory lock, so two instances never race.
+  its own Dockerfile path (`RAILWAY_DOCKERFILE_PATH`). Database migrations are
+  run by the `migrate` job, not by the API; the replicas wait for it ("Database
+  roles", below).
 - **Web and Desk (Netlify).** `apps/web/netlify.toml` and `apps/desk/netlify.toml`
   build from the repository with pnpm. To switch from manual uploads to a
   deploy on every push:
@@ -207,7 +208,7 @@ No internet-facing service holds the database owner's credentials.
 
 `apps/api/scripts/loadtest.ts` runs two replicas on one real Postgres, as
 `skein_app`, against fake Telegraph nodes. It covers:
-- 400 simultaneous paid verdicts;
+- 400 simultaneous verdicts, paid to simulated nodes;
 - an idempotency storm;
 - a race on a spend cap;
 - 600 simultaneous reads.
