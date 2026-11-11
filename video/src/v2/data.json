@@ -1,0 +1,1242 @@
+{
+ "approve": {
+  "id": "vrd_mwcfyu0y04360z153f1b",
+  "verdict": "APPROVE",
+  "riskBps": 1886,
+  "confidenceBps": 7249,
+  "durationMs": 5447,
+  "upstreamUsdc": 0.05,
+  "verdictHash": "0x2a80faf30c6b4c8a378f9811203717fde76140c50cdd326b588326db7ba58b6f",
+  "bomRoot": "0x80d00e30fee56a98432c8833e32b371eb3ef3038416e6445dd0d4ca4cce259a4",
+  "attester": "0x07Dee32979AE8C17415Bd6d6939bA0d815639309",
+  "lines": [
+   {
+    "check": "contract_audit",
+    "miner": "GoPlus Security",
+    "minerId": "200001",
+    "amount": 0.01,
+    "receipt": "0xf7dc02afc83f248102504eb830f4153a9e72e84e47d42f29b52e0cbede8b885e",
+    "signal": "0x556e58a6a42f99dc0a746dbb59e993f68a02a552a0d823b79a1ad6f9ffc64685",
+    "ms": 2833
+   },
+   {
+    "check": "holder_count",
+    "miner": "TxLens",
+    "minerId": "9002",
+    "amount": 0.01,
+    "receipt": "0xc6f4e428f06992afe8783681475692a92584e9fd4c7f130afbc3c85275bb3020",
+    "signal": "0xc070b365c12db45c85123c0fad218cd45f1f9910be76b683d85a97a8e3147445",
+    "ms": 5125
+   },
+   {
+    "check": "liquidity_depth",
+    "miner": "VerifyWire Liquidity Depth",
+    "minerId": "7373",
+    "amount": 0.01,
+    "receipt": "0xc884d77e7d39006bee7842cd351fb99aefc1ced33ed8f0fc46a362fdcddc6c4e",
+    "signal": "0x2863cdaa8619b80895a0b1142a22014be02b2a0daa42c2d6f336a6e09888643b",
+    "ms": 5087
+   },
+   {
+    "check": "sanctions",
+    "miner": "OFAC SDN Entity Screen",
+    "minerId": "78021",
+    "amount": 0.01,
+    "receipt": "0xdeb9e71bae878e8126e94173d2e06e6a37626a3f701abbd28ae4d6553303bd6e",
+    "signal": "0x58d7ba5331ffb7fec9d29da0db31be2212f4d8c16b09dbaa40599d62124d1b8f",
+    "ms": 1697
+   },
+   {
+    "check": "wash_trading",
+    "miner": "VerifyWire Wash Trading Detection",
+    "minerId": "7378",
+    "amount": 0.01,
+    "receipt": "0x4c72e8cf80fbec4a5ffe422a99b774d60ab0e2838a2fc3f6cb3e8e3d0c1d07ec",
+    "signal": "0x78c664d5f6bdadfa1959c9db2f1d720f678796e5ebb63d66df7109e3792389ce",
+    "ms": 2085
+   }
+  ]
+ },
+ "reject": {
+  "id": "vrd_mwcfy2nj685b1z0e264a",
+  "verdict": "REJECT",
+  "confidenceBps": 10000,
+  "durationMs": 8677,
+  "token": "0x08723392ed15743cc38513c4925f5e6be5c17243",
+  "evidence": {
+   "list": "OFAC SDN",
+   "matches": [
+    {
+     "field": "token",
+     "sdnUid": "27307",
+     "address": "0x08723392ed15743cc38513c4925f5e6be5c17243"
+    }
+   ],
+   "listSha256": "7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8"
+  },
+  "source": "ofac-sdn@2026-11-11"
+ },
+ "ledger": {
+  "verdicts": 312,
+  "receipts": 819,
+  "spend": 8.54,
+  "miners": 10
+ },
+ "status": {
+  "replicas": 2,
+  "dailyCap": 10,
+  "intents": 7
+ },
+ "launches": [
+  {
+   "s": "USLED",
+   "rug": false
+  },
+  {
+   "s": "USSLVR",
+   "rug": false
+  },
+  {
+   "s": "USKRUD",
+   "rug": false
+  },
+  {
+   "s": "USKERO",
+   "rug": false
+  },
+  {
+   "s": "USMLAS",
+   "rug": false
+  },
+  {
+   "s": "USCRN",
+   "rug": false
+  },
+  {
+   "s": "USWHT",
+   "rug": false
+  },
+  {
+   "s": "USSLFR",
+   "rug": false
+  },
+  {
+   "s": "USPLTM",
+   "rug": false
+  },
+  {
+   "s": "CRW",
+   "rug": false
+  },
+  {
+   "s": "TWO",
+   "rug": false
+  },
+  {
+   "s": "UNISEUM",
+   "rug": false
+  },
+  {
+   "s": "NOTF",
+   "rug": true
+  },
+  {
+   "s": "WXLM",
+   "rug": false
+  },
+  {
+   "s": "STRC",
+   "rug": false
+  },
+  {
+   "s": "ZERU",
+   "rug": false
+  },
+  {
+   "s": "QUAI",
+   "rug": false
+  },
+  {
+   "s": "BLINK",
+   "rug": false
+  },
+  {
+   "s": "POV",
+   "rug": false
+  },
+  {
+   "s": "INIT",
+   "rug": false
+  },
+  {
+   "s": "JUMPER",
+   "rug": false
+  },
+  {
+   "s": "NAMI",
+   "rug": false
+  },
+  {
+   "s": "SILVER",
+   "rug": false
+  },
+  {
+   "s": "NEARAI",
+   "rug": false
+  },
+  {
+   "s": "DOPPLER",
+   "rug": false
+  },
+  {
+   "s": "INJ",
+   "rug": false
+  },
+  {
+   "s": "FLOP",
+   "rug": false
+  },
+  {
+   "s": "TEN",
+   "rug": false
+  },
+  {
+   "s": "STRATO",
+   "rug": false
+  },
+  {
+   "s": "ZRO",
+   "rug": false
+  },
+  {
+   "s": "NATGAS",
+   "rug": false
+  },
+  {
+   "s": "CAD$",
+   "rug": false
+  },
+  {
+   "s": "FOTF",
+   "rug": true
+  },
+  {
+   "s": "PMPKNIDX",
+   "rug": false
+  },
+  {
+   "s": "OIF",
+   "rug": false
+  },
+  {
+   "s": "ADTO",
+   "rug": false
+  },
+  {
+   "s": "COTF",
+   "rug": false
+  },
+  {
+   "s": "NAFD",
+   "rug": false
+  },
+  {
+   "s": "AFTO",
+   "rug": false
+  },
+  {
+   "s": "USRP",
+   "rug": false
+  },
+  {
+   "s": "USAR",
+   "rug": false
+  },
+  {
+   "s": "DAP",
+   "rug": false
+  },
+  {
+   "s": "UOES",
+   "rug": false
+  },
+  {
+   "s": "UKRO",
+   "rug": false
+  },
+  {
+   "s": "ATOF",
+   "rug": false
+  },
+  {
+   "s": "USDF",
+   "rug": false
+  },
+  {
+   "s": "NAFT",
+   "rug": false
+  },
+  {
+   "s": "USRA",
+   "rug": false
+  },
+  {
+   "s": "NTAF",
+   "rug": false
+  },
+  {
+   "s": "USNR",
+   "rug": false
+  },
+  {
+   "s": "NFOD",
+   "rug": false
+  },
+  {
+   "s": "UDSP",
+   "rug": false
+  },
+  {
+   "s": "SOSF",
+   "rug": false
+  },
+  {
+   "s": "NATF",
+   "rug": false
+  },
+  {
+   "s": "NODF",
+   "rug": false
+  },
+  {
+   "s": "AODF",
+   "rug": false
+  },
+  {
+   "s": "AFOT",
+   "rug": false
+  },
+  {
+   "s": "IOF",
+   "rug": false
+  },
+  {
+   "s": "SOFS",
+   "rug": false
+  },
+  {
+   "s": "AFDO",
+   "rug": false
+  },
+  {
+   "s": "NADF",
+   "rug": false
+  },
+  {
+   "s": "PDA",
+   "rug": false
+  },
+  {
+   "s": "AODT",
+   "rug": false
+  },
+  {
+   "s": "AFD",
+   "rug": false
+  },
+  {
+   "s": "UDFT",
+   "rug": false
+  },
+  {
+   "s": "USDP",
+   "rug": true
+  },
+  {
+   "s": "UKOR",
+   "rug": false
+  },
+  {
+   "s": "ADOT",
+   "rug": false
+  },
+  {
+   "s": "VIOR",
+   "rug": true
+  },
+  {
+   "s": "PANGEA",
+   "rug": false
+  },
+  {
+   "s": "USPR",
+   "rug": true
+  },
+  {
+   "s": "AMA",
+   "rug": true
+  },
+  {
+   "s": "NEAR",
+   "rug": true
+  },
+  {
+   "s": "FILE",
+   "rug": true
+  },
+  {
+   "s": "ELYSION",
+   "rug": true
+  },
+  {
+   "s": "VSOF",
+   "rug": true
+  },
+  {
+   "s": "IMX",
+   "rug": false
+  },
+  {
+   "s": "KNTQ",
+   "rug": true
+  },
+  {
+   "s": "WHUF",
+   "rug": false
+  },
+  {
+   "s": "COGE",
+   "rug": true
+  },
+  {
+   "s": "PHA",
+   "rug": false
+  },
+  {
+   "s": "XOT",
+   "rug": true
+  },
+  {
+   "s": "LINK",
+   "rug": false
+  },
+  {
+   "s": "RHEA",
+   "rug": false
+  },
+  {
+   "s": "PIEVERSE",
+   "rug": false
+  },
+  {
+   "s": "CCD",
+   "rug": false
+  },
+  {
+   "s": "TIT",
+   "rug": false
+  },
+  {
+   "s": "XRPLP",
+   "rug": false
+  },
+  {
+   "s": "XRPL",
+   "rug": true
+  },
+  {
+   "s": "FLOAT",
+   "rug": false
+  },
+  {
+   "s": "ICNT",
+   "rug": false
+  },
+  {
+   "s": "DOAR",
+   "rug": true
+  },
+  {
+   "s": "TOSHI",
+   "rug": false
+  },
+  {
+   "s": "FDOF",
+   "rug": false
+  },
+  {
+   "s": "USRN",
+   "rug": false
+  },
+  {
+   "s": "SPIKE",
+   "rug": false
+  },
+  {
+   "s": "WSOS",
+   "rug": true
+  },
+  {
+   "s": "SLOPCASH",
+   "rug": true
+  },
+  {
+   "s": "BTC",
+   "rug": true
+  },
+  {
+   "s": "BBRAIN",
+   "rug": true
+  },
+  {
+   "s": "STANK",
+   "rug": true
+  },
+  {
+   "s": "SOMETOKEN",
+   "rug": true
+  },
+  {
+   "s": "BB",
+   "rug": true
+  },
+  {
+   "s": "FODF",
+   "rug": true
+  },
+  {
+   "s": "HODL",
+   "rug": true
+  },
+  {
+   "s": "IRLING",
+   "rug": false
+  },
+  {
+   "s": "DOTF",
+   "rug": true
+  },
+  {
+   "s": "LRDS",
+   "rug": false
+  },
+  {
+   "s": "DHT",
+   "rug": true
+  },
+  {
+   "s": "NAFF",
+   "rug": true
+  },
+  {
+   "s": "XTO",
+   "rug": false
+  },
+  {
+   "s": "PRUS",
+   "rug": false
+  },
+  {
+   "s": "HUB",
+   "rug": true
+  },
+  {
+   "s": "REDFOXY",
+   "rug": true
+  },
+  {
+   "s": "FOFT",
+   "rug": false
+  },
+  {
+   "s": "KIAMEDA",
+   "rug": true
+  },
+  {
+   "s": "PLINKS",
+   "rug": false
+  },
+  {
+   "s": "MERC",
+   "rug": false
+  },
+  {
+   "s": "IPX",
+   "rug": true
+  },
+  {
+   "s": "BOOTR",
+   "rug": false
+  },
+  {
+   "s": "SPIKO",
+   "rug": false
+  },
+  {
+   "s": "KTNQ",
+   "rug": false
+  },
+  {
+   "s": "EAT",
+   "rug": false
+  },
+  {
+   "s": "APYX",
+   "rug": false
+  },
+  {
+   "s": "MIDNIGHT",
+   "rug": false
+  },
+  {
+   "s": "WEALTH",
+   "rug": false
+  },
+  {
+   "s": "SUI",
+   "rug": false
+  },
+  {
+   "s": "RBNT",
+   "rug": false
+  },
+  {
+   "s": "IRONWOOD",
+   "rug": false
+  },
+  {
+   "s": "GROW",
+   "rug": false
+  },
+  {
+   "s": "DGAI",
+   "rug": false
+  },
+  {
+   "s": "RBTN",
+   "rug": false
+  },
+  {
+   "s": "GIVE",
+   "rug": false
+  },
+  {
+   "s": "AXIS",
+   "rug": false
+  },
+  {
+   "s": "ADOF",
+   "rug": true
+  },
+  {
+   "s": "AOP",
+   "rug": true
+  },
+  {
+   "s": "ADP",
+   "rug": true
+  },
+  {
+   "s": "NOVEMBULL",
+   "rug": true
+  },
+  {
+   "s": "CLAUDIA",
+   "rug": true
+  },
+  {
+   "s": "VVV",
+   "rug": false
+  },
+  {
+   "s": "PONS",
+   "rug": true
+  },
+  {
+   "s": "TRUMP2028",
+   "rug": true
+  },
+  {
+   "s": "CHUBBY",
+   "rug": true
+  },
+  {
+   "s": "LAPTOP",
+   "rug": true
+  },
+  {
+   "s": "NOVEMBAG",
+   "rug": true
+  },
+  {
+   "s": "SIRE",
+   "rug": false
+  },
+  {
+   "s": "CIRCBREA",
+   "rug": true
+  },
+  {
+   "s": "REBOOT",
+   "rug": true
+  },
+  {
+   "s": "XCHAT",
+   "rug": true
+  },
+  {
+   "s": "OFTF",
+   "rug": true
+  },
+  {
+   "s": "SPACEX",
+   "rug": true
+  },
+  {
+   "s": "1KTO100M",
+   "rug": true
+  },
+  {
+   "s": "MAFIA",
+   "rug": true
+  },
+  {
+   "s": "MEOW",
+   "rug": true
+  },
+  {
+   "s": ".AI",
+   "rug": true
+  },
+  {
+   "s": "BIDEN",
+   "rug": true
+  },
+  {
+   "s": "XAUT",
+   "rug": true
+  },
+  {
+   "s": "LIQUIDBGT",
+   "rug": true
+  },
+  {
+   "s": "DEMOCAT",
+   "rug": true
+  },
+  {
+   "s": "SI",
+   "rug": true
+  },
+  {
+   "s": "AOEF",
+   "rug": true
+  },
+  {
+   "s": "DENIM",
+   "rug": false
+  },
+  {
+   "s": "VELORA",
+   "rug": true
+  },
+  {
+   "s": "MARKLEDG",
+   "rug": true
+  },
+  {
+   "s": "USDG",
+   "rug": true
+  },
+  {
+   "s": "MONEY",
+   "rug": true
+  },
+  {
+   "s": "ADEO",
+   "rug": true
+  },
+  {
+   "s": "PEPKING",
+   "rug": true
+  }
+ ],
+ "sdn": {
+  "count": 94,
+  "sha256": "7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8",
+  "fetched": "2026-11-11",
+  "targetIndex": 2,
+  "rows": [
+   {
+    "a": "0x0330070fd38ec3bb94f58fa55d40368271e9e54a",
+    "n": "AMNOKGANG TECHNOLOGY DEVELOPMENT COMPANY",
+    "uid": "57056"
+   },
+   {
+    "a": "0x038989cbb1710c72b9920dc4fa529158f463e72c",
+    "n": "OJEDA AVILES, Armando de Jesus",
+    "uid": "57107"
+   },
+   {
+    "a": "0x08723392ed15743cc38513c4925f5e6be5c17243",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0x0931ca4d13bb4ba75d9b7132ab690265d749a5e7",
+    "n": "CRYPTEX",
+    "uid": "50641"
+   },
+   {
+    "a": "0x098b716b8aaf21512996dc57eb0615e2383e2f96",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0x12de548f79a50d2bd05481c8515c1ef5183666a9",
+    "n": "OLD VECTOR LLC",
+    "uid": "55046"
+   },
+   {
+    "a": "0x12ea80238c7d805d003ce793594e92d84a6f4e8d",
+    "n": "BOYKOV, Ilya Aleksandrovich",
+    "uid": "58886"
+   },
+   {
+    "a": "0x14779cec0b117d5194c750c55ea1f42086631964",
+    "n": "OJEDA AVILES, Armando de Jesus",
+    "uid": "57107"
+   },
+   {
+    "a": "0x175d44451403edf28469df03a9280c1197adb92c",
+    "n": "GAZA NOW",
+    "uid": "47635"
+   },
+   {
+    "a": "0x1999ef52700c34de7ec2b68a28aafb37db0c5ade",
+    "n": "MAGOMEDOV, Khadzhi Murat Dalgatovich",
+    "uid": "52071"
+   },
+   {
+    "a": "0x19f8f2b0915daa12a3f5c9cf01df9e24d53794f7",
+    "n": "OKO DESIGN BUREAU",
+    "uid": "48432"
+   },
+   {
+    "a": "0x1b8579cf6ab12ea6b74ac5fa41f3829a3cb61e6e",
+    "n": "GHAL'EH-KUHI, Mojtaba",
+    "uid": "57064"
+   },
+   {
+    "a": "0x1cab8177ace78b1b6b1c393371f4f2dcae40cbeb",
+    "n": "MESRI, Behzad",
+    "uid": "24003"
+   },
+   {
+    "a": "0x1d19b52b54e7ef5ea1a4b40b616165e798eac9f8",
+    "n": "RASHEVSKYI, Dmytro",
+    "uid": "57978"
+   },
+   {
+    "a": "0x21b8d56bda776bbe68655a16895afd96f5534fed",
+    "n": "GAZA NOW",
+    "uid": "47635"
+   },
+   {
+    "a": "0x252a8bd2319d8a555b872990601221b3a2053bce",
+    "n": "MESRI, Behzad",
+    "uid": "24003"
+   },
+   {
+    "a": "0x2711d73d559f62f4f855ee21f38378f528e07985",
+    "n": "FIRST VPN SERVICE",
+    "uid": "57975"
+   },
+   {
+    "a": "0x2c7dcd774b33e10367f7d6385479e04f97d179dc",
+    "n": "RASHEVSKYI, Dmytro",
+    "uid": "57978"
+   },
+   {
+    "a": "0x32da24ca413f3e7b53145d4737e172c3bdf81e3e",
+    "n": "OJEDA AVILES, Armando de Jesus",
+    "uid": "57107"
+   },
+   {
+    "a": "0x35fb6f6db4fb05e6a4ce86f2c93691425626d4b1",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0x38735f03b30fbc022ddd06abed01f0ca823c6a94",
+    "n": "HANAFIN, John Desmond",
+    "uid": "43085"
+   },
+   {
+    "a": "0x39d908dac893cbcb53cc86e0ecc369aa4def1a29",
+    "n": "ZIMENKOV, Jonatan",
+    "uid": "40488"
+   },
+   {
+    "a": "0x3ad9db589d201a710ed237c829c7860ba86510fc",
+    "n": "TASK FORCE RUSICH",
+    "uid": "38665"
+   },
+   {
+    "a": "0x3cbded43efdaf0fc77b9c55f6fc9988fcc9b757d",
+    "n": "SOUTHFRONT",
+    "uid": "31212"
+   },
+   {
+    "a": "0x3cffd56b47b7b41c56258d9c7731abadc360e073",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0x3e37627deaa754090fbfbb8bd226c1ce66d255e9",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0x4060cbf80734193f521a3cc6fd4e985df2825279",
+    "n": "BLAGH, Keyvan Fayyaz Gareh",
+    "uid": "57061"
+   },
+   {
+    "a": "0x43fa21d92141ba9db43052492e0deee5aa5f0a93",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0x4f428c11dc82388fa5136d636e613ad923eb700b",
+    "n": "OJEDA AVILES, Armando de Jesus",
+    "uid": "57107"
+   },
+   {
+    "a": "0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c",
+    "n": "SIM, Hyon Sop",
+    "uid": "42498"
+   },
+   {
+    "a": "0x530a64c0ce595026a4a556b703644228179e2d57",
+    "n": "SHEN, Xingbiao",
+    "uid": "45312"
+   },
+   {
+    "a": "0x532b77b33a040587e9fd1800088225f99b8b0e8a",
+    "n": "ALIVAND, Arash Estaki",
+    "uid": "55502"
+   },
+   {
+    "a": "0x53b6936513e738f44fb50d2b9476730c0ab3bfc1",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0x56de1527136f76a809e5b14ded6103eecd072ba7",
+    "n": "BLAGH, Keyvan Fayyaz Gareh",
+    "uid": "57061"
+   },
+   {
+    "a": "0x57ec89a0c056163a0314e413320f9b3abe761259",
+    "n": "GARANTEX EUROPE OU",
+    "uid": "36025"
+   },
+   {
+    "a": "0x5a7a51bfb49f190e5a6060a5bc6052ac14a3b59f",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0x5d5b5dafecbf31bdb08bfd3edad4f2694372d0ef",
+    "n": "SOKOLOVSKI, Rolan",
+    "uid": "56360"
+   },
+   {
+    "a": "0x5f48c2a71b2cc96e3f0ccae4e39318ff0dc375b2",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0x6b69e2a7545c166417a80c61a77562052bffa9c5",
+    "n": "SHPS SHELBIT",
+    "uid": "58287"
+   },
+   {
+    "a": "0x6be0ae71e6c41f2f9d0d1a3b8d0f75e6f6a0b46e",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0x6fac4d18c912343bf86fa7049364dd4e424ab9c0",
+    "n": "MESRI, Behzad",
+    "uid": "24003"
+   },
+   {
+    "a": "0x747afb5c7a7fc34b547cd0fdebf9b91759c5a52b",
+    "n": "SIM, Hyon Sop",
+    "uid": "42498"
+   },
+   {
+    "a": "0x761edd5e4546229a0bd35ae99b4d3d01cf4a3510",
+    "n": "BOYKOV, Ilya Aleksandrovich",
+    "uid": "58886"
+   },
+   {
+    "a": "0x76ea76ca4eb727f18956ab93445a94c5280412b9",
+    "n": "SIM, Hyon Sop",
+    "uid": "42498"
+   },
+   {
+    "a": "0x797d7ae72ebddcdea2a346c1834e04d1f8df102b",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0x7ced75026204ac29c34bea98905d4c949f27361e",
+    "n": "GARANTEX EUROPE OU",
+    "uid": "36025"
+   },
+   {
+    "a": "0x7f03679b56d8772530efa516b58bb83d4829e881",
+    "n": "MESRI, Behzad",
+    "uid": "24003"
+   },
+   {
+    "a": "0x7f367cc41522ce07553e823bf3be79a889debe1b",
+    "n": "POTEKHIN, Danil",
+    "uid": "29584"
+   },
+   {
+    "a": "0x7ff9cfad3877f21d41da833e2f775db0569ee3d9",
+    "n": "GARANTEX EUROPE OU",
+    "uid": "36025"
+   },
+   {
+    "a": "0x8ac5381fcd9e7395d14e02986c344aada84b4bc6",
+    "n": "MESRI, Behzad",
+    "uid": "24003"
+   },
+   {
+    "a": "0x8d79c73daae8630c88de372ba8f57592fa987607",
+    "n": "KAYVANPOUR, Siavash",
+    "uid": "58284"
+   },
+   {
+    "a": "0x8dce2aac0de82bdcaf6b4373b79f94331b8e4995",
+    "n": "GARANTEX EUROPE OU",
+    "uid": "36025"
+   },
+   {
+    "a": "0x901bb9583b24d97e995513c6778dc6888ab6870e",
+    "n": "LIFSHITS, Artem Mikhaylovich",
+    "uid": "29702"
+   },
+   {
+    "a": "0x931546d9e66836abf687d2bc64b30407bac8c568",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0x95584c303fcd48af5c6b9873015f2ad0ca84eae3",
+    "n": "YUN, Song Guk",
+    "uid": "57034"
+   },
+   {
+    "a": "0x961c5be54a2ffc17cf4cb021d863c42dacd47fc1",
+    "n": "ZHANG, Wei",
+    "uid": "45391"
+   },
+   {
+    "a": "0x97b1043abd9e6fc31681635166d430a458d14f9c",
+    "n": "KIM, Sang Man",
+    "uid": "43377"
+   },
+   {
+    "a": "0x983a81ca6fb1e441266d2fbcb7d8e530ac2e05a2",
+    "n": "VALERIAN LABS, INC.",
+    "uid": "45314"
+   },
+   {
+    "a": "0x9be599d7867f5e1a2d7ec6db9710df2b98a15573",
+    "n": "AMNOKGANG TECHNOLOGY DEVELOPMENT COMPANY",
+    "uid": "57056"
+   },
+   {
+    "a": "0x9c2bc757b66f24d60f016b6237f8cdd414a879fa",
+    "n": "JIMENEZ CASTRO, Mario Alberto",
+    "uid": "44029"
+   },
+   {
+    "a": "0x9f4cda013e354b8fc285bf4b9a60460cee7f7ea9",
+    "n": "SOUTHFRONT",
+    "uid": "31212"
+   },
+   {
+    "a": "0xa0e1c89ef1a489c9c7de96311ed5ce5d32c20e4b",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0xa40cfbfc8534ffc84e20a7d8bbc3729b26a35f6f",
+    "n": "MESRI, Behzad",
+    "uid": "24003"
+   },
+   {
+    "a": "0xa7e5d5a720f06526557c513402f2e6b5fa20b008",
+    "n": "LIFSHITS, Artem Mikhaylovich",
+    "uid": "29702"
+   },
+   {
+    "a": "0xac4cc4b68ea24bbfaac8fd127b67ed445accce22",
+    "n": "ALARCON PALOMARES, Rodrigo",
+    "uid": "57118"
+   },
+   {
+    "a": "0xb338962b92cd818d6aef0a32a9ecd01212a71f33",
+    "n": "GARANTEX EUROPE OU",
+    "uid": "36025"
+   },
+   {
+    "a": "0xb637f84b66876ebf609c2a4208905f9ddac9d075",
+    "n": "YUN, Song Guk",
+    "uid": "57034"
+   },
+   {
+    "a": "0xb6f5ec1a0a9cd1526536d3f0426c429529471f40",
+    "n": "KIM, Sang Man",
+    "uid": "43377"
+   },
+   {
+    "a": "0xbb69e01921b17cd22080968bcc96ba6115da6062",
+    "n": "CRYPTO HOME DMCC",
+    "uid": "58258"
+   },
+   {
+    "a": "0xc103b7dc095c904b92081eef0c1640081ec01c10",
+    "n": "SOKOLOVSKI, Rolan",
+    "uid": "56360"
+   },
+   {
+    "a": "0xc2a3829f459b3edd87791c74cd45402ba0a20be3",
+    "n": "TASK FORCE RUSICH",
+    "uid": "38665"
+   },
+   {
+    "a": "0xcb74874f1e06fcf80a306e06e5379a44b488ba2d",
+    "n": "AMNOKGANG TECHNOLOGY DEVELOPMENT COMPANY",
+    "uid": "57056"
+   },
+   {
+    "a": "0xd04e33461fea8302c5e1e13895b60cee8aefda7f",
+    "n": "SIM, Hyon Sop",
+    "uid": "42498"
+   },
+   {
+    "a": "0xd5ed34b52ac4ab84d8fa8a231a3218bbf01ed510",
+    "n": "FUNNULL TECHNOLOGY INC",
+    "uid": "53953"
+   },
+   {
+    "a": "0xd8500c631dc32fa18645b7436344a99e4825e10e",
+    "n": "GARANTEX EUROPE OU",
+    "uid": "36025"
+   },
+   {
+    "a": "0xd882cfc20f52f2599d84b8e8d58c7fb62cfe344b",
+    "n": "KARASAVIDI, Dmitrii",
+    "uid": "29585"
+   },
+   {
+    "a": "0xdb2720ebad55399117ddb4c4a4afd9a4ccada8fe",
+    "n": "DERAKHSHAN, Alireza",
+    "uid": "55484"
+   },
+   {
+    "a": "0xdcbeffbecce100cce9e4b153c4e15cb885643193",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0xe05f529f5284d75624eba386cb716928c3b54a2a",
+    "n": "SHPS SHELBIT",
+    "uid": "58287"
+   },
+   {
+    "a": "0xe1e4c5e5ed8f03ae61b581e2def126025f2b9401",
+    "n": "SOKOLOVSKI, Rolan",
+    "uid": "56360"
+   },
+   {
+    "a": "0xe3d35f68383732649669aa990832e017340dbca5",
+    "n": "ALIVAND, Arash Estaki",
+    "uid": "55502"
+   },
+   {
+    "a": "0xe4c9a7f68b1eba4508f54f07f7378847318dd1a3",
+    "n": "KIM, Ki Hyok",
+    "uid": "58887"
+   },
+   {
+    "a": "0xe950dc316b836e4eefb8308bf32bf7c72a1358ff",
+    "n": "GAZA NOW",
+    "uid": "47635"
+   },
+   {
+    "a": "0xeb507efa9ee692a4c774ad1de9f3cb26fc459da3",
+    "n": "KAHZADIAN, Arman",
+    "uid": "57065"
+   },
+   {
+    "a": "0xed6e0a7e4ac94d976eebfb82ccf777a3c6bad921",
+    "n": "SEMENOV, Roman",
+    "uid": "44718"
+   },
+   {
+    "a": "0xef85a6fafa5942a964dc618e94e230881d29ce2a",
+    "n": "KAHZADIAN, Arman",
+    "uid": "57065"
+   },
+   {
+    "a": "0xf2235d55b2950a0b1317469d72d07ae65b2e27cb",
+    "n": "OJEDA AVILES, Armando de Jesus",
+    "uid": "57107"
+   },
+   {
+    "a": "0xf3701f445b6bdafedbca97d1e477357839e4120d",
+    "n": "KONDRATIEV, Ivan Gennadievich",
+    "uid": "47682"
+   },
+   {
+    "a": "0xf4377eda661e04b6dda78969796ed31658d602d4",
+    "n": "GARANTEX EUROPE OU",
+    "uid": "36025"
+   },
+   {
+    "a": "0xf7b31119c2682c88d88d455dbb9d5932c65cf1be",
+    "n": "LAZARUS GROUP",
+    "uid": "27307"
+   },
+   {
+    "a": "0xfac583c0cf07ea434052c49115a4682172ab6b4f",
+    "n": "WANG, Mingming",
+    "uid": "45404"
+   },
+   {
+    "a": "0xfb3eff152ea55d1bfa04dbdd509a80fd7b72cdeb",
+    "n": "SIM, Hyon Sop",
+    "uid": "42498"
+   },
+   {
+    "a": "0xfda1ec4a6178d4916b001a065422d31ebe5f62ff",
+    "n": "SIM, Hyon Sop",
+    "uid": "42498"
+   },
+   {
+    "a": "0xfec8a60023265364d066a1212fde3930f6ae8da7",
+    "n": "POLYANIN, Yevgeniy Igorevich",
+    "uid": "33858"
+   }
+  ]
+ }
+}

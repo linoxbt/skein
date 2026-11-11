@@ -16,7 +16,7 @@ Deadline: **December 1, 2026, 23:59 UTC**.
 | Repository | https://github.com/linoxbt/skein |
 | GitHub username that starred the bounties repo | `linoxbt` |
 | Team / contact | *(your name and email)* |
-| Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 13 s, narrated; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`) |
+| Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 48 s, narrated; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`) |
 
 ## Short public summary
 

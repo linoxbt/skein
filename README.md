@@ -22,9 +22,9 @@
 [**Skein Desk**](https://desk.skeinlabs.site) ·
 [**Reviewer guide**](docs/REVIEWER_GUIDE.md)
 
-<a href="docs/demo/skein-motion.mp4"><img src="docs/demo/skein-motion-poster.jpg" width="820" alt="Watch the 3-minute Skein demo film" /></a>
+<a href="docs/demo/skein-motion.mp4"><img src="docs/demo/skein-motion-poster.jpg" width="820" alt="Watch the 4-minute Skein demo film" /></a>
 
-<sub>▶ <a href="docs/demo/skein-motion.mp4">Watch the 3-minute film</a>. A real listing application, decided live by an agent that pays Telegraph miners, then verified.</sub>
+<sub>▶ <a href="docs/demo/skein-motion.mp4">Watch the 4-minute film</a>. Two live verdicts, a listing approved and a sanctioned address rejected, each recomputed on /verify.</sub>
 
 </div>
 
