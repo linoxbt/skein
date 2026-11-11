@@ -407,8 +407,14 @@ buy. Approving fresh launches would need a liquidity-lock signal that no
 Telegraph intent offers yet.
 
 These rules were chosen in-sample. The out-of-sample test is the prospective
-benchmark, which labels each launch 72 hours after its verdict (daily, on the
-`data/prospective` branch).
+benchmark, which labels each launch 72 hours after its verdict and publishes
+daily to [`data/prospective`](https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md).
+
+Its first run, on Nov 11, labelled 40 launches: 27 bad and 13 ambiguous.
+- **Skein** approved none of the bad ones. REJECT precision was 88.9% and
+  recall 59%.
+- **The single-best-miner and weighted-average rules,** applied to the same
+  paid findings, each approved 22% of the bad launches.
 
 ---
 
@@ -611,8 +617,8 @@ repository rather than a public issue.
   - an x402 caller pays nothing (the payment is not settled);
   - partner keys are free;
   - a Telegraph buyer pays the network's price, which Skein does not control.
-- **Prospective benchmark.** Sniper launches labelled 72 hours later begin
-  producing cases on Nov 11.
+- **Prospective benchmark.** No launch has been labelled good yet, so the
+  benchmark measures bad launches let through, but not good ones turned away.
 - **x402 settlement** has been tested with real signatures and a fake
   facilitator, but not yet settled end to end on Base Sepolia.
 

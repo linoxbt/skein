@@ -102,8 +102,9 @@ x402 payments use Base Sepolia.
   refuses with 503 and `dex-list` is the default.
 - Some upstream miners time out at times. A required check that fails gives
   ABSTAIN, which says which check failed.
-- The prospective benchmark (Sniper launches labelled 72 hours later) starts
-  producing cases from Nov 11.
+- The prospective benchmark has no launch labelled good yet (27 bad, 13
+  ambiguous). It can show that Skein avoids bad launches, but it cannot yet
+  measure false REJECTs.
 
 ## Evidence
 
@@ -126,6 +127,12 @@ x402 payments use Base Sepolia.
   rejected none of the 13 long-listed tokens. It abstained on 8 of the 20.
   Two simpler rules applied to the same paid findings each let one scam
   through. See `eval/FINDINGS-holdout.md`.
+- **Prospective benchmark (out of sample).** Each verdict was bought before
+  the outcome was known, and each launch is labelled 72 hours later. The
+  first run covers 40 sniper launches: 27 went bad and 13 are ambiguous.
+  Skein approved none of the bad ones; the single-best-miner and
+  weighted-average rules, applied to the same findings, approved 22% of
+  them. REJECT precision was 88.9%. Updated daily: https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md.
 - **Sniper.** Live feed: https://sniper-production-bea6.up.railway.app/feed.json.
   It buys a verdict for every launch it considers, and has bought no token.
   On launches minutes old, its policy's holder floor fails almost everything,
