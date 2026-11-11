@@ -137,7 +137,7 @@ flowchart LR
 
    | # | Condition | Verdict |
    |---|---|---|
-   | 1 | A blocker hits (a honeypot, for example) | `REJECT` |
+   | 1 | A blocker hits (a honeypot, or a deployer on the OFAC SDN list) | `REJECT` |
    | 2 | A required check has no real answer | `ABSTAIN`, naming the check |
    | 3 | Coverage is below the policy minimum | `ABSTAIN` |
    | 4 | `riskBps` ≥ the reject threshold | `REJECT` |
@@ -387,15 +387,28 @@ caveats are in [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
 
 **Skein Sniper.** Live figures are at
 [`/feed.json`](https://sniper-production-bea6.up.railway.app/feed.json)
-(`allTime`, and `book.medianSkippedChange`). On Nov 11 it had checked 240
-launches and bought none.
+(`allTime`, and `book.medianSkippedChange`). On Nov 11 it had checked 280
+launches and bought none. The 40 checked from Nov 10 to 11 were ABSTAINs from
+an upstream purchase outage (runbook, "Incidents"), not judgments.
 
-That is not a measure of foresight. On launches minutes old, the
-`agent-pretrade` policy's holder-count floor fails almost every token.
-`medianSkippedChange` moves with the market: −99.99% on Nov 8 and −6.1% on
-Nov 11. The point-in-time test is the prospective benchmark, which labels
-each launch 72 hours after its verdict (daily, on the `data/prospective`
-branch).
+That is not a measure of foresight. `medianSkippedChange` moves with the
+market: −99.99% on Nov 8 and −2.3% on Nov 11.
+
+A backtest of the 106 answered verdicts is in
+[eval/FINDINGS-sniper.md](eval/FINDINGS-sniper.md). It found:
+- **The contract audit is the real signal.** 22 of 23 launches with an audit
+  WARN went to zero, against 8 of 69 with a PASS.
+- **Liquidity and holders are not.** Launches that passed every check still
+  had their liquidity pulled.
+
+From Nov 11 the sniper runs `agent-pretrade@0.3.0`, which blocks on any audit
+WARN and abstains on a launch with no trades yet. The sniper still does not
+buy. Approving fresh launches would need a liquidity-lock signal that no
+Telegraph intent offers yet.
+
+These rules were chosen in-sample. The out-of-sample test is the prospective
+benchmark, which labels each launch 72 hours after its verdict (daily, on the
+`data/prospective` branch).
 
 ---
 
@@ -510,6 +523,9 @@ pnpm policies:lock                                      # record a newly publish
     `main` only after CI is green (Railway's "wait for CI").
   - The two Netlify sites build on every merge to `main` and do not wait for
     CI.
+  - Service settings are recorded in [`infra/railway.json`](infra/railway.json)
+    and checked against the live project by `scripts/railway-drift.mjs`
+    (needs `RAILWAY_API_TOKEN`; exits 1 on any difference).
 - **CI** runs typecheck, all tests (with 20,000-case property tests),
   browser and accessibility tests, and `pnpm audit` on every change.
 - **Replicas.** Rate limits, Telegraph flight leases, idempotency, event
@@ -526,7 +542,8 @@ pnpm policies:lock                                      # record a newly publish
 - **Load.** Two API instances on real PostgreSQL, against simulated
   Telegraph nodes (nothing paid, one process). The test ran 400 simultaneous
   verdicts with no 5xx; every purchase matched a charge, and idempotency and
-  spend caps were exact ([docs/LOADTEST.md](docs/LOADTEST.md)).
+  spend caps were exact ([docs/LOADTEST.md](docs/LOADTEST.md)). A smaller
+  version (a burst of 100) runs on every CI build, on a real PostgreSQL.
 - **Releases.** The *Release packages* workflow publishes with npm provenance.
   Versions 0.1.0 to 0.3.0 of `@skeinlabs/sdk` and `@skeinlabs/mcp` were
   published by hand and carry none.
@@ -574,11 +591,19 @@ repository rather than a public issue.
 - **Testnet.** Payments and registration run on the Telegraph testnet.
   Tokens are analysed on mainnets (Ethereum, Base, BNB Chain and Arbitrum).
   The mainnet checklist is in [docs/MAINNET.md](docs/MAINNET.md).
-- **Sanctions.** The only sanctions intent on Telegraph screens names, not
-  addresses. Skein sends it the deployer's or the token's address, so a clean
-  answer means little: it counts toward coverage at low confidence, and it
-  can't block a verdict on its own. An address-based screen (the OFAC SDN list
-  of digital-currency addresses) is being added.
+- **Sanctions.** Two screens run, and they are not equally strong.
+  - **Address screen (exact).** Before buying anything, Skein checks the
+    token, the deployer and any treasury address against the OFAC SDN list's
+    EVM digital-currency addresses. The list is a pinned snapshot,
+    `packages/pipeline/data/ofac-sdn-evm.json` (94 addresses on 2026-11-11),
+    rebuilt with `scripts/ofac-snapshot.py`. A match is a sanctions FAIL at
+    full confidence, so the verdict is `REJECT`. The evidence names the SDN
+    uid and the list file's sha256. The snapshot is only as fresh as its last
+    rebuild.
+  - **Name screen (weak).** The only sanctions intent on Telegraph screens
+    names, not addresses, so its clean answer means little. It counts toward
+    coverage at low confidence and can't block a verdict on its own. It also
+    can't see an address that OFAC lists only under a name.
 - **Holder concentration.** No Telegraph intent supplies top-10
   concentration yet, so `cex-standard` refuses rather than guess.
 - **Upstream availability.** When a required miner fails, the verdict is

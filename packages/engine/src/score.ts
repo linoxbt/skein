@@ -142,6 +142,13 @@ export interface Score {
   coverageBps: number;
   /** Weighted mean confidence of answered checks, 0..1. */
   meanConfidence: number;
+  /**
+   * The share of the evidence the decision rests on that came back: required
+   * checks always count, optional ones only when they answered. An optional
+   * miner that fails to answer is neutral (engine 0.3.0), so it cannot flip a
+   * verdict between APPROVE and ESCALATE run to run.
+   */
+  decisionCoverage: number;
 }
 
 export function score(states: readonly CheckState[]): Score {
@@ -153,9 +160,11 @@ export function score(states: readonly CheckState[]): Score {
   const total = states.reduce((a, s) => a + s.weight, 0);
   const covered = states.filter((s) => s.answered).reduce((a, s) => a + s.weight, 0);
   const coverage = total > 0 ? covered / total : 1;
+  const counted = states.filter((s) => s.required || s.answered).reduce((a, s) => a + s.weight, 0);
   return {
     riskBps: Math.round(risk * 10_000),
     coverageBps: Math.round(coverage * 10_000),
     meanConfidence,
+    decisionCoverage: counted > 0 ? covered / counted : 1,
   };
 }

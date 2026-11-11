@@ -197,6 +197,27 @@ the money path unsafe; these are the decisions behind the fixes.
   best-answer confidence; blockers need `minConfidence` (0.5 by default); only
   answers are graded by thresholds. Policies are checked against the lock at
   load.
+- **Engine 0.3.0** (2026-11-11), with 0.2.0 frozen under `src/frozen/v0_2_0`:
+  - **Optional checks.** An optional check that does not answer is now
+    neutral in the decision's confidence. Confidence is decision coverage ×
+    agreement × mean confidence, where decision coverage counts required
+    checks always and optional ones only when they answer. The same AERO
+    request went APPROVE on Nov 9 and ESCALATE on Nov 11 only because an
+    optional miner did not answer.
+  - **Coverage.** The served `coverageBps` and the policy's `min_coverage`
+    gate still count every check.
+  - **Stability metric.** `/v1/ledger` `stability` reports how often
+    consecutive answered verdicts for one token and policy agree.
+  - **Caveat.** The sniper backtest showed that the old penalty had, by
+    accident, kept `agent-pretrade@0.2.0` from approving four launches that
+    were later rugged. `agent-pretrade@0.3.0` encodes that rule on purpose
+    (`eval/FINDINGS-sniper.md`).
+- **OFAC SDN address screen** (2026-11-11). It runs before anything is bought.
+  An exact match of the token, the deployer or a treasury address against
+  the pinned list (`packages/pipeline/data/ofac-sdn-evm.json`) is a sanctions
+  FAIL at confidence 1, so the verdict is REJECT. It is recorded as an
+  unpurchased finding whose evidence carries the SDN uid and the list file's
+  sha256. The paid name screen is skipped for it.
 - **Adapters answer about the right thing:** the audit adapter needs the token
   it was asked about and the deciding flags; liquidity refuses another pool's
   reserve; sanctions caps the confidence of a name screen run on an address
