@@ -13,7 +13,7 @@ import type { Decision, Finding, Subject } from "./types";
  * worst finding and its confidence the best answer's; blockers need
  * minConfidence; only answers are graded by thresholds.
  */
-export const ENGINE_VERSION = "0.2.0";
+export const ENGINE_VERSION = "0.3.0";
 
 export interface PolicyRef {
   id: string;

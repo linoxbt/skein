@@ -90,13 +90,13 @@ export interface Evaluation {
 export function decide(policy: Policy, findings: readonly Finding[]): Evaluation {
   const d = policy.decision;
   const states = checkStates(policy, findings);
-  const { riskBps, coverageBps, meanConfidence } = score(states);
+  const { riskBps, coverageBps, meanConfidence, decisionCoverage } = score(states);
   const conflicts = reconcile(policy, states);
   const agreement = Math.max(0, 1 - d.agreement_penalty * conflicts.length);
   const missingRequired = states.filter((s) => s.required && !s.answered);
   const openRisks = states.filter((s) => !s.answered).map((s) => `${s.check} ${s.status}`);
 
-  let confidenceBps = Math.round((coverageBps / 10_000) * agreement * meanConfidence * 10_000);
+  let confidenceBps = Math.round(decisionCoverage * agreement * meanConfidence * 10_000);
   const primary: Reason[] = [];
   let verdict: Verdict;
 

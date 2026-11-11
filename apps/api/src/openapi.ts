@@ -89,7 +89,7 @@ export const OPENAPI = {
                 required: ["subject"],
                 properties: {
                   subject: { $ref: "#/components/schemas/Subject" },
-                  policy: { type: "string", examples: ["dex-list@0.2.0", "agent-pretrade@0.2.0"] },
+                  policy: { type: "string", examples: ["dex-list@0.2.0", "agent-pretrade@0.3.0"] },
                   context: { $ref: "#/components/schemas/Context" },
                   budgetUsdcMax: { type: "number", maximum: 10 },
                   mode: { type: "string", enum: ["sync", "async"], default: "sync" },

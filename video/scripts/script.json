@@ -1,15 +1,54 @@
 [
-  {"id": "s01", "text": "Every day, thousands of new tokens launch. Most of them are built to take your money. If you run an exchange, a launchpad, or a trading agent, one question decides everything. Is this token fit to list?"},
-  {"id": "s02", "text": "Meet Skane. One request. Every thread."},
-  {"id": "s03", "text": "Today, answering that question means stitching together five vendors, five dashboards, and hours of analyst triage. And when something goes wrong, nobody can show how the decision was made."},
-  {"id": "s04", "text": "Skane is a decision engine built on Telegraph. Ask it about any token, and Skane buys ranked intelligence from independent miners on the Telegraph network. A smart contract audit. Sanctions screening. Holder distribution. Liquidity depth. And wash trading detection. Every check is paid for through the Telegraph escrow, in U S D C, machine to machine."},
-  {"id": "s05", "text": "Then Skane fuses those answers with fixed, versioned rules, and returns one verdict. Approve. Reject. Escalate. Or abstain. With the reasons, the risks still open, the confidence, and exactly what it cost."},
-  {"id": "s06", "text": "Here it is, live. Skane Desk is a listing queue for an exchange, run entirely by an agent. A project applies to list its token. The agent buys a Skane verdict, and in about six seconds, it decides on its own. Shortlisted, with a note for the listings team."},
-  {"id": "s07", "text": "Every verdict carries its bill of materials. Each purchase, the miner that answered, the price, the receipt hash, and the signal hash on the Telegraph node."},
-  {"id": "s08", "text": "And you don't have to trust it. Skane recomputes any verdict from the raw answers it paid for. The answers, the policy, the receipts, the engine, and the signature. All checked."},
-  {"id": "s09", "text": "The same engine protects traders. Skane Sniper watches every new token launch on Base, and buys a verdict before it would ever trade. Of a hundred and sixty launches it checked, it dodged every single one. The tokens it skipped fell a median of ninety nine percent."},
-  {"id": "s10", "text": "Skane also sells back to the network. It is a registered Telegraph miner, so any agent can buy a verdict with a single paid request. No account. No key."},
-  {"id": "s11", "text": "On a held out benchmark, frozen before testing, Skane approved none of the documented scams, and rejected none of the established tokens."},
-  {"id": "s12", "text": "Integrate it your way. A REST API. A TypeScript S D K. An M C P server for Claude and Cursor. Pay per call with x four oh two. Or Telegraph itself."},
-  {"id": "s13", "text": "Skane. Every decision, with every receipt. Try it today, at skane labs dot site."}
+  {
+    "id": "s01",
+    "text": "Every day, thousands of new tokens launch. Most of them are built to take your money. If you run an exchange, a launchpad, or a trading agent, one question decides everything. Is this token fit to list?"
+  },
+  {
+    "id": "s02",
+    "text": "Meet Skane. One request. Every thread."
+  },
+  {
+    "id": "s03",
+    "text": "Today, answering that question means stitching together five vendors, five dashboards, and hours of analyst triage. And when something goes wrong, nobody can show how the decision was made."
+  },
+  {
+    "id": "s04",
+    "text": "Skane is a decision engine built on Telegraph. Ask it about any token, and Skane buys ranked intelligence from independent miners on the Telegraph network. A smart contract audit. Sanctions screening. Holder distribution. Liquidity depth. And wash trading detection. Every check is paid for through the Telegraph escrow, in U S D C, machine to machine."
+  },
+  {
+    "id": "s05",
+    "text": "Then Skane fuses those answers with fixed, versioned rules, and returns one verdict. Approve. Reject. Escalate. Or abstain. With the reasons, the risks still open, the confidence, and exactly what it cost."
+  },
+  {
+    "id": "s06",
+    "text": "Here it is, live. Skane Desk is a listing queue for an exchange, run entirely by an agent. A project applies to list its token. The agent buys a Skane verdict, and in about six seconds, it decides on its own. Shortlisted, with a note for the listings team."
+  },
+  {
+    "id": "s07",
+    "text": "Every verdict carries its bill of materials. Each purchase, the miner that answered, the price, the receipt hash, and the signal hash on the Telegraph node."
+  },
+  {
+    "id": "s08",
+    "text": "And you don't have to trust it. Skane recomputes any verdict from the raw answers it paid for. The answers, the policy, the receipts, the engine, and the signature. All checked."
+  },
+  {
+    "id": "s09",
+    "text": "The same engine guards trading agents. Skane Sniper watches new token launches on Base, and buys a verdict before it would ever trade. It has checked two hundred and eighty launches, and bought none. That is a strict gate, not proof of foresight, so every launch is labelled seventy two hours later, and the results are published daily."
+  },
+  {
+    "id": "s10",
+    "text": "Skane also sells back to the network. It is a registered Telegraph miner, so any agent can buy a verdict with a single paid request. No account. No key."
+  },
+  {
+    "id": "s11",
+    "text": "On a held out benchmark, frozen before testing, Skane approved none of the documented scams, and rejected none of the established tokens."
+  },
+  {
+    "id": "s12",
+    "text": "Integrate it your way. A REST API. A TypeScript S D K. An M C P server for Claude and Cursor. Pay per call with x four oh two. Or Telegraph itself."
+  },
+  {
+    "id": "s13",
+    "text": "Skane. Every decision, with every receipt. Try it today, at skane labs dot site."
+  }
 ]

@@ -40,7 +40,7 @@ SNIPER_SKEIN_KEY=sk_part_… pnpm --filter @skein/sniper dev    # dashboard on :
 | `SNIPER_SKEIN_KEY` | | A Skein partner key, or: |
 | `SNIPER_PAYER_KEY` | | a funded Telegraph burner. Each verdict is then one paid Telegraph ask to Skein's miner |
 | `SNIPER_MINER_ID`, `SNIPER_INTENT` | `FRAUD_RISK_GENERAL` | Pin Skein's miner on Telegraph |
-| `SNIPER_POLICY` | `agent-pretrade@0.2.0` | |
+| `SNIPER_POLICY` | `agent-pretrade@0.3.0` | |
 | `SNIPER_MIN_LIQUIDITY_USD` | `10000` | Liquidity a token needs before it is worth a verdict |
 | `SNIPER_MIN_AGE_MIN` / `SNIPER_MAX_AGE_MIN` | `5` / `360` | When to start looking, and when to give up |
 | `SNIPER_DAILY_CHECKS` | `40` | Paid verdicts per UTC day |

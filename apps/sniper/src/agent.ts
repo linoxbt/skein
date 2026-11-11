@@ -24,7 +24,7 @@ export interface SniperConfig {
 }
 
 export const DEFAULTS: SniperConfig = {
-  policy: "agent-pretrade@0.2.0",
+  policy: "agent-pretrade@0.3.0",
   minAgeMin: 5,
   maxAgeMin: 360,
   minLiquidityUsd: 10_000,

@@ -4,7 +4,7 @@ import { getPolicy } from "@skein/policies";
 import { TelegraphClient, TESTNET, viemSigner } from "@skein/telegraph";
 import { FakeNode, type Behaviour } from "@skein/telegraph/testing";
 import { describe, expect, it } from "vitest";
-import { catalogueFromSnapshot, runVerdict, type PipelineEvent, type PoolResolver, type VerdictDeps } from "../src";
+import { catalogueFromSnapshot, runVerdict, screenAddresses, sdnSnapshot, type PipelineEvent, type PoolResolver, type VerdictDeps } from "../src";
 
 const KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const SEASON = Date.parse("2026-11-03T10:00:00Z");
@@ -64,6 +64,30 @@ describe("runVerdict, end to end against a fake node", () => {
     expect(events[0]!.type).toBe("plan");
     expect(events.at(-1)!.type).toBe("decision");
     expect(events.filter((e) => e.type === "purchase")).toHaveLength(6);
+  });
+
+  it("an OFAC SDN deployer: REJECT on the address screen, the name screen not bought, reproducible", async () => {
+    const listed = Object.keys(sdnSnapshot().addresses)[0]!;
+    const { node, deps } = harness();
+    const run = await runVerdict({ policy: dex(), subject, context: { ...context, deployer: listed } }, deps);
+    expect(run.ok).toBe(true);
+    if (!run.ok) return;
+    expect(run.verdict.decision.verdict).toBe("REJECT");
+    expect(run.verdict.decision.reasons[0]!.code).toBe("BLOCKER_SANCTIONS_FAIL");
+    expect(run.purchases.map((p) => p.check)).not.toContain("sanctions");
+    expect(node.charges).toHaveLength(5);
+    const f = run.verdict.findings.find((x) => x.check === "sanctions")!;
+    expect(f).toMatchObject({ status: "FAIL", confidence: 1, notes: ["ofac_sdn_address_match"] });
+    expect(f.evidence?.matches).toEqual([expect.objectContaining({ field: "deployer", address: listed })]);
+    expect(f.evidence?.listSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(reproduce(run.stored, dex())).toMatchObject({ ok: true });
+  });
+
+  it("the address screen matches exactly, in any letter case, and nothing else", () => {
+    const listed = Object.keys(sdnSnapshot().addresses)[0]!;
+    expect(screenAddresses({ token: listed.toUpperCase().replace("0X", "0x") })).toHaveLength(sdnSnapshot().addresses[listed]!.length);
+    expect(screenAddresses({ token: subject.token, deployer: context.deployer, empty: undefined })).toEqual([]);
+    expect(screenAddresses({ deployer: `${listed.slice(0, -1)}${listed.endsWith("0") ? "1" : "0"}` })).toEqual([]);
   });
 
   it("the conflict: audit PASS but wash trading FAIL -> ESCALATE", async () => {

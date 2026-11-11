@@ -16,7 +16,7 @@ Deadline: **December 1, 2026, 23:59 UTC**.
 | Repository | https://github.com/linoxbt/skein |
 | GitHub username that starred the bounties repo | `linoxbt` |
 | Team / contact | *(your name and email)* |
-| Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 10 s, narrated; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`) |
+| Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 13 s, narrated; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`) |
 
 ## Short public summary
 
@@ -107,7 +107,7 @@ x402 payments use Base Sepolia.
 
 ## Evidence
 
-- **Real purchases.** 397 upstream receipts from 9 miners and 185 verdicts so
+- **Real purchases.** 797 upstream receipts from 10 miners and 307 verdicts so
   far. The demo's own verdict, bought live during the recording, is
   https://skeinlabs.site/v/vrd_mw8c7dkh4a1d465l3u5f: APPROVE for AERO on
   Base, 5.9 s, 0.05 USDC across five receipts. Live totals are at https://skeinlabs.site/ledger and

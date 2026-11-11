@@ -79,20 +79,25 @@ describe("probe", () => {
   });
 
   it("alerts on a burst of ABSTAINs or failed purchases, and ignores small samples", async () => {
-    const quality = { windowHours: 3, verdicts: 12, abstain: 12, purchases: 48, purchaseErrors: 48 };
+    const quality = { windowHours: 3, verdicts: 12, abstain: 12, abstainFailed: 12, purchases: 48, purchaseErrors: 48 };
     const w = world(new Set(), { quality });
     const alerter = new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: pg, fetch: w.f });
     await beat(pg, "backup");
     const r = await runOnce({ ctx: { fetch: w.f, db: pg, now: Date.now }, alerter, db: pg, retryMs: 1 });
     expect(r.failing.map((x) => x.key).sort()).toEqual(["abstain", "purchases"]);
     const bodies = w.pushes.map((p) => p.body).join("\n");
-    expect(bodies).toContain("12 of 12 verdicts in the last 3 h were ABSTAIN");
+    expect(bodies).toContain("12 of 12 verdicts in the last 3 h were ABSTAIN on a failed purchase");
     expect(bodies).toContain("48 of 48 purchases in the last 3 h failed");
 
     const small = world(new Set(), { quality: { windowHours: 3, verdicts: 2, abstain: 2, purchases: 4, purchaseErrors: 4 } });
     const quiet = await runOnce({ ctx: { fetch: small.f, db: pg, now: Date.now }, alerter: new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: pg, fetch: small.f }), db: pg, retryMs: 1 });
     expect(quiet.failing.map((x) => x.key)).not.toContain("abstain");
     expect(quiet.failing.map((x) => x.key)).not.toContain("purchases");
+
+    // ABSTAINs by design (no failed purchase) do not page anyone.
+    const byDesign = world(new Set(), { quality: { windowHours: 3, verdicts: 20, abstain: 18, abstainFailed: 0, purchases: 90, purchaseErrors: 2 } });
+    const calm = await runOnce({ ctx: { fetch: byDesign.f, db: pg, now: Date.now }, alerter: new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: pg, fetch: byDesign.f }), db: pg, retryMs: 1 });
+    expect(calm.failing.map((x) => x.key)).not.toContain("abstain");
   });
 
   it("keeps checking and alerting when its database is broken", async () => {

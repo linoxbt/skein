@@ -23,6 +23,10 @@ export interface Evidence {
   signalHash?: string;
   minerId?: string;
   minerRank?: number;
+  /** A local list screen (no purchase): the list, its file's sha256, and the exact matches. */
+  list?: string;
+  listSha256?: string;
+  matches?: { field: string; address: string; sdnUid: string }[];
 }
 
 /** The normalised unit every upstream answer becomes. */

@@ -154,10 +154,12 @@ describe("read-only routes", () => {
     expect(s).toMatchObject({ network: "eip155:11155111" });
     expect(s.intents.find((i: { check: string }) => i.check === "holder_concentration")).toMatchObject({ intent: null, activeMiners: 0 });
     const ps = await j(app.request("/v1/policies"));
-    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "agent-pretrade@0.2.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
+    expect(ps.map((p: { ref: string }) => p.ref)).toEqual(["agent-pretrade@0.1.0", "agent-pretrade@0.2.0", "agent-pretrade@0.3.0", "cex-standard@0.1.0", "dex-list@0.1.0", "dex-list@0.2.0"]);
     await post(body);
     const l = await j(app.request("/v1/ledger"));
     expect(l).toMatchObject({ verdicts: { APPROVE: 1 }, upstreamSpendUsdc: 0.06, receipts: 6, minersUsed: 6 });
+    expect(l.stability).toMatchObject({ byEngine: [] });
+    expect(s.quality).toMatchObject({ windowHours: 3 });
   });
 });
 
@@ -279,5 +281,19 @@ describe("signed verdicts", () => {
 
   it("refuses a malformed attestation key at startup", () => {
     expect(() => configFromEnv({ SKEIN_ATTESTATION_KEY: "0x1234" })).toThrow(/SKEIN_ATTESTATION_KEY/);
+  });
+});
+
+describe("verdict stability on /v1/ledger", () => {
+  it("counts consecutive answered verdicts for one token and policy, and whether they agree", async () => {
+    const t = `0x${"5a".repeat(20)}`;
+    const base = { subjectChainId: 8453, subjectToken: t, policyId: "dex-list", policyVersion: "0.2.0", engineVersion: "0.3.0", verdictCode: 1, riskBps: 0, confidenceBps: 0, coverageBps: 0, reasons: [], openRisks: [], conflicts: [], summary: "", verdictHash: "0x", bomRoot: "0x", bomItems: 0, channel: "api", network: "eip155:11155111", upstreamUusdc: 0, priceUusdc: 0, durationMs: 1 };
+    const rows = [["APPROVE", "2026-11-05T00:00:00Z"], ["APPROVE", "2026-11-06T00:00:00Z"], ["ABSTAIN", "2026-11-06T06:00:00Z"], ["ESCALATE", "2026-11-07T00:00:00Z"]] as const;
+    for (const [i, [verdict, at]] of rows.entries()) {
+      await service.deps.db.insert(schema.verdicts).values({ ...base, id: `vrd_stab${i}`, verdict, createdAt: new Date(at) } as never).catch((e: Error) => { throw new Error(`fixture insert: ${String((e as { cause?: unknown }).cause ?? e.message)}`); });
+    }
+    const l = await j(app.request("/v1/ledger"));
+    // APPROVE → APPROVE agrees; APPROVE → ESCALATE does not; the ABSTAIN is skipped.
+    expect(l.stability.byEngine).toContainEqual({ engine: "0.3.0", pairs: 2, same: 1, rate: 0.5 });
   });
 });

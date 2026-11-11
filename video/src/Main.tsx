@@ -78,9 +78,8 @@ function cues(): Cue[] {
   // Sniper
   add(g("sniper", 0), "bass_pulse", 0.45);
   Array.from({ length: 8 }, (_, i) => add(g("sniper", 30 + i * 22), "click_cool", 0.22));
-  add(g("sniper", said("sniper", "Of a hundred")), "computing", 0.4);
-  add(g("sniper", said("sniper", "The tokens it skipped") - 4), "glitch_break", 0.4);
-  add(g("sniper", said("sniper", "The tokens it skipped")), "impact_deep", 0.6);
+  add(g("sniper", said("sniper", "It has checked")), "computing", 0.4);
+  add(g("sniper", said("sniper", "every launch is labelled")), "impact_deep", 0.35);
   add(end("sniper", 10), "whoosh_fast", 0.5);
   // Miner
   add(g("miner", 2), "sweep_cine", 0.42);

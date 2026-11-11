@@ -698,14 +698,20 @@ export function createApp(service: VerdictService) {
   const quality = memo(30_000, async () => {
     const since = new Date(now().getTime() - QUALITY_WINDOW_H * 3_600_000);
     const [v] = await db
-      .select({ n: count(), abstain: sql<string>`count(*) filter (where ${schema.verdicts.verdict} = 'ABSTAIN')` })
+      .select({
+        n: count(),
+        abstain: sql<string>`count(*) filter (where ${schema.verdicts.verdict} = 'ABSTAIN')`,
+        // ABSTAINs because a required check's purchase failed: the outage signal.
+        // A policy may abstain by design (agent-pretrade on a launch with no trades yet).
+        abstainFailed: sql<string>`count(*) filter (where ${schema.verdicts.verdict} = 'ABSTAIN' and exists (select 1 from jsonb_array_elements(${schema.verdicts.reasons}) r where r->>'detail' like '% is ERROR'))`,
+      })
       .from(schema.verdicts)
       .where(gte(schema.verdicts.createdAt, since));
     const [p] = await db
       .select({ n: count(), errors: sql<string>`count(*) filter (where ${schema.purchases.error} is not null)` })
       .from(schema.purchases)
       .where(gte(schema.purchases.createdAt, since));
-    return { windowHours: QUALITY_WINDOW_H, verdicts: v?.n ?? 0, abstain: Number(v?.abstain ?? 0), purchases: p?.n ?? 0, purchaseErrors: Number(p?.errors ?? 0) };
+    return { windowHours: QUALITY_WINDOW_H, verdicts: v?.n ?? 0, abstain: Number(v?.abstain ?? 0), abstainFailed: Number(v?.abstainFailed ?? 0), purchases: p?.n ?? 0, purchaseErrors: Number(p?.errors ?? 0) };
   });
 
   /** Latency and failure per intent over 24 h, from the purchase log. */
@@ -773,6 +779,21 @@ export function createApp(service: VerdictService) {
     const recent = await db.select({ id: schema.verdicts.id, verdict: schema.verdicts.verdict, createdAt: schema.verdicts.createdAt }).from(schema.verdicts).orderBy(desc(schema.verdicts.createdAt)).limit(10);
     // Why verdicts abstained: each required check that had no real answer, with that finding's status and
     // first note (timeout, purchase failure, no miner, …), all time and in the last 7 days.
+    // Stability: the same token under the same policy, decided again within 7
+    // days, should get the same answer. Consecutive pairs of answered
+    // (non-ABSTAIN) verdicts, grouped by the later one's engine.
+    const stab = await db.execute(sql`
+      WITH v AS (
+        SELECT verdict, engine_version, created_at,
+               lag(verdict) OVER w AS prev, lag(created_at) OVER w AS prev_at
+        FROM ${schema.verdicts}
+        WHERE verdict <> 'ABSTAIN'
+        WINDOW w AS (PARTITION BY subject_chain_id, subject_token, policy_id, policy_version ORDER BY created_at)
+      )
+      SELECT engine_version AS engine, count(*)::int AS pairs, count(*) FILTER (WHERE verdict = prev)::int AS same
+      FROM v WHERE prev IS NOT NULL AND created_at - prev_at < interval '7 days'
+      GROUP BY engine_version ORDER BY engine_version`);
+    const stabRows = ((stab as unknown as { rows?: unknown[] }).rows ?? (stab as unknown as unknown[])) as { engine: string; pairs: number; same: number }[];
     const causes = await db.execute(sql`
       SELECT r->>'code' AS code, coalesce(r->>'check', '') AS "check", coalesce(f.status, '') AS status, coalesce(f.notes->>0, '') AS note,
              count(*)::int AS n, count(*) FILTER (WHERE v.created_at > now() - interval '7 days')::int AS last7d
@@ -802,6 +823,10 @@ export function createApp(service: VerdictService) {
       last24h: Object.fromEntries(windows.map((w) => [w.verdict, Number(w.h24)])),
       last72h: Object.fromEntries(windows.map((w) => [w.verdict, Number(w.h72)])),
       abstain: { total: ab?.n ?? 0, last7d: Number(ab?.last7d ?? 0), causes: causeRows.map((r) => ({ ...r, n: Number(r.n), last7d: Number(r.last7d) })) },
+      stability: {
+        definition: "consecutive non-ABSTAIN verdicts for the same token and policy, at most 7 days apart, that agree",
+        byEngine: stabRows.map((r) => ({ engine: r.engine, pairs: Number(r.pairs), same: Number(r.same), rate: Number(r.pairs) ? Number(r.same) / Number(r.pairs) : null })),
+      },
       recent,
     };
   });

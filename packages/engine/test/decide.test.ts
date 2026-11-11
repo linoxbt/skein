@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { applyThreshold, decide, VERDICT_CODES } from "../src";
-import { cex, cleanCex, customPolicy, f } from "./helpers";
+import { applyThreshold, decide, VERDICT_CODES, type Finding } from "../src";
+import { decide as decide020 } from "../src/frozen/v0_2_0/decide";
+import { cex, cleanCex, customPolicy, f, loadPolicy } from "./helpers";
 
 const codes = (r: { reasons: { code: string }[] }) => r.reasons.map((x) => x.code);
 
@@ -237,5 +238,38 @@ describe("independence groups", () => {
 describe("verdict codes", () => {
   it("zero means ABSTAIN so a default on-chain value never reads as APPROVE", () => {
     expect(VERDICT_CODES).toEqual({ ABSTAIN: 0, APPROVE: 1, ESCALATE: 2, REJECT: 3 });
+  });
+});
+
+describe("stability (engine 0.3.0)", () => {
+  // The AERO case: every required check answers PASS; the optional miners fail
+  // to answer (no repo, no handle, an UNKNOWN wash-trading answer).
+  const dex = loadPolicy("dex-list@0.2.0");
+  const required: Finding[] = [
+    f("contract_audit", "PASS", { confidence: 0.7 }),
+    f("sanctions", "PASS", { confidence: 0.7 }),
+    f("liquidity_depth", "PASS", { metric: "liquidity_usd", value: 25_000_000, confidence: 0.7 }),
+    f("holder_count", "PASS", { metric: "holders_count", value: 500_000, confidence: 0.7 }),
+  ];
+  const misses: Finding[] = [f("wash_trading", "UNKNOWN"), f("social_bots", "UNAVAILABLE"), f("code_review", "UNAVAILABLE")];
+
+  it("an optional check that does not answer leaves the decision exactly as if it was never planned", () => {
+    const a = decide(dex, required).decision;
+    const b = decide(dex, [...required, ...misses]).decision;
+    expect(a.verdict).toBe("APPROVE");
+    expect(b).toMatchObject({ verdict: a.verdict, riskBps: a.riskBps, confidenceBps: a.confidenceBps });
+  });
+
+  it("engine 0.2.0 let the same misses drop confidence below the approve line", () => {
+    const old = decide020(dex, [...required, ...misses]).decision;
+    expect(old.verdict).toBe("ESCALATE");
+    expect(old.reasons[0]!.code).toBe("LOW_CONFIDENCE");
+  });
+
+  it("an optional check that answers still counts, for or against", () => {
+    const pass = decide(dex, [...required, f("wash_trading", "PASS", { metric: "wash_volume_pct", value: 2, confidence: 0.9 })]).decision;
+    const fail = decide(dex, [...required, f("wash_trading", "FAIL", { metric: "wash_volume_pct", value: 80, confidence: 0.9 })]).decision;
+    expect(pass.verdict).toBe("APPROVE");
+    expect(fail.verdict).not.toBe("APPROVE");
   });
 });

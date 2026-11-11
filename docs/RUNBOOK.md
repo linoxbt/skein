@@ -84,6 +84,23 @@ Netlify logs are under the site → Logs → Functions, or Observability.
   Nodes see a deposit about 10–15 minutes after it is mined. Until then,
   payments are refused with `available=0`.
 
+### Every verdict is ABSTAIN with `purchase_failed`, and the escrow is fine
+
+- **Seen:** Nov 10 to 11, 2026, about 24 hours. The probe now raises
+  `probe:purchases` and `probe:abstain` for this.
+- **Find the cause:** open a recent verdict's `/v1/verdicts/{id}/bom`. Each line
+  carries the purchase's `error`.
+- **That time,** the error read `mismatch: challenge names asset …`. The node's
+  402 had started offering `exact` payments on other chains (Base Sepolia,
+  Solana devnet). The payment guard refuses any challenge it does not fully
+  understand, so it refused them all. Only entries on the escrow's own chain are
+  checked now (`packages/telegraph/src/escrow.ts`).
+- **For a new change on the node's side:**
+  1. Capture the unpaid 402: `POST /engine/v1/ask/7302` with no payment.
+  2. Save it as a fixture in `packages/telegraph/test/fixtures/`.
+  3. Fix the guard so it reads the new form, keeping every refusal it makes
+     for a payment Skein would actually sign.
+
 ### Verdicts answer 503 DAILY_CAP_REACHED
 
 - **Cause:** the day's upstream spend reached `DAILY_CAP_USDC`. This is by design.
@@ -139,6 +156,15 @@ with the owner wallet:
 
   Both sites were linked this way on 2026-11-08, so every merge to `main`
   redeploys them.
+- **Service settings** (Dockerfile paths, health checks, replicas, crons, the
+  API's 120 s draining window) are recorded in `infra/railway.json`. Before and
+  after changing one in Railway, run
+  `RAILWAY_API_TOKEN=… node scripts/railway-drift.mjs`, and commit the matching
+  change to the file.
+- **Shutdown.** On SIGTERM the API stops taking connections. It lets running
+  verdicts finish (up to `VERDICT_DEADLINE_MS` plus 20 s, so a paid verdict
+  can still settle) before closing. Railway's draining window must stay longer
+  than that.
 
 ## Rolling back
 
