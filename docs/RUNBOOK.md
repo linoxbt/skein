@@ -142,7 +142,11 @@ with the owner wallet:
 
 - **API and sniper (Railway)** deploy from `main`, and only after GitHub
   reports CI green on the commit (Railway's "wait for CI", `checkSuites`, set
-  2026-11-08). A red build never reaches production. Each service builds from
+  2026-11-08). A red build never reaches production. Railway counts every workflow run on
+  the commit, not just CI: on 2026-11-11 a manually dispatched *Prospective
+  benchmark* run that failed on the new `main` commit made Railway skip the
+  deploy. Dispatch such jobs after the deploy has started, and if one is
+  skipped, redeploy once CI is green. Each service builds from
   its own Dockerfile path (`RAILWAY_DOCKERFILE_PATH`). Database migrations are
   run by the `migrate` job, not by the API; the replicas wait for it ("Database
   roles", below).
