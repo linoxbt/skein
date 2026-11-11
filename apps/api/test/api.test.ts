@@ -11,7 +11,7 @@ import { attestationMessage } from "@skein/engine";
 import { verifyMessage } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createApp, riskLevel, subjectFromText } from "../src/app";
+import { createApp, riskLevel, riskScore, subjectFromText } from "../src/app";
 import { configFromEnv } from "../src/config";
 import { VerdictService } from "../src/service";
 
@@ -238,6 +238,11 @@ describe("plan B helpers", () => {
     expect(riskLevel("ABSTAIN", [])).toBe("MEDIUM");
     expect(riskLevel("REJECT", [{ code: "SCORE_ABOVE_REJECT" }])).toBe("HIGH");
     expect(riskLevel("REJECT", [{ code: "BLOCKER_SANCTIONS_FAIL" }])).toBe("CRITICAL");
+  });
+  it("never reports an abstain as low risk", () => {
+    expect(riskScore("ABSTAIN", 0)).toBe(0.5);
+    expect(riskScore("ABSTAIN", 8_000)).toBe(0.8);
+    expect(riskScore("APPROVE", 1_200)).toBe(0.12);
   });
 });
 

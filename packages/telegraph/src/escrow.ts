@@ -58,7 +58,7 @@ function b64encode(s: string): string {
 /** The parts of a 402 that matter: the escrow entry, plus any asset the other entries declare. */
 export interface Challenge {
   escrow: EscrowAccept;
-  /** Assets named by the challenge's other entries (e.g. the x402 "exact" one). */
+  /** Assets named by the challenge's other entries on the escrow's chain (e.g. the x402 "exact" one). */
   assets: string[];
 }
 
@@ -84,7 +84,14 @@ export function readChallenge(headerValue: string | null, body: unknown): Challe
       (a) => a?.scheme === "escrow" && typeof a?.extra?.message === "string" && typeof a?.payTo === "string",
     );
     if (hit) {
-      const assets = accepts.map((a) => a?.asset).filter((x): x is string => typeof x === "string");
+      // Only entries on the escrow's own chain describe what the escrow pays in.
+      // The node also offers "exact" payments on other chains (Base Sepolia,
+      // Solana devnet) with their own USDC; Skein never signs those, so their
+      // assets say nothing about this payment.
+      const assets = accepts
+        .filter((a) => a?.network === (hit as EscrowAccept).network)
+        .map((a) => a?.asset)
+        .filter((x): x is string => typeof x === "string");
       return { escrow: hit as EscrowAccept, assets };
     }
   }

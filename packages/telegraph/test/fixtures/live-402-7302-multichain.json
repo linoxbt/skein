@@ -1,0 +1,96 @@
+{
+ "capturedAt": "2026-11-11",
+ "paymentRequiredHeader": {
+  "accepts": [
+   {
+    "amount": "10000",
+    "asset": "0xcc194e1a843B658526D0D5C431f670028582Ae17",
+    "extra": {
+     "name": "USD Coin",
+     "version": "2"
+    },
+    "maxTimeoutSeconds": 60,
+    "network": "eip155:11155111",
+    "payTo": "0x3624EB012B5E998BB57B6bE6C9Cfc9c4bc5eb99b",
+    "scheme": "exact"
+   },
+   {
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "extra": {
+     "name": "USDC",
+     "version": "2"
+    },
+    "maxTimeoutSeconds": 60,
+    "network": "eip155:84532",
+    "payTo": "0xC0A3FB6d3F1f4B54617d29ffbdA4663Af5F96e2e",
+    "scheme": "exact"
+   },
+   {
+    "amount": "10000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "extra": {
+     "feePayer": "C7ckEzH4varMpBQsaD9bJZSCnWVyk4zAKYA85spuuNbR"
+    },
+    "maxTimeoutSeconds": 60,
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "payTo": "G53EbeTZSNsAn7bj6iMFUQnq3zpDdEbHhKkPRywo8bix",
+    "scheme": "exact"
+   },
+   {
+    "amount": "10000",
+    "extra": {
+     "description": "Deduct from the caller's Telegraph escrow balance at the next epoch close. Fund it once with EscrowFacet.depositUSDC(amount); no per-request settlement.",
+     "message": "Telegraph Escrow Payment\n\nWallet: {from}\nPay To: 0x3624eb012b5e998bb57b6be6c9cfc9c4bc5eb99b\nNetwork: eip155:11155111\nAmount: 10000 uUSDC\nResource: /v1/ask/7302\nNonce: {nonce}\nValid After: {validAfter}\nValid Before: {validBefore}",
+     "resource": "/v1/ask/7302",
+     "signWith": "personal_sign (EIP-191)"
+    },
+    "network": "eip155:11155111",
+    "payTo": "0x3624eb012b5e998bb57b6be6c9cfc9c4bc5eb99b",
+    "scheme": "escrow"
+   }
+  ],
+  "error": "Payment required",
+  "resource": {
+   "description": "Payment required for direct subnet inference.",
+   "mimeType": "application/json",
+   "url": "https://devnode.telegraphprotocol.com/engine/v1/ask/7302"
+  },
+  "x402Version": 2
+ },
+ "body": {
+  "error": "payment required",
+  "accepts": [
+   {
+    "scheme": "exact",
+    "price": "$0.01",
+    "network": "eip155:11155111",
+    "payTo": "0x3624EB012B5E998BB57B6bE6C9Cfc9c4bc5eb99b"
+   },
+   {
+    "scheme": "exact",
+    "price": "$0.01",
+    "network": "eip155:84532",
+    "payTo": "0xC0A3FB6d3F1f4B54617d29ffbdA4663Af5F96e2e"
+   },
+   {
+    "scheme": "exact",
+    "price": "$0.01",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "payTo": "G53EbeTZSNsAn7bj6iMFUQnq3zpDdEbHhKkPRywo8bix"
+   },
+   {
+    "extra": {
+     "description": "Deduct from the caller's Telegraph escrow balance at the next epoch close. Fund it once with EscrowFacet.depositUSDC(amount); no per-request settlement.",
+     "message": "Telegraph Escrow Payment\n\nWallet: {from}\nPay To: 0x3624eb012b5e998bb57b6be6c9cfc9c4bc5eb99b\nNetwork: eip155:11155111\nAmount: 10000 uUSDC\nResource: /v1/ask/7302\nNonce: {nonce}\nValid After: {validAfter}\nValid Before: {validBefore}",
+     "resource": "/v1/ask/7302",
+     "signWith": "personal_sign (EIP-191)"
+    },
+    "network": "eip155:11155111",
+    "payTo": "0x3624eb012b5e998bb57b6be6c9cfc9c4bc5eb99b",
+    "price": "$0.01",
+    "scheme": "escrow"
+   }
+  ]
+ }
+}

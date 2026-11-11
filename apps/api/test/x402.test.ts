@@ -160,6 +160,27 @@ describe("x402 on POST /v1/verdicts", () => {
     expect(await settled()).toBe(before + 1);
   });
 
+  it("never settles an ABSTAIN: the caller gets the answer and pays nothing", async () => {
+    const t = await terms();
+    const payment = await pay(t);
+    const before = await settled();
+    const settles = calls.filter((x) => x.path === "settle").length;
+    // A deployer ending in "e" makes the simulated sanctions miner hang: a required check is missing.
+    const res = await ask("0x00000000000000000000000000000000000ab40a", payment, { context: { deployer: `0x${"3".repeat(39)}e` } });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { verdict: string }).verdict).toBe("ABSTAIN");
+    expect(res.headers.get("x-payment-response")).toBeNull();
+    expect(res.headers.get("x-skein-payment")).toMatch(/not-settled/);
+    expect(calls.filter((x) => x.path === "settle").length).toBe(settles);
+    expect(await settled()).toBe(before);
+
+    // A replay of the same request is not settled either.
+    const again = await ask("0x00000000000000000000000000000000000ab40a", payment, { context: { deployer: `0x${"3".repeat(39)}e` } });
+    expect(again.status).toBe(200);
+    expect(calls.filter((x) => x.path === "settle").length).toBe(settles);
+    expect(await settled()).toBe(before);
+  }, 30_000);
+
   it("withholds the verdict when settlement fails, and delivers it on a retry once settlement works", async () => {
     const t = await terms();
     const payment = await pay(t);

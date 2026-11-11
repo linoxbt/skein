@@ -91,7 +91,8 @@ network needs `PURCHASER_PRIVATE_KEY`, a wallet with escrowed test USDC.
   - per verdict: `PER_VERDICT_CAP_USDC`, 0.2;
   - per day: `DAILY_CAP_USDC`, 10, enforced atomically in Postgres;
   - per partner key, per day.
-- An ABSTAIN is charged at upstream cost only.
+- An ABSTAIN costs an x402 caller nothing (the payment is not settled).
+  Telegraph buyers pay the network's price per answer.
 
 **Network:** Telegraph testnet, escrow on Ethereum Sepolia (`eip155:11155111`).
 x402 payments use Base Sepolia.
@@ -125,14 +126,17 @@ x402 payments use Base Sepolia.
   rejected none of the 13 long-listed tokens. It abstained on 8 of the 20.
   Two simpler rules applied to the same paid findings each let one scam
   through. See `eval/FINDINGS-holdout.md`.
-- **Sniper.** Of 5,050 launches seen, 160 were checked and all 160 dodged.
-  The 100 skipped tokens it tracked afterwards fell a median of 99.99%. Live feed:
-  https://sniper-production-bea6.up.railway.app/feed.json
+- **Sniper.** Live feed: https://sniper-production-bea6.up.railway.app/feed.json.
+  It buys a verdict for every launch it considers, and has bought no token.
+  On launches minutes old, its policy's holder floor fails almost everything,
+  so its record shows the gate holding, not foresight. The prospective
+  benchmark labels each launch 72 hours after its verdict and publishes daily
+  to the `data/prospective` branch.
 - **Service endpoints:**
   - status: https://api.skeinlabs.site/v1/status (per-intent miners, p50 and
     p95 latency, error rate, spend against caps);
   - OpenAPI: https://api.skeinlabs.site/v1/openapi.json.
-- **Tests.** More than 230 automated tests: engine property tests (20,000 runs in
+- **Tests.** More than 340 automated tests: engine property tests (20,000 runs in
   CI), the payment client, the pipeline, the API (replicas, x402, idempotency),
   the SDK, MCP and Desk, plus browser and accessibility tests. All run in CI on
   every change, and Railway deploys only green builds.
@@ -142,8 +146,9 @@ x402 payments use Base Sepolia.
   - a probe every 10 minutes that pushes alerts and recoveries;
   - an error log.
 
-  It was load-tested at 400 simultaneous verdicts across two replicas, with
-  every money invariant holding (`docs/LOADTEST.md`). See `docs/RUNBOOK.md`.
+  It was load-tested with simulated Telegraph nodes (nothing paid): 400
+  simultaneous verdicts on two API instances and real PostgreSQL, with every
+  money invariant holding (`docs/LOADTEST.md`). See `docs/RUNBOOK.md`.
 
 ## Apps & Agents commercial summary
 
