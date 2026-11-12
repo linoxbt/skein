@@ -18,6 +18,18 @@ export const VCOLOR_LIGHT: Record<Verdict, string> = {
 
 export const short = (h: string, n = 6) => `${h.slice(0, n + 2)}…${h.slice(-4)}`;
 export const usd = (n: number) => `$${n.toFixed(n > 0 && n < 0.1 ? 3 : 2)}`;
+/** What a decision cost the Desk, as shown: a payment sent with no answer has an unknown bill. */
+export const paidLabel = (d: { paidUsdc: number; billing?: "paid" | "unknown" }) => (d.billing === "unknown" ? (d.paidUsdc > 0 ? `≤ ${usd(d.paidUsdc)}` : "unknown") : usd(d.paidUsdc));
+
+/** The Telegraph testnet node, whose own record of a paid answer is public at /engine/v1/signal/{hash}. */
+export const TELEGRAPH_NODE = process.env.NEXT_PUBLIC_TELEGRAPH_NODE_URL ?? "https://devnode.telegraphprotocol.com";
+
+/** Where a Telegraph receipt can be checked: the node's record of the answer when there is one, else the application's memo. */
+export const receiptHref = (appId: string, d: { signalHash?: string | null }) =>
+  d.signalHash ? `${TELEGRAPH_NODE}/engine/v1/signal/${d.signalHash}` : `/a/${appId}/memo`;
+
+export const SOURCE_LABEL = { form: "via form", webhook: "via webhook", agent: "filed by the agent" } as const;
+
 export const ago = (iso: string) => {
   const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
   return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : new Date(iso).toLocaleDateString();
@@ -29,7 +41,7 @@ export const ago = (iso: string) => {
  * for a few seconds server-side, so polling faster would show nothing newer.
  */
 export function useApplications(intervalMs = 10_000) {
-  const [state, setState] = useState<{ agent: "online" | "offline" | "misconfigured"; rail: "apiKey" | "telegraph"; lastError?: { at: string; code: string }; applications: Summary[] } | null>(null);
+  const [state, setState] = useState<{ agent: "online" | "offline" | "misconfigured"; rail: "apiKey" | "telegraph"; autoDaily?: number; lastError?: { at: string; code: string }; applications: Summary[] } | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
     let live = true;

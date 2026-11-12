@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Lead, PageHero, REPO_URL, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
-import { ago, short, useApplications, usd, VCOLOR_LIGHT } from "@/lib/client";
+import { ago, paidLabel, short, SOURCE_LABEL, useApplications, usd, VCOLOR_LIGHT } from "@/lib/client";
 import type { Summary } from "@/lib/store";
 import { CHAINS, columnOf, type Column } from "@/lib/types";
 
@@ -23,6 +23,7 @@ function Card({ a }: { a: Summary }) {
       </div>
       <div className="mt-1 font-mono text-[12px] text-ink-2">
         {CHAINS[a.subject.chainId]} · {short(a.subject.token)}
+        {a.source === "agent" ? <span className="text-thread-deep"> · {SOURCE_LABEL.agent}</span> : null}
       </div>
       <div className="mt-4 flex items-end justify-between gap-3">
         {d ? (
@@ -35,7 +36,7 @@ function Card({ a }: { a: Summary }) {
             {a.status === "buying" ? "buying verdict" : "received"}
           </span>
         )}
-        {d ? <span className="font-mono text-[12px] text-ink-2">{d.seconds}s · {d.receipts} receipts</span> : null}
+        {d ? <span className="font-mono text-[12px] text-ink-2">{d.seconds}s · {d.rail === "telegraph" ? `Telegraph ${paidLabel(d)}` : `${d.receipts} receipts`}</span> : null}
       </div>
     </Link>
   );
@@ -76,7 +77,8 @@ export default function Queue() {
             [
               ["applications", state ? String(apps.length) : "—", false],
               ["decided by the agent", state ? String(decided.length) : "—", false],
-              ["price per decision", withVerdict.length ? usd(listPrice / withVerdict.length) : "—", true],
+              // Skein's list price; what the Desk itself paid is in the line below and in the log.
+              ["list price per verdict", withVerdict.length ? usd(listPrice / withVerdict.length) : "—", true],
               ["median time to decide", median !== null ? `${median}s` : "—", false],
             ] as [string, string, boolean][]
           ).map(([label, value, gold]) => (
@@ -90,10 +92,10 @@ export default function Queue() {
           {error
             ? "The desk is unreachable."
             : state?.agent === "offline"
-              ? "Agent offline: no Skein key is configured, so applications wait in Incoming."
+              ? `Agent offline: no ${state.rail === "telegraph" ? "Telegraph payer key" : "Skein key"} is configured, so applications wait in Incoming.`
               : state?.agent === "misconfigured"
-                ? `Agent misconfigured (${state.lastError?.code}): applications wait in Incoming until its key works.`
-                : `Agent online · paying ${state?.rail === "telegraph" ? "through Telegraph escrow" : "with a Skein partner key (free during the hackathon)"} · the Desk has paid ${usd(paid)} in total · evidence behind each verdict: ${withVerdict.length ? usd(upstream / withVerdict.length) : "—"} of paid Telegraph inputs`}
+                ? `Agent cannot buy right now (${state.lastError?.code}): applications wait in Incoming and are retried on its next run.`
+                : `Agent online · paying ${state?.rail === "telegraph" ? "through Telegraph escrow on the testnet, with no person involved" : "with a Skein partner key (free during the hackathon)"}${state?.autoDaily ? ` · files up to ${state.autoDaily} fresh launch${state.autoDaily === 1 ? "" : "es"} a day itself` : ""} · the Desk has paid ${usd(paid)} in total · evidence behind each verdict: ${withVerdict.length ? usd(upstream / withVerdict.length) : "—"} of paid Telegraph inputs`}
         </p>
       </Section>
 

@@ -325,8 +325,7 @@ export async function process(deps: AgentDeps, id: string, indexed?: Summary): P
   const resuming = rail === "telegraph" && read.value.status === "buying";
   const viaTelegraph = rail === "telegraph" && !giveUp;
 
-  const { waiting: _waiting, ...base } = read.value;
-  let app: Application = { ...base, rail, lease: { by: me, until: new Date(now.getTime() + (viaTelegraph ? TELEGRAPH_LEASE_MS : LEASE_MS)).toISOString() } };
+  let app: Application = { ...read.value, rail, lease: { by: me, until: new Date(now.getTime() + (viaTelegraph ? TELEGRAPH_LEASE_MS : LEASE_MS)).toISOString() } };
   if (viaTelegraph && !resuming) {
     // The ask is about to be paid: mark it in the same write that takes the lease.
     const { ask: _ask, ...fresh } = app;

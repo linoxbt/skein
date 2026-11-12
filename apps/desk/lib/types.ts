@@ -88,8 +88,6 @@ export interface Application {
   ask?: AskRecord;
   /** Telegraph asks that failed before any payment was sent; retried on later ticks, up to a limit. */
   attempts?: number;
-  /** Why an open application is not being bought yet (shown on its page). */
-  waiting?: string;
   decision?: Decision;
 }
 

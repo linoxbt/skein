@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Lead, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
-import { short, usd, VCOLOR } from "@/lib/client";
+import { paidLabel, receiptHref, short, SOURCE_LABEL, usd, VCOLOR } from "@/lib/client";
 import { CHAINS, columnOf, type Application } from "@/lib/types";
 
 const SKEIN_WEB = process.env.NEXT_PUBLIC_SKEIN_WEB_URL ?? "https://skeinlabs.site";
@@ -50,7 +50,7 @@ export default function ApplicationPage() {
         <div className="relative mx-auto max-w-[1400px] px-5 pb-16 pt-32 md:px-10 md:pt-44">
           <div className="flex flex-wrap gap-2">
             <span className="tag tag-dark">{a ? COLUMN_LABEL[columnOf(a)] : "Application"}</span>
-            {a ? <span className="tag tag-dark">{a.source === "webhook" ? "via webhook" : "via form"}</span> : null}
+            {a ? <span className="tag tag-dark">{SOURCE_LABEL[a.source]}{a.origin ? ` · from ${a.origin.feed === "dexscreener" ? "DexScreener's new profiles" : "Skein's sniper feed"}` : ""}</span> : null}
           </div>
           <h1 className="display mt-6 text-[48px] md:text-[96px]">{missing ? "Not found." : (a?.project ?? (failed ? "Unreachable." : "Loading…"))}</h1>
           {failed ? <p className="mt-6 font-mono text-[13px] text-reject">The desk is not answering. Reload to try again.</p> : null}
@@ -61,7 +61,13 @@ export default function ApplicationPage() {
           ) : null}
           {a && !d ? (
             <p className="pending mt-10 font-mono text-[15px] text-thread">
-              {a.status === "buying" ? `Buying a verdict${a.verdictId ? ` (${a.verdictId})` : ""}…` : "Waiting for the agent…"}
+              {a.status === "buying"
+                ? a.ask
+                  ? `Paid ${a.ask.amountUsdc} USDC through Telegraph; reading the verdict${a.ask.verdictId ? ` (${a.ask.verdictId})` : ""}…`
+                  : `Buying a verdict${a.rail === "telegraph" ? " through Telegraph" : ""}${a.verdictId ? ` (${a.verdictId})` : ""}…`
+                : a.attempts
+                  ? `Telegraph did not answer before payment (${a.attempts} ${a.attempts === 1 ? "try" : "tries"}, nothing paid); the agent tries again on its next run…`
+                  : "Waiting for the agent…"}
             </p>
           ) : null}
           {d ? (
@@ -83,7 +89,7 @@ export default function ApplicationPage() {
                 [
                   ["action", d.action === "shortlist" ? "Shortlist" : d.action === "decline" ? "Decline" : "Analyst"],
                   ["decided in", `${d.seconds}s`],
-                  ["desk paid", usd(d.paidUsdc)],
+                  ["desk paid", paidLabel(d)],
                   ["evidence bought", usd(d.upstreamUsdc)],
                   ["receipts", String(d.receipts)],
                 ] as [string, string][]
@@ -108,15 +114,20 @@ export default function ApplicationPage() {
                 [
                   ["verdict", d.verdictId ?? "none (refused)"],
                   ["verdict hash", d.verdictHash ? short(d.verdictHash, 10) : "—"],
-                  ["paid with", d.rail === "telegraph" ? "a Telegraph escrow payment" : d.rail === "apiKey" ? "a Skein partner key" : "nothing (refused)"],
-                  ["receipt", d.receiptHash ? short(d.receiptHash, 10) : d.rail === "apiKey" ? "upstream receipts are in the verdict's bill of materials" : "—"],
-                  ["network", d.network ?? "—"],
+                  [
+                    "paid with",
+                    d.rail === "telegraph"
+                      ? `a Telegraph escrow payment${d.minerId ? ` to miner ${d.minerId}` : ""}${d.billing === "unknown" ? " (sent; whether it was billed is unknown)" : ""}`
+                      : d.rail === "apiKey" ? "a Skein partner key" : "nothing (refused)",
+                  ],
+                  ["receipt", d.receiptHash ? short(d.receiptHash, 10) : d.rail === "apiKey" ? "upstream receipts are in the verdict's bill of materials" : "—", d.receiptHash ? receiptHref(a!.id, d) : undefined],
+                  ["network", d.network ?? (d.rail === "telegraph" ? "Telegraph testnet" : "—")],
                   ["list price", d.listPriceUsdc ? usd(d.listPriceUsdc) : "—"],
-                ] as [string, string][]
-              ).map(([k, v]) => (
+                ] as [string, string, string?][]
+              ).map(([k, v, href]) => (
                 <div key={k} className="bg-mist p-6">
                   <dt className="font-mono text-[12px] uppercase tracking-wider text-ink-2">{k}</dt>
-                  <dd className="mt-2 break-all text-[17px]">{v}</dd>
+                  <dd className="mt-2 break-all text-[17px]">{href ? <a href={href} className="underline underline-offset-4" title={d.receiptHash ?? undefined}>{v}</a> : v}</dd>
                 </div>
               ))}
             </dl>

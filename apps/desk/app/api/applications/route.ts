@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { agentReady, InputError, parseApplication, process as runAgent, receive, type ApplicationInput } from "@/lib/agent";
-import { DAILY_LIMIT, deskDeps, kickBackgroundAgent, onNetlify, PER_IP_DAILY_LIMIT, payerRail } from "@/lib/desk";
+import { AUTO_DAILY, DAILY_LIMIT, deskDeps, kickBackgroundAgent, onNetlify, PER_IP_DAILY_LIMIT, payerRail } from "@/lib/desk";
 import { cached, clientIp, errorResponse, guarded, limiter } from "@/lib/http";
 import type { Application } from "@/lib/types";
 
@@ -23,6 +23,7 @@ const board = cached(BOARD_TTL_MS, async () => {
   return {
     agent: !agentReady(deps) ? "offline" : recentError ? "misconfigured" : "online",
     rail: payerRail(),
+    autoDaily: AUTO_DAILY,
     ...(recentError ? { lastError: recentError } : {}),
     applications: await deps.store.list(),
   };
