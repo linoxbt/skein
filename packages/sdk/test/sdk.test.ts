@@ -155,6 +155,11 @@ describe("verdict() through Telegraph", () => {
       .catch((e) => e);
     expect(err).toMatchObject({ code: "CONTEXT_NOT_SUPPORTED", payment: undefined });
     expect(node.charges).toHaveLength(0);
+    // Opting in buys without it.
+    const asks: { minerId: string; body: Record<string, unknown> }[] = [];
+    const v = await skein({ payer: { kind: "telegraph", client: telegraphClient(skeinNode(asks)), dropContext: true } }).verdict({ subject: { chainId: 8453, token: tok() }, context: { socialHandle: "@base" } });
+    expect(v.verdict).toBe("APPROVE");
+    expect(Object.keys(asks[0]!.body.params as object)).toEqual(["subject"]);
   });
 });
 

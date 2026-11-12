@@ -40,14 +40,15 @@ export function subjectText(s: Subject): string {
  *   only for the subject and policy asked; otherwise TelegraphMismatchError,
  *   with what was paid. `routed: true` lets the network pick the miner instead:
  *   any of the intent's miners may then answer, and a non-Skein answer is paid
- *   for and refused;
+ *   for and refused. The rail carries no context: a request with context is
+ *   refused before paying, unless `dropContext: true` sends it without;
  * - x402: pays the direct API per verdict with a signed USDC authorization
  *   (EIP-3009). Nothing is signed unless the 402 names the pinned network,
  *   payTo and asset, at a price within maxUsdc (and the client's maxUsdcPerCall).
  */
 export type Payer =
   | { kind: "apiKey"; key: string }
-  | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string; routed?: boolean; expectedMinerIds?: readonly string[] }
+  | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string; routed?: boolean; expectedMinerIds?: readonly string[]; dropContext?: boolean }
   | { kind: "x402"; account: X402Account; network: X402Network; payTo: string; asset?: string; maxUsdc?: number };
 
 export interface SkeinOptions {
@@ -396,11 +397,11 @@ export class Skein {
   async verdict(req: VerdictRequest): Promise<VerdictResult> {
     const payer = this.opts.payer;
     if (!payer) throw new SkeinError("NO_PAYER", "verdict() needs a payer: { kind: 'apiKey', key }, { kind: 'telegraph', client } or { kind: 'x402', account, network, payTo }");
-    if (payer.kind === "telegraph" && canonicalContext(req.context)) {
+    if (payer.kind === "telegraph" && !payer.dropContext && canonicalContext(req.context)) {
       // Skein's miner endpoint, like the intent's request schema, takes a subject and a policy only.
       throw new SkeinError(
         "CONTEXT_NOT_SUPPORTED",
-        "the Telegraph rail sends only the subject and the policy, so context (socialHandle, repoUrl, pool, …) cannot be used; nothing was paid. Use the partner-key or x402 rail for checks that need context",
+        "the Telegraph rail sends only the subject and the policy, so context (socialHandle, repoUrl, pool, …) cannot be used; nothing was paid. Use the partner-key or x402 rail for checks that need context, or set dropContext: true on the payer to buy without it",
         400,
       );
     }
