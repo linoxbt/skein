@@ -86,11 +86,12 @@ The answer is used only if it comes from Skein's miner (845301, or its
 registration id 5137, which receipts name) and is about the token, chain and
 policy you asked for; anything else throws `TelegraphMismatchError`, whose
 `payment` says what the ask cost. The Telegraph rail sends only the subject and
-the policy: a request with `context` is refused before paying (use the partner
-key or x402 for checks that need it). Payer options: `minerId` (default
-`SKEIN_MINER_ID`), `intent` (default `FRAUD_RISK_GENERAL`), `expectedMinerIds`,
-`routed: true` to let the network pick the miner, and `dropContext: true` to
-buy without the context instead of refusing.
+the policy: `context` is left out, and `payment.contextDropped` names the fields
+that were (use the partner key or x402 for checks that need context). Payer
+options: `minerId` (default `SKEIN_MINER_ID`), `intent` (default
+`FRAUD_RISK_GENERAL`), `expectedMinerIds`, `routed: true` to let the network
+pick the miner, and `strictContext: true` to refuse a request with context
+before paying instead.
 
 ## Verdict (pay per call with x402)
 

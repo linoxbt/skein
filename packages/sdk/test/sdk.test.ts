@@ -148,18 +148,18 @@ describe("verdict() through Telegraph", () => {
     expect(node.charges).toHaveLength(0);
   });
 
-  it("refuses context before paying: the miner endpoint cannot use it", async () => {
+  it("leaves out context the miner endpoint cannot carry, and says so; strictContext refuses before paying", async () => {
+    const asks: { minerId: string; body: Record<string, unknown> }[] = [];
+    const v = await skein({ payer: { kind: "telegraph", client: telegraphClient(skeinNode(asks)) } }).verdict({ subject: { chainId: 8453, token: tok() }, context: { socialHandle: "@base", pool: `0x${"ab".repeat(20)}` } });
+    expect(v.verdict).toBe("APPROVE");
+    expect(Object.keys(asks[0]!.body.params as object)).toEqual(["subject"]);
+    expect(v.payment).toMatchObject({ rail: "telegraph", contextDropped: ["socialHandle", "pool"] });
     const node = skeinNode();
-    const err = await skein({ payer: { kind: "telegraph", client: telegraphClient(node) } })
+    const err = await skein({ payer: { kind: "telegraph", client: telegraphClient(node), strictContext: true } })
       .verdict({ subject: { chainId: 8453, token: tok() }, context: { socialHandle: "@base" } })
       .catch((e) => e);
     expect(err).toMatchObject({ code: "CONTEXT_NOT_SUPPORTED", payment: undefined });
     expect(node.charges).toHaveLength(0);
-    // Opting in buys without it.
-    const asks: { minerId: string; body: Record<string, unknown> }[] = [];
-    const v = await skein({ payer: { kind: "telegraph", client: telegraphClient(skeinNode(asks)), dropContext: true } }).verdict({ subject: { chainId: 8453, token: tok() }, context: { socialHandle: "@base" } });
-    expect(v.verdict).toBe("APPROVE");
-    expect(Object.keys(asks[0]!.body.params as object)).toEqual(["subject"]);
   });
 });
 

@@ -40,15 +40,17 @@ export function subjectText(s: Subject): string {
  *   only for the subject and policy asked; otherwise TelegraphMismatchError,
  *   with what was paid. `routed: true` lets the network pick the miner instead:
  *   any of the intent's miners may then answer, and a non-Skein answer is paid
- *   for and refused. The rail carries no context: a request with context is
- *   refused before paying, unless `dropContext: true` sends it without;
+ *   for and refused. The rail carries no context (Skein's miner endpoint takes a
+ *   subject and a policy): context is left out, and the payment's
+ *   `contextDropped` names what was; `strictContext: true` refuses such a
+ *   request before paying instead;
  * - x402: pays the direct API per verdict with a signed USDC authorization
  *   (EIP-3009). Nothing is signed unless the 402 names the pinned network,
  *   payTo and asset, at a price within maxUsdc (and the client's maxUsdcPerCall).
  */
 export type Payer =
   | { kind: "apiKey"; key: string }
-  | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string; routed?: boolean; expectedMinerIds?: readonly string[]; dropContext?: boolean }
+  | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string; routed?: boolean; expectedMinerIds?: readonly string[]; strictContext?: boolean }
   | { kind: "x402"; account: X402Account; network: X402Network; payTo: string; asset?: string; maxUsdc?: number };
 
 export type PayerByRail = { [K in Payer["kind"]]: Extract<Payer, { kind: K }> };
@@ -130,6 +132,8 @@ export type Payment =
       signalHash: string | null;
       /** Why the Telegraph client does not take the receipt as evidence of this purchase; empty when it checks out. */
       receiptProblems?: string[];
+      /** The request's context fields the rail could not carry: the verdict was bought without them. */
+      contextDropped?: string[];
     }
   | {
       rail: "x402";
@@ -414,11 +418,11 @@ export class Skein<R extends Rail = DefaultRail> {
   async verdict(req: VerdictRequest): Promise<VerdictResult<R>> {
     const payer = this.opts.payer as Payer | undefined;
     if (!payer) throw new SkeinError("NO_PAYER", "verdict() needs a payer: { kind: 'apiKey', key }, { kind: 'telegraph', client } or { kind: 'x402', account, network, payTo }");
-    if (payer.kind === "telegraph" && !payer.dropContext && canonicalContext(req.context)) {
+    if (payer.kind === "telegraph" && payer.strictContext && canonicalContext(req.context)) {
       // Skein's miner endpoint, like the intent's request schema, takes a subject and a policy only.
       throw new SkeinError(
         "CONTEXT_NOT_SUPPORTED",
-        "the Telegraph rail sends only the subject and the policy, so context (socialHandle, repoUrl, pool, …) cannot be used; nothing was paid. Use the partner-key or x402 rail for checks that need context, or set dropContext: true on the payer to buy without it",
+        "the Telegraph rail sends only the subject and the policy, so context (socialHandle, repoUrl, pool, …) cannot be used; nothing was paid. Use the partner-key or x402 rail for checks that need context, or leave strictContext off to buy without it",
         400,
       );
     }
@@ -493,6 +497,7 @@ export class Skein<R extends Rail = DefaultRail> {
 
   private async viaTelegraph(payer: Extract<Payer, { kind: "telegraph" }>, req: VerdictRequest): Promise<VerdictResult> {
     const intent = payer.intent ?? SKEIN_INTENT;
+    const dropped = Object.keys(canonicalContext(req.context) ?? {});
     // FRAUD_RISK_GENERAL declares one string `subject` and an optional `policy`
     // (miner/skein-miner.plan-b.yaml); plan A's draft declared token and chain.
     const params: Record<string, unknown> =
@@ -521,6 +526,7 @@ export class Skein<R extends Rail = DefaultRail> {
       receiptHash: out.receipt?.receipt_hash ?? null,
       signalHash: out.response.signal_hash ?? null,
       ...(receiptProblems.length ? { receiptProblems } : {}),
+      ...(dropped.length ? { contextDropped: dropped } : {}),
     };
     const paid = { amountUsdc: payment.amountUsdc, billing: "paid" as const, receiptHash: payment.receiptHash };
     // Only Skein's miner answers with a Skein verdict id. Another miner on the
