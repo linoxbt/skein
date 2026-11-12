@@ -19,6 +19,10 @@ export interface GraphNode {
   sourceGroup?: string;
   notes?: string[];
   error?: string;
+  /** The miner's rank in the catalogue when bought (finding evidence or BOM line, where reported). */
+  rank?: number;
+  /** The miner's raw answer, where the API reports it (live events; BOM lines on newer builds). */
+  raw?: unknown;
 }
 
 export interface GraphConflict {
@@ -56,7 +60,8 @@ export function graphFromVerdict(v: VerdictObject, bom: Bom | null, policy: Poli
   const nodes = checks.map((check): GraphNode => {
     const fs = v.findings.filter((f) => f.check === check);
     const f = fs.sort((a, b) => (ORDER[b.status] ?? 0) - (ORDER[a.status] ?? 0))[0];
-    const line = bom?.lines.find((l) => l.check === check);
+    const line = bom?.lines.find((l) => (f?.evidence?.receiptHash ? l.receiptHash === f.evidence.receiptHash : l.check === check)) ?? bom?.lines.find((l) => l.check === check);
+    const rank = f?.evidence?.minerRank ?? line?.rank ?? undefined;
     return {
       check,
       required: required.has(check),
@@ -67,6 +72,8 @@ export function graphFromVerdict(v: VerdictObject, bom: Bom | null, policy: Poli
       ...(line?.receiptHash ? { receiptHash: line.receiptHash } : {}),
       ...(line?.signalHash ? { signalHash: line.signalHash } : {}),
       ...(line?.error ? { error: line.error } : {}),
+      ...(typeof rank === "number" ? { rank } : {}),
+      ...(line && line.rawResult !== undefined && line.rawResult !== null ? { raw: line.rawResult } : {}),
       ...(f
         ? { metric: f.metric, value: f.value, unit: f.unit, confidence: f.confidence, sourceGroup: f.sourceGroup, notes: f.notes }
         : {}),
@@ -83,7 +90,10 @@ export function graphFromVerdict(v: VerdictObject, bom: Bom | null, policy: Poli
 /** Live: folds SSE events into graph state as they arrive. */
 export type LiveEvent =
   | { type: "plan"; payload: { ok: boolean; purchases?: { check: string; required: boolean; quoteUusdc: number }[]; dropped?: { check: string; reason: string }[] } }
-  | { type: "purchase"; payload: { check: string; minerId?: string; minerName?: string; amountUusdc: number; receiptHash?: string; signalHash?: string; durationMs: number; error?: string } }
+  | {
+      type: "purchase";
+      payload: { check: string; minerId?: string; minerName?: string; minerRank?: number; amountUusdc: number; receiptHash?: string; signalHash?: string; durationMs: number; error?: string; rawResult?: unknown };
+    }
   | { type: "finding"; payload: Finding }
   | { type: "decision"; payload: { verdictHash: string; decision: { verdict: VerdictObject["verdict"]; riskBps: number; confidenceBps: number; coverageBps: number; conflicts: string[] } } }
   | { type: "done"; payload: { id: string } }
@@ -119,6 +129,8 @@ export function liveReduce(state: GraphState, e: LiveEvent, policy: PolicyDoc | 
         ...(p.receiptHash ? { receiptHash: p.receiptHash } : {}),
         ...(p.signalHash ? { signalHash: p.signalHash } : {}),
         ...(p.error ? { error: p.error } : {}),
+        ...(typeof p.minerRank === "number" ? { rank: p.minerRank } : {}),
+        ...(p.rawResult !== undefined && p.rawResult !== null ? { raw: p.rawResult } : {}),
       });
       return { ...next, costUsdc: state.costUsdc + p.amountUusdc / 1e6 };
     }
@@ -127,7 +139,7 @@ export function liveReduce(state: GraphState, e: LiveEvent, policy: PolicyDoc | 
       const cur = state.nodes.find((n) => n.check === f.check);
       // Keep the worst answer when a check has several.
       if (cur && cur.status !== "PENDING" && (ORDER[cur.status] ?? 0) > (ORDER[f.status] ?? 0)) return state;
-      return set(f.check, { status: f.status, metric: f.metric, value: f.value, unit: f.unit, confidence: f.confidence, sourceGroup: f.sourceGroup, notes: f.notes });
+      return set(f.check, { status: f.status, ...(typeof f.evidence?.minerRank === "number" ? { rank: f.evidence.minerRank } : {}), metric: f.metric, value: f.value, unit: f.unit, confidence: f.confidence, sourceGroup: f.sourceGroup, notes: f.notes });
     }
     case "decision": {
       const d = e.payload.decision;

@@ -10,8 +10,10 @@ export interface Finding {
   unit?: string;
   confidence: number;
   sourceGroup: string;
-  evidence?: { receiptHash?: string; signalHash?: string; minerId?: string };
+  evidence?: { receiptHash?: string; signalHash?: string; minerId?: string; minerRank?: number; list?: string; listSha256?: string };
   notes: string[];
+  /** The adapter that read the answer (part of the sealed findings; absent from older API builds' verdict view). */
+  adapterVersion?: string;
 }
 
 export interface VerdictObject {
@@ -27,9 +29,10 @@ export interface VerdictObject {
   conflicts: string[];
   subject: { chainId: number; token: string };
   findings: Finding[];
-  cost: { upstreamUsdc: number; priceUsdc: number; currency: string };
+  cost: { upstreamUsdc: number; priceUsdc: number; currency: string; pricingRule?: string };
   bom: { root: string; items: number };
-  policy: { id: string; version: string };
+  /** sha256: the policy file's SHA-256, sealed into the verdict hash (engine 0.2.0 on). */
+  policy: { id: string; version: string; sha256?: string };
   engineVersion: string;
   verdictHash: string;
   channel: string;
@@ -61,6 +64,12 @@ export interface BomLine {
   adapterVersion: string;
   error: string | null;
   billed: boolean;
+  billing?: "paid" | "unknown" | "none";
+  signalStatus?: string | null;
+  /** The miner's rank in the catalogue when it was bought, where the API reports it. */
+  rank?: number | null;
+  /** The miner's raw answer, where the API reports it. */
+  rawResult?: unknown;
   createdAt: string;
 }
 
