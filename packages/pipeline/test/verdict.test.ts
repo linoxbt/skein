@@ -427,6 +427,20 @@ describe("bill of materials and deadlines", () => {
     expect(new Set(seen).size).toBe(1);
   });
 
+  it("marks every intent ask skein-depth 1, so a Skein miner downstream never buys again (spec section 9)", async () => {
+    const { deps } = harness();
+    const seen: Record<string, unknown>[] = [];
+    const ask = deps.client.ask.bind(deps.client);
+    deps.client.ask = async (req, opts) => (seen.push(req as Record<string, unknown>), ask(req, opts));
+    const run = await runVerdict({ policy: dex(), subject, context }, deps);
+    expect(run.ok).toBe(true);
+    const intentAsks = seen.filter((r) => "intent" in r);
+    expect(intentAsks.length).toBeGreaterThan(0);
+    for (const r of intentAsks) expect(r.context).toMatchObject({ "skein-depth": "1" });
+    // A native request carries only the fields its miner declares.
+    for (const r of seen.filter((x) => "endpoint" in x)) expect(JSON.stringify(r)).not.toContain("skein-depth");
+  });
+
   it("a spend settlement that throws is logged, and the paid purchase is still recorded (audit M3)", async () => {
     const { node, deps } = harness();
     const logged: string[] = [];

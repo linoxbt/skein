@@ -20,7 +20,7 @@ import { CHECK_INTENTS, SERVED_INTENTS, type AskOutcome, type AskRequest, type S
 import { availability, candidates, groupOf, quotes, type BuyFrom, type Catalogue } from "./catalogue";
 import { screenAddresses, sdnFinding } from "./ofac";
 import type { PoolResolver } from "./pool";
-import { buildRequest, forCandidate, type VerdictContext } from "./requests";
+import { buildRequest, forCandidate, withDepthMarker, type VerdictContext } from "./requests";
 
 /** One upstream attempt, success or failure: a bill-of-materials line. */
 export interface PurchaseRecord {
@@ -278,7 +278,7 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
           break;
         }
         miner = cand;
-        const req = cand ? forCandidate(built, cand) : built;
+        const req = withDepthMarker(cand ? forCandidate(built, cand) : built);
         // The verdict's deadline bounds the whole ask: probe, payment, retry and identity lookups.
         out = await deps.client.ask(req, { timeoutMs: pp.timeoutMs, deadline, maxUusdc: budget, ...(cand ? { minerId: cand.minerId } : {}) });
         const paidNow = out.ok ? out.amountUusdc : out.paidUusdc;

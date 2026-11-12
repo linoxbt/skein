@@ -93,3 +93,19 @@ export function forCandidate(req: AskRequest, cand: Pick<MinerCandidate, "native
     ...(cand.native.acknowledgeWarnings ? { acknowledge_warnings: true as const } : {}),
   };
 }
+
+/**
+ * The loop guard's outbound half (spec section 9): every intent ask Skein makes
+ * carries skein-depth 1 in its context, so a Skein miner reached through the
+ * network (its own registration, or a composite that resells Skein) answers it
+ * from cache or refuses, instead of buying again. Native requests (a miner's own
+ * endpoint and payload) carry only the fields that miner declares, so the
+ * marker cannot travel there; self-exclusion by registration id covers them.
+ */
+export const SKEIN_DEPTH_KEY = "skein-depth";
+
+export function withDepthMarker(req: AskRequest): AskRequest {
+  if (!("intent" in req)) return req;
+  return { ...req, context: { ...(req.context ?? {}), [SKEIN_DEPTH_KEY]: "1" } };
+}
+
