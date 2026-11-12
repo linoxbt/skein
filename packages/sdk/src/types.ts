@@ -43,9 +43,11 @@ export interface VerdictObject {
   conflicts: string[];
   subject: Subject;
   findings: Finding[];
-  cost: { upstreamUsdc: number; priceUsdc: number; currency: string };
+  /** pricingRule: which rule set the price ("standard", or "abstain_upstream_only": an ABSTAIN costs what it bought). */
+  cost: { upstreamUsdc: number; priceUsdc: number; pricingRule?: string; currency: string };
   bom: { root: string; items: number };
-  policy: { id: string; version: string };
+  /** sha256: of the policy file the verdict was made under. */
+  policy: { id: string; version: string; sha256?: string };
   engineVersion: string;
   verdictHash: string;
   channel: string;
@@ -55,6 +57,8 @@ export interface VerdictObject {
   disclaimer: string;
   cached?: boolean;
   replayed?: boolean;
+  /** Set when a cached verdict answered this request: the id of the verdict served. */
+  servedFrom?: string;
   /** Present when the API signs verdicts. */
   attestation?: Attestation;
 }
@@ -73,7 +77,23 @@ export interface Quote {
 export interface VerifyReport {
   id: string;
   ok: boolean;
-  checks: Record<string, boolean>;
+  /**
+   * Each step of the recomputation. attestation is present when the API signs
+   * verdicts; any other key a later API adds is a boolean too.
+   */
+  checks: {
+    adaptersRerun?: boolean;
+    policyRerun?: boolean;
+    bomRootRebuilt?: boolean;
+    engineVersion?: boolean;
+    decisionMatches?: boolean;
+    receiptsMatch?: boolean;
+    policyFile?: boolean;
+    attestation?: boolean;
+    [k: string]: boolean | undefined;
+  };
+  /** The network's own record of each paid answer's signal (up to 12 looked up). */
+  signals?: { verified: number; missing: number; mismatch: number; unchecked: number };
   verdictHash: { stored: string; recomputed: string };
   bomRoot: { stored: string; recomputed: string };
   receipts: string[];
@@ -117,7 +137,10 @@ export type VerdictEvent =
 export interface TelegraphAskOutcomeOk {
   ok: true;
   response: { miner_id: string; result: unknown; signal_hash?: string; cost_usd?: number };
-  receipt: { receipt_hash: string } | null;
+  /** miner: the registration id the receipt names; checked against Skein's when present. */
+  receipt: { receipt_hash: string; miner?: string } | null;
+  /** Why the client does not take the receipt as evidence of this purchase. */
+  receiptProblems?: string[];
   amountUusdc: number;
   durationMs: number;
 }
@@ -126,6 +149,9 @@ export interface TelegraphAskOutcomeFail {
   kind: string;
   error: string;
   httpStatus?: number;
+  /** What was signed and sent before the failure: the node may have billed it. */
+  paidUusdc?: number;
+  billing?: string;
 }
 
 /** Anything that can make one paid Telegraph ask, e.g. TelegraphClient from @skeinlabs/sdk/telegraph. */
