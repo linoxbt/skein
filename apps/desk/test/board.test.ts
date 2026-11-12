@@ -38,6 +38,23 @@ describe("M19: the public board cannot run up the store", () => {
   });
 });
 
+describe("the tick route", () => {
+  it("answers only the scheduler's secret", async () => {
+    const env = { ...process.env };
+    process.env.DESK_STORE = "memory";
+    process.env.DESK_CRON_SECRET = "s3cret";
+    delete process.env.DESK_SKEIN_KEY;
+    const { POST } = await import("../app/api/agent/tick/route");
+    const call = (auth?: string) => POST(new Request("https://desk.test/api/agent/tick", { method: "POST", headers: auth ? { authorization: auth } : {} }));
+    expect((await call()).status).toBe(401);
+    expect((await call("Bearer nope00")).status).toBe(401);
+    const ok = await call("Bearer s3cret");
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ agent: "offline" });
+    process.env = env;
+  });
+});
+
 describe("cache and limiter", () => {
   it("reloads after the time to live, one load at a time", async () => {
     let loads = 0;
