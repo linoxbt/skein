@@ -33,7 +33,7 @@ export default function ApplicationPage() {
         // Stop hammering a desk that is down; say so.
         return setFailed(true);
       }
-      if (!j || j.status !== "decided") t = setTimeout(load, Math.min(2000 * 2 ** errors, 30_000));
+      if (!j || j.status !== "decided") t = setTimeout(load, Math.min(5000 * 2 ** errors, 60_000));
     };
     void load();
     return () => {

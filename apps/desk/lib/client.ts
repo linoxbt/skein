@@ -23,16 +23,25 @@ export const ago = (iso: string) => {
   return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : new Date(iso).toLocaleDateString();
 };
 
-/** The queue, polled. Each poll also nudges the agent to settle open applications. */
-export function useApplications(intervalMs = 3000) {
+/**
+ * The queue, polled while the tab is visible. Polling only reads: the agent
+ * moves the queue on intake and on its scheduled run. The board is shared
+ * for a few seconds server-side, so polling faster would show nothing newer.
+ */
+export function useApplications(intervalMs = 10_000) {
   const [state, setState] = useState<{ agent: "online" | "offline" | "misconfigured"; rail: "apiKey" | "telegraph"; lastError?: { at: string; code: string }; applications: Summary[] } | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
     let live = true;
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      clearTimeout(timer);
+      if (live && !document.hidden) timer = setTimeout(load, intervalMs);
+    };
     const load = async () => {
       try {
-        const r = await fetch("/api/applications", { cache: "no-store" });
+        // The default cache mode: no request header that would make the CDN skip its short-lived copy.
+        const r = await fetch("/api/applications");
         if (!r.ok) throw new Error(String(r.status));
         if (live) {
           setState(await r.json());
@@ -41,12 +50,16 @@ export function useApplications(intervalMs = 3000) {
       } catch {
         if (live) setError(true);
       }
-      if (live) timer = setTimeout(load, intervalMs);
+      schedule();
     };
+    // A hidden tab stops polling; it catches up as soon as it is shown again.
+    const onVisibility = () => (document.hidden ? clearTimeout(timer) : void load());
+    document.addEventListener("visibilitychange", onVisibility);
     void load();
     return () => {
       live = false;
       clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [intervalMs]);
   return { state, error };
