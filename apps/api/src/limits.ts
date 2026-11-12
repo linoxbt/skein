@@ -81,6 +81,7 @@ export class SharedRateLimiter implements Limiter {
 export async function pruneShared(db: Db): Promise<void> {
   await db.execute(sql`DELETE FROM rate_limits WHERE at < now() - interval '1 hour'`);
   await db.execute(sql`DELETE FROM flights WHERE expires_at < now()`);
+  await db.execute(sql`DELETE FROM miner_requests WHERE answered_at < now() - interval '30 days'`);
   await db.execute(sql`DELETE FROM error_log WHERE at < now() - interval '30 days'`);
 }
 

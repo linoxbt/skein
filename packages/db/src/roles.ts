@@ -36,6 +36,7 @@ export const PRIVILEGES: Record<string, Priv[]> = {
   error_log: ["SELECT", "INSERT", "DELETE"],
   rate_limits: ["SELECT", "INSERT", "UPDATE", "DELETE"],
   flights: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+  miner_requests: ["SELECT", "INSERT", "UPDATE", "DELETE"],
   // Snapshots of the live catalogue and intent health, upserted every 5 minutes.
   miner_catalog: ["SELECT", "INSERT", "UPDATE"],
   intent_status: ["SELECT", "INSERT", "UPDATE"],

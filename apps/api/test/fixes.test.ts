@@ -330,3 +330,56 @@ describe("hardening (audit, Low)", () => {
     expect(await publishPolicies(api.db)).toBe(0);
   });
 });
+
+describe("engine 0.4.0 integration", () => {
+  it("answers a Telegraph call whose required check no miner Skein buys from can answer with an ABSTAIN that bought nothing, and the quote agrees", async () => {
+    const own = await simulatedApi({ fast: true, env: {}, config: { minerAuthKey: "mk" } });
+    const catalogue = { ...own.service.catalogue, minersByIntent: { ...own.service.catalogue.minersByIntent, SANCTIONS_SCREENING_MATCH_GENERAL: [] } };
+    const app = createApp(new VerdictService({ ...own.service.deps, catalogue }));
+    const t = tok();
+    const before = own.node.charges.length;
+    const out = await j(app.request("/miner/verdict", { method: "POST", headers: { "content-type": "application/json", "x-skein-miner-key": "mk" }, body: JSON.stringify({ token: t, chain: "base" }) }));
+    expect(out).toMatchObject({ verdict: "ABSTAIN", reasons: [{ code: "UPSTREAM_UNAVAILABLE" }], upstream_usdc: 0, checks: ["sanctions"] });
+    expect(own.node.charges.length).toBe(before);
+    const q = await j(app.request(`/v1/quote?chain=8453&token=${t}&policy=dex-list`));
+    expect(q).toMatchObject({ ok: false, refusal: { code: "UPSTREAM_UNAVAILABLE" } });
+  });
+
+  it("records a Telegraph caller's request_id with its answer, for a caller that lost the connection (H9)", async () => {
+    const rid = crypto.randomUUID();
+    const out = await j(minerPost(api, { params: { token: tok(), chain: "base", request_id: rid } }));
+    const r = await j(api.app.request(`/v1/miner/requests/${rid}`));
+    expect(r).toMatchObject({ requestId: rid, status: "answered", verdictId: out.id, verdict: `/v1/verdicts/${out.id}` });
+    // A later ABSTAIN under the same id never loses the verdict.
+    await j(minerPost(api, { token: tok(), chain: "base", request_id: rid }, { "x-skein-depth": "1" }));
+    expect((await j(api.app.request(`/v1/miner/requests/${rid}`))).verdictId).toBe(out.id);
+    expect((await minerPost(api, { token: tok(), chain: "base", request_id: "short" })).status).toBe(400);
+    expect((await api.app.request("/v1/miner/requests/short")).status).toBe(400);
+    expect((await api.app.request(`/v1/miner/requests/${crypto.randomUUID()}`)).status).toBe(404);
+  });
+
+  it("follows a request answered DEADLINE until its verdict is sealed", async () => {
+    const rid = crypto.randomUUID();
+    const v = await j(post(api, { subject: { chainId: 8453, token: tok() } }));
+    await api.db.insert(schema.verdictRuns).values({ id: "vrd_h9_run", channel: "telegraph", subjectChainId: 8453, subjectToken: tok(), policyId: "dex-list", policyVersion: "0.2.0", contextHash: "x", status: "running" });
+    await api.db.insert(schema.minerRequests).values({ requestId: rid, runId: "vrd_h9_run", code: "DEADLINE" });
+    expect(await j(api.app.request(`/v1/miner/requests/${rid}`))).toMatchObject({ status: "pending", verdictId: null, code: "DEADLINE" });
+    await api.db.update(schema.verdictRuns).set({ status: "done", verdictId: v.id }).where(eq(schema.verdictRuns.id, "vrd_h9_run"));
+    expect(await j(api.app.request(`/v1/miner/requests/${rid}`))).toMatchObject({ status: "answered", verdictId: v.id });
+  });
+
+  it("seals simulated verdicts as simulated, verifies them as such, and shows every reproduce problem as a check", async () => {
+    const v = await j(post(api, { subject: { chainId: 8453, token: tok() } }));
+    const [row] = await api.db.select({ network: schema.verdicts.network }).from(schema.verdicts).where(eq(schema.verdicts.id, v.id));
+    expect(row!.network).toBe("simulated");
+    const r = await verify(api, v.id);
+    expect(r.inputs.mode).toBe("simulated");
+    expect(r.ok).toBe(true);
+    expect(r.checks).toMatchObject({ unpurchased: true, reproduces: true });
+  });
+
+  it("publishes the OFAC snapshot's age and staleness at /v1/status", async () => {
+    const s = await j(api.app.request("/v1/status", { headers: { "x-forwarded-for": "203.0.113.77" } }));
+    expect(s.ofacSnapshot).toMatchObject({ fetched: expect.any(String), ageDays: expect.any(Number), maxAgeDays: expect.any(Number), stale: expect.any(Boolean) });
+  });
+});

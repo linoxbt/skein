@@ -274,6 +274,8 @@ export class VerdictService {
             subject: req.subject,
             context: req.context,
             budgetUusdc: Math.min(req.budgetUusdc ?? Infinity, config.perVerdictCapUusdc),
+            // Sealed into the hash (engine 0.4.0): a verdict bought from the local fake node says so.
+            ...(config.networkLabel === "simulated" ? { mode: "simulated" as const } : {}),
           },
           {
             client: this.deps.client,
@@ -284,6 +286,11 @@ export class VerdictService {
             excludeMinerIds: config.selfRegistrationIds,
             onPurchase: (purchase) => savePurchase(this.db, req.id, purchase),
             deadlineMs: config.verdictDeadlineMs,
+            // Problems that must not stop the verdict (a spend settlement that failed) reach error_log and Sentry.
+            log: (msg, detail) => {
+              console.error(JSON.stringify({ level: "error", msg, runId: req.id, ...detail }));
+              void this.logError(new Error(`${msg}: ${JSON.stringify(detail)}`.slice(0, 900)), `run ${req.channel}`, req.id);
+            },
             now: this.now,
             onEvent: (e: PipelineEvent) => {
               const payload = e.type === "plan" ? e.plan : e.type === "purchase" ? publicPurchase(e.purchase) : e.type === "finding" ? e.finding : { verdictHash: e.verdict.verdictHash, decision: e.verdict.decision };

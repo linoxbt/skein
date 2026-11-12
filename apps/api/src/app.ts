@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { claimRun, finishRun, getRun, loadStoredVerdict, newVerdictId, schema, type RunRow } from "@skein/db";
 import { canonicalJson, InvalidSubjectError, parseSubject, plan, reproduce, SUPPORTED_CHAINS, type Subject } from "@skein/engine";
-import { availability, quotes, sdnSnapshot, type VerdictContext } from "@skein/pipeline";
+import { availability, knownLists, quotes, sdnSnapshotStatus, type VerdictContext } from "@skein/pipeline";
 import { getPolicy, listPolicies, type PolicyRecord } from "@skein/policies";
 import { CHECK_INTENTS, SEASON_START, SERVED_INTENTS } from "@skein/telegraph";
 import { and, asc, count, desc, eq, gt, gte, isNull, ne, sql } from "drizzle-orm";
@@ -130,6 +130,8 @@ export function isTransient(run: Pick<RunRow, "status" | "outcome">): boolean {
   if (run.status === "failed" || run.status === "lost") return true;
   return run.status === "refused" && TRANSIENT_REFUSALS.has(String((run.outcome as { code?: unknown } | null)?.code ?? ""));
 }
+/** A Telegraph caller's own request id on /miner/verdict: long enough to be unguessable when random. */
+const CALLER_REQUEST_ID = /^[A-Za-z0-9_-]{16,64}$/;
 /** Spec §6: a replay within 24 hours returns the original verdict; after that the key is free again. */
 export const IDEMPOTENCY_WINDOW_MS = 24 * 3_600_000;
 
@@ -301,6 +303,8 @@ export function createApp(service: VerdictService) {
   };
   /** /miner/verdict: one run per token and policy at a time, however many dispatcher calls arrive. */
   const minerFlights = new Map<string, Promise<RunOutcome>>();
+  /** The run id behind each in-process flight, so a caller that shares one still gets its pending_id. */
+  const minerFlightIds = new Map<string, string>();
   const isContract = contractCheck(config.subjectRpcUrls, service.deps.getCode);
   const app = new Hono();
 
@@ -394,8 +398,9 @@ export function createApp(service: VerdictService) {
     const p = plan({
       policy: record.policy,
       checkIntents: CHECK_INTENTS,
-      availability: availability(service.catalogue),
-      quotesUusdc: quotes(service.catalogue, CHECK_INTENTS, true),
+      // What a verdict would buy from: allowlisted miners, Skein's own excluded (as runVerdict plans it).
+      availability: availability(service.catalogue, { pinned: true, excludeMinerIds: config.selfRegistrationIds }),
+      quotesUusdc: quotes(service.catalogue, CHECK_INTENTS, true, config.selfRegistrationIds),
       servedIntents: SERVED_INTENTS,
       priceUusdc: config.priceUusdc,
       callerBudgetUusdc: Math.min(budgetUsdcMax ? Math.round(budgetUsdcMax * UUSDC) : Infinity, config.perVerdictCapUusdc),
@@ -898,7 +903,7 @@ export function createApp(service: VerdictService) {
     const stored = await loadStoredVerdict(db, body.id);
     if (!stored) throw new ApiError(404, "NOT_FOUND", "verdict not found");
     const record = resolvePolicy(`${stored.policy.id}@${stored.policy.version}`);
-    const report = reproduce(stored, record.policy, { policySha256: record.sha256 });
+    const report = reproduce(stored, record.policy, { policySha256: record.sha256, policySource: record.source, knownLists: knownLists() });
     const has = (prefix: string) => report.problems.some((p) => p.startsWith(prefix));
     const served = await verdictObject(db, body.id);
     const att = served ? await attester.check(served) : null;
@@ -918,6 +923,10 @@ export function createApp(service: VerdictService) {
       decisionMatches: !has("served "),
       receiptsMatch: !has("BOM receipt") && !has("purchase receipt"),
       policyFile: !has("policy file differs"),
+      // Findings recorded as never bought must be non-answers or a list screen Skein ships (M1).
+      unpurchased: !has("unpurchased "),
+      // Every reproduce() problem, including any the flags above do not name: ok false always shows a failing check.
+      reproduces: report.ok,
       // The network disowns none of the answers it was asked about.
       signals: signals.mismatch === 0,
       ...(att
@@ -968,8 +977,9 @@ export function createApp(service: VerdictService) {
     const p = plan({
       policy,
       checkIntents: CHECK_INTENTS,
-      availability: availability(service.catalogue),
-      quotesUusdc: quotes(service.catalogue, CHECK_INTENTS, true),
+      // What a verdict would buy from: allowlisted miners, Skein's own excluded (as runVerdict plans it).
+      availability: availability(service.catalogue, { pinned: true, excludeMinerIds: config.selfRegistrationIds }),
+      quotesUusdc: quotes(service.catalogue, CHECK_INTENTS, true, config.selfRegistrationIds),
       servedIntents: SERVED_INTENTS,
       priceUusdc: config.priceUusdc,
       callerBudgetUusdc: config.perVerdictCapUusdc,
@@ -1043,7 +1053,7 @@ export function createApp(service: VerdictService) {
     const [errs] = await db.select({ n: count() }).from(schema.errorLog).where(gte(schema.errorLog.at, new Date(t - 3_600_000)));
     const beats = Object.fromEntries((await db.select().from(schema.heartbeats)).map((h) => [h.name, h.at.toISOString()]));
     const failing = await db.select({ key: schema.alertState.key, since: schema.alertState.since }).from(schema.alertState).where(eq(schema.alertState.failing, true));
-    const sdn = sdnSnapshot();
+    const sdn = sdnSnapshotStatus(now());
     const paused = walletEmpty() ? "the purchaser's escrow is empty" : spent + config.perVerdictCapUusdc > config.stopAtUusdc ? "the day's spend reached the stop threshold" : null;
     return c.json({
       network: config.networkLabel ?? config.network.caip2,
@@ -1077,7 +1087,7 @@ export function createApp(service: VerdictService) {
       alertsOpen: failing.map((f) => ({ key: f.key, since: f.since?.toISOString() ?? null })),
       quality: await quality(),
       // The pinned OFAC address list the sanctions screen matches against; the probe alerts when it is stale.
-      ofacSnapshot: { fetched: sdn.fetched, ageDays: Math.floor((t - Date.parse(sdn.fetched)) / 86_400_000) },
+      ofacSnapshot: sdn,
       chainsAnalysed: SUPPORTED_CHAINS,
     });
   });
@@ -1275,6 +1285,37 @@ export function createApp(service: VerdictService) {
   });
 
   /**
+   * What /miner/verdict answered the call that carried this request_id (H9):
+   * a Telegraph caller whose function died after paying recovers its verdict
+   * here. Public like the verdicts themselves; the id is the caller's own
+   * random one, so it is not enumerable. When the answer was "still being
+   * bought" (DEADLINE), the run is followed: once it is sealed, verdictId is set.
+   */
+  app.get("/v1/miner/requests/:id", async (c) => {
+    await limit(c, limits.read, `ip:${ip(c)}`);
+    const requestId = c.req.param("id");
+    if (!CALLER_REQUEST_ID.test(requestId)) throw new ApiError(400, "INVALID_REQUEST", "request ids are 16-64 characters of letters, digits, '-' and '_'");
+    const [row] = await db.select().from(schema.minerRequests).where(eq(schema.minerRequests.requestId, requestId));
+    if (!row) throw new ApiError(404, "NOT_FOUND", "no answer recorded for this request id (answers are kept 30 days)");
+    let verdictId = row.verdictId;
+    let status: "answered" | "pending" | "abstained" = verdictId ? "answered" : "abstained";
+    if (!verdictId && row.runId) {
+      const run = await getRun(db, row.runId);
+      if (run?.status === "done" && run.verdictId) verdictId = run.verdictId;
+      status = verdictId ? "answered" : run?.status === "running" ? "pending" : "abstained";
+    }
+    return c.json({
+      requestId,
+      status,
+      verdictId,
+      ...(verdictId ? { verdict: `/v1/verdicts/${verdictId}` } : {}),
+      ...(row.code ? { code: row.code } : {}),
+      ...(row.runId ? { runId: row.runId } : {}),
+      answeredAt: row.answeredAt.toISOString(),
+    });
+  });
+
+  /**
    * The endpoint Telegraph's dispatcher calls (mapped in skein-miner.yaml).
    * Accepts the declared params ({ token, chain, policy }), a subject object,
    * a numeric chain id, a { params: {...} } wrapper, and Plan B's
@@ -1313,19 +1354,35 @@ export function createApp(service: VerdictService) {
     const ctxHash = contextHash({});
     await isContract(subject);
 
-    /** One billed answer: revenue owed at the floor, referenced by this request. */
-    const owed = async (what: string) => {
+    // The caller's own request id (optional): the answer is recorded under it, so a caller that paid
+    // and lost the connection can fetch it later at GET /v1/miner/requests/{request_id}.
+    const callerRequestId = [b.request_id, outer.request_id, (outer.context as Record<string, unknown> | undefined)?.request_id].find((x) => x !== undefined);
+    if (callerRequestId !== undefined && (typeof callerRequestId !== "string" || !CALLER_REQUEST_ID.test(callerRequestId))) {
+      throw new ApiError(400, "INVALID_REQUEST", "request_id must be 16-64 characters of letters, digits, '-' and '_' (a random id, such as a UUID)");
+    }
+
+    /** One billed answer: revenue owed at the floor, referenced by this request; and the caller's request id, if given. */
+    const owed = async (what: string, answered: { verdictId?: string; runId?: string; code?: string }) => {
       await db
         .insert(schema.spendLedger)
         .values({ kind: "revenue_owed", amountUusdc: config.priceUusdc, ref: `telegraph:${c.get("requestId")}:${what}`.slice(0, 200) })
         .catch((e: Error) => console.error(JSON.stringify({ level: "error", msg: "revenue_owed not recorded", error: e.message })));
+      if (typeof callerRequestId === "string") {
+        const row = { verdictId: answered.verdictId ?? null, runId: answered.runId ?? null, code: answered.code ?? null, answeredAt: now() };
+        await db
+          .insert(schema.minerRequests)
+          .values({ requestId: callerRequestId, ...row })
+          // A repeat call never loses a verdict an earlier one was served.
+          .onConflictDoUpdate({ target: schema.minerRequests.requestId, set: { ...row, verdictId: sql`coalesce(excluded.verdict_id, ${schema.minerRequests.verdictId})` } })
+          .catch((e: Error) => console.error(JSON.stringify({ level: "error", msg: "miner request not recorded", error: e.message })));
+      }
     };
     const answer = async (id: string, cached: boolean) => {
       const v = await verdictObject(db, id);
       if (!v) throw new ApiError(503, "VERDICT_FAILED", FAILED_MESSAGE);
       const reasons = v.reasons as { code: string; check?: string; detail: string }[];
       const attestation = await attester.forVerdict(v);
-      await owed(v.id);
+      await owed(v.id, { verdictId: v.id });
       c.header("X-Skein-Verdict-Hash", v.verdictHash);
       c.header("X-Skein-Bom-Root", v.bom.root);
       return c.json({
@@ -1351,7 +1408,7 @@ export function createApp(service: VerdictService) {
       });
     };
     const abstain = async (code: string, detail: string, extra: Record<string, unknown> = {}) => {
-      await owed(code);
+      await owed(code, { code, ...(typeof extra.pending_id === "string" ? { runId: extra.pending_id } : {}) });
       return c.json({
         verdict: "ABSTAIN", risk_level: "MEDIUM", risk_score: riskScore("ABSTAIN", 0), signals: [detail], confidence: 0, summary: `Abstained: ${detail}`,
         reasons: [{ code, detail }], open_risks: [], verdict_code: 0, risk_bps: 0, confidence_bps: 0, bom_root: null, cached: false,
@@ -1370,7 +1427,7 @@ export function createApp(service: VerdictService) {
 
     const key = flightKey(subject, record.ref, ctxHash);
     let flight = minerFlights.get(key);
-    let flightId: string | undefined;
+    let flightId: string | undefined = minerFlightIds.get(key);
     if (!flight) {
       flightId = newVerdictId(now().getTime());
       // One run per token and policy across every replica: a lease in Postgres.
@@ -1391,8 +1448,10 @@ export function createApp(service: VerdictService) {
       const id = flightId;
       flight = service.start({ id, policy: record.policy, policySha256: record.sha256, subject, context: {}, contextHash: ctxHash, budgetUusdc: config.perVerdictCapUusdc, channel: "telegraph" });
       minerFlights.set(key, flight);
+      minerFlightIds.set(key, id);
       void flight.finally(() => {
         minerFlights.delete(key);
+        minerFlightIds.delete(key);
         void releaseFlight(db, key, id).catch(() => {});
       });
     }
@@ -1400,9 +1459,11 @@ export function createApp(service: VerdictService) {
     const out = await Promise.race([flight, timeout]);
     if (out === "timeout") return abstain("DEADLINE", "the verdict is still being bought; ask again shortly", flightId ? { pending_id: flightId } : {});
     if (out.kind === "refused") {
-      // Out of budget (or no live miners) is an answer, not a dispatcher error that trips the circuit.
+      // Out of budget, or a required check no miner Skein buys from can answer (refused before any
+      // purchase since engine 0.4.0), is an answer, not a dispatcher error that trips the circuit.
+      // Nothing was bought upstream (upstream_usdc 0); Telegraph bills it at the floor like any answer.
       if (out.refusal.code === "BUDGET_TOO_LOW" || out.refusal.code === "UPSTREAM_UNAVAILABLE" || out.refusal.code === "MARGIN_GUARD") {
-        return abstain(out.refusal.code, out.refusal.detail);
+        return abstain(out.refusal.code, out.refusal.detail, { upstream_usdc: 0, ...(out.refusal.checks.length ? { checks: out.refusal.checks } : {}) });
       }
       throw refusalError(out.refusal);
     }

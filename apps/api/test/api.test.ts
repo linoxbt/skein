@@ -147,8 +147,9 @@ describe("POST /v1/verdicts", () => {
 describe("read-only routes", () => {
   it("quote, status, policies and ledger", async () => {
     const q = await j(app.request(`/v1/quote?chain=8453&token=${TOKEN}&policy=dex-list`));
-    // The quote prices every check the policy may buy, the optional code review included.
-    expect(q).toMatchObject({ ok: true, upstreamUsdc: 0.07, priceUsdc: 0.25, policy: "dex-list@0.2.0" });
+    // The quote prices what a verdict would buy: allowlisted miners only, so code review (no allowlisted miner in this catalogue) is dropped, as the run drops it.
+    expect(q).toMatchObject({ ok: true, upstreamUsdc: 0.06, priceUsdc: 0.25, policy: "dex-list@0.2.0" });
+    expect(q.dropped.map((d: { check: string }) => d.check)).toContain("code_review");
     expect((await j(app.request(`/v1/quote?chain=8453&token=${TOKEN}&policy=dex-list@0.1.0`))).upstreamUsdc).toBe(0.06);
     const s = await j(app.request("/v1/status"));
     expect(s).toMatchObject({ network: "eip155:11155111" });

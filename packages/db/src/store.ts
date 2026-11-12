@@ -43,6 +43,9 @@ export interface RunToStore {
     pool?: string;
     /** The settlement transaction, when the receipt names one. */
     txHash?: string;
+    /** The receipt's timestamp (unix seconds) and payer. */
+    receiptTimestamp?: number;
+    payer?: string;
     createdAt: string;
   })[];
   stored: Pick<StoredVerdict, "unpurchased">;
@@ -99,6 +102,8 @@ function purchaseRow(runId: string, p: PurchaseToStore) {
     signalStatus: p.signalStatus ?? null,
     pool: p.pool ?? null,
     txHash: p.txHash ?? null,
+    receiptTimestamp: p.receiptTimestamp ?? null,
+    payer: p.payer ?? null,
     createdAt: new Date(p.createdAt),
   };
 }
@@ -394,6 +399,8 @@ export async function loadStoredVerdict(db: Db, id: string): Promise<StoredVerdi
     verdictHash: v.verdictHash,
     bomRoot: v.bomRoot,
     decision: { verdict: v.verdict, riskBps: v.riskBps, confidenceBps: v.confidenceBps },
+    // A run against the local fake node is stored with network "simulated"; everything else is live (mode omitted).
+    ...(v.network === "simulated" ? { mode: "simulated" as const } : {}),
   };
 }
 

@@ -171,7 +171,11 @@ export const purchases = pgTable(
     signalHash: text("signal_hash"),
     amountUusdc: bigint("amount_uusdc", { mode: "number" }).notNull(),
     epochId: bigint("epoch_id", { mode: "number" }),
+    /** The settlement transaction, when the receipt names one. */
     txHash: text("tx_hash"),
+    /** The receipt's own timestamp (unix seconds) and payer, as the miner signed them. */
+    receiptTimestamp: bigint("receipt_timestamp", { mode: "number" }),
+    payer: text("payer"),
     durationMs: integer("duration_ms").notNull(),
     attempts: smallint("attempts").notNull(),
     resultShape: text("result_shape"),
@@ -343,6 +347,27 @@ export const rateLimits = pgTable(
   },
   // The hourly prune deletes by age.
   (t) => [index("rate_limits_at").on(t.at)],
+);
+
+/**
+ * What /miner/verdict answered a Telegraph caller that sent its own
+ * request_id, so a caller whose connection died after paying can look the
+ * answer up (GET /v1/miner/requests/{requestId}). One row per request id; a
+ * repeat call updates it. Pruned after 30 days. Not evidence.
+ */
+export const minerRequests = pgTable(
+  "miner_requests",
+  {
+    requestId: text("request_id").primaryKey(),
+    /** The verdict served, when one was. */
+    verdictId: text("verdict_id"),
+    /** The run still buying it, when the answer was "ask again shortly". */
+    runId: text("run_id"),
+    /** The ABSTAIN code when no verdict was served (DEADLINE, UPSTREAM_UNAVAILABLE, ...). */
+    code: text("code"),
+    answeredAt: timestamp("answered_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("miner_requests_answered").on(t.answeredAt)],
 );
 
 /**

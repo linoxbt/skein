@@ -116,6 +116,17 @@ describe("verdict store", () => {
     expect(dup).toMatchObject({ receiptHash: null, amountUusdc: first.amountUusdc, error: expect.stringMatching(/^duplicate_receipt: /) });
   });
 
+  it("keeps each receipt's timestamp, payer and settlement transaction on its purchase", async () => {
+    const run = await aRun();
+    const paid = run.purchases.find((p) => p.receiptHash)!;
+    await claimRun(db, { id: "run_receipt_fields", channel: "api", subjectChainId: 8453, subjectToken: subject.token, policyId: "dex-list", policyVersion: "0.1.0", contextHash: "c" });
+    await savePurchase(db, "run_receipt_fields", { ...paid, receiptHash: `0x${"ef".repeat(32)}`, txHash: `0x${"12".repeat(32)}` });
+    const [row] = await db.select().from(schema.purchases).where(eq(schema.purchases.verdictId, "run_receipt_fields"));
+    expect(row).toMatchObject({ receiptTimestamp: paid.receiptTimestamp, payer: paid.payer, txHash: `0x${"12".repeat(32)}` });
+    expect(row!.receiptTimestamp).toEqual(expect.any(Number));
+    expect(row!.payer).toMatch(/^0x/);
+  });
+
   it("each finding points at the purchase whose receipt it cites", async () => {
     const run = await aRun();
     const id = await saveVerdictRun(db, run, meta);
@@ -147,7 +158,7 @@ describe("verdict store", () => {
     const res = await pg.query<{ relname: string; relrowsecurity: boolean }>(
       "select relname, relrowsecurity from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r'",
     );
-    expect(res.rows.length).toBe(22);
+    expect(res.rows.length).toBe(23);
     expect(res.rows.filter((r) => !r.relrowsecurity)).toEqual([]);
   });
 });

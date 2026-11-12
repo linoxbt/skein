@@ -136,6 +136,15 @@ export const OPENAPI = {
       },
     },
     "/v1/status": { get: { summary: "Network, wallet, caps, attester and each check's miners", responses: { "200": { description: "Status" } } } },
+    "/v1/miner/requests/{id}": {
+      get: {
+        summary: "What /miner/verdict answered the Telegraph call that carried this request_id",
+        description:
+          "A Telegraph caller may send request_id (16-64 characters of [A-Za-z0-9_-]; use a random UUID) in its params, its body or its context. The answer is recorded under it for 30 days. status: answered (verdictId set), pending (the answer was DEADLINE and the run is still buying; poll again), abstained (code says why). Public, like the verdicts.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", pattern: "^[A-Za-z0-9_-]{16,64}$" } }],
+        responses: { "200": { description: "{ requestId, status, verdictId, verdict?, code?, runId?, answeredAt }" }, "400": error, "404": error },
+      },
+    },
     "/v1/ledger": {
       get: {
         summary: "The public spend ledger",
