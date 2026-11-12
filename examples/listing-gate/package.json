@@ -1,6 +1,6 @@
 {
   "name": "skein-listing-gate-example",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Check tokens with Skein before listing them: list, block, review or retry, with spend caps and verification.",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@skeinlabs/sdk": "^0.1.0"
+    "@skeinlabs/sdk": "^0.3.1"
   },
   "optionalDependencies": {
     "viem": "^2.30.0"
