@@ -146,6 +146,8 @@ export const verdicts = pgTable(
     uniqueIndex("verdicts_consumer_idempotency").on(t.consumerId, t.idempotencyKey),
     index("verdicts_subject").on(t.subjectChainId, t.subjectToken, t.policyId, t.createdAt),
     index("verdicts_channel_created").on(t.channel, t.createdAt),
+    // The quality window, /v1/ledger's windows and the recent list read by time.
+    index("verdicts_created").on(t.createdAt),
     check("verdicts_bps", sql`${t.riskBps} between 0 and 10000 and ${t.confidenceBps} between 0 and 10000 and ${t.coverageBps} between 0 and 10000`),
   ],
 );
@@ -212,6 +214,8 @@ export const findings = pgTable(
     adapterVersion: text("adapter_version"),
     /** Never bought: a planner drop or missing context. */
     unpurchased: boolean("unpurchased").notNull(),
+    /** The purchase whose receipt the finding cites (evidence.receiptHash), when there is one. */
+    purchaseId: uuid("purchase_id").references(() => purchases.id),
   },
   (t) => [uniqueIndex("findings_verdict_ordinal").on(t.verdictId, t.ordinal)],
 );
@@ -248,8 +252,65 @@ export const spendLedger = pgTable(
     amountUusdc: bigint("amount_uusdc", { mode: "number" }).notNull(),
     ref: text("ref"),
   },
-  (t) => [index("spend_ledger_ts").on(t.ts)],
+  (t) => [
+    index("spend_ledger_ts").on(t.ts),
+    // Lookups by kind and reference (a settlement, a refund) without a scan.
+    index("spend_ledger_kind_ref").on(t.kind, t.ref),
+  ],
 );
+
+/**
+ * One row per x402 payment (an EIP-3009 authorization, keyed by payer and
+ * nonce), written before it is settled. Mutable: it moves settling -> settled
+ * (or failed), and records what is owed back to the payer when the verdict it
+ * paid for was refused, failed or abstained. The money itself is in
+ * spend_ledger (revenue_settled), which stays append-only.
+ */
+export const x402Payments = pgTable(
+  "x402_payments",
+  {
+    /** x402:<payer>:<nonce>, lowercased: also the run's idempotency key. */
+    key: text("key").primaryKey(),
+    payer: text("payer").notNull(),
+    nonce: text("nonce").notNull(),
+    amountUusdc: bigint("amount_uusdc", { mode: "number" }).notNull(),
+    network: text("network").notNull(),
+    /** The canonical request it paid for: a replay with another body is refused. */
+    requestHash: text("request_hash").notNull(),
+    status: text("status", { enum: ["settling", "settled", "failed"] }).notNull(),
+    txHash: text("tx_hash"),
+    error: text("error"),
+    /** The run serving this payment (the latest, after a retry of a transient failure). */
+    runId: text("run_id"),
+    /** What is owed back, from the latest outcome: the price on a refusal or failure, price less upstream on an ABSTAIN. */
+    refundUusdc: bigint("refund_uusdc", { mode: "number" }).notNull().default(0),
+    refundReason: text("refund_reason"),
+    /** Set by the operator once the refund has been sent (apps/api/bin/x402-refunds.ts). */
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    refundTx: text("refund_tx"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (t) => [index("x402_payments_payer").on(t.payer, t.createdAt)],
+);
+
+/**
+ * The attester's signature over each verdict, made when the verdict is sealed
+ * and stored, so what is served is what was signed then, not a fresh signature
+ * over whatever the row holds now. Verdicts sealed before signatures were
+ * stored are signed once, on first read, and say so (atSeal false).
+ */
+export const verdictAttestations = pgTable("verdict_attestations", {
+  verdictId: text("verdict_id").primaryKey().references(() => verdicts.id),
+  scheme: text("scheme").notNull(),
+  signer: text("signer").notNull(),
+  message: text("message").notNull(),
+  signature: text("signature").notNull(),
+  /** True when signed as the verdict was sealed; false for a verdict signed later (backfill). */
+  atSeal: boolean("at_seal").notNull(),
+  signedAt: timestamp("signed_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /**
  * A small key-value store for first-party apps (Skein Desk), namespaced per
@@ -272,12 +333,17 @@ export const kv = pgTable(
  * Shared rate-limit buckets, so every API replica counts the same requests
  * (apps/api/src/limits.ts). One row per limiter and key; pruned hourly.
  */
-export const rateLimits = pgTable("rate_limits", {
-  key: text("key").primaryKey(),
-  tokens: doublePrecision("tokens").notNull(),
-  allowed: boolean("allowed").notNull(),
-  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    key: text("key").primaryKey(),
+    tokens: doublePrecision("tokens").notNull(),
+    allowed: boolean("allowed").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // The hourly prune deletes by age.
+  (t) => [index("rate_limits_at").on(t.at)],
+);
 
 /**
  * A lease on one in-progress Telegraph-dispatched verdict per token and
@@ -333,8 +399,13 @@ export const webhooks = pgTable("webhooks", {
   id: uuid("id").primaryKey().defaultRandom(),
   consumerId: uuid("consumer_id").notNull().references(() => consumers.id),
   url: text("url").notNull(),
-  /** HMAC key for X-Skein-Signature; shown to the partner once. */
+  /**
+   * HMAC key for the webhook signatures; shown to the partner once. Encrypted
+   * at rest ("enc:v1:...", AES-256-GCM) when WEBHOOK_SECRET_KEY is set; older
+   * rows, and every row without that key, hold it in plain text.
+   */
   secret: text("secret").notNull(),
+  /** SHA-256 of the plain secret: checks that a decrypted secret is the one issued. */
   secretHash: text("secret_hash").notNull(),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),

@@ -41,6 +41,8 @@ export interface RunToStore {
     billing?: string;
     signalStatus?: string;
     pool?: string;
+    /** The settlement transaction, when the receipt names one. */
+    txHash?: string;
     createdAt: string;
   })[];
   stored: Pick<StoredVerdict, "unpurchased">;
@@ -96,16 +98,32 @@ function purchaseRow(runId: string, p: PurchaseToStore) {
     billing: p.billing ?? "paid",
     signalStatus: p.signalStatus ?? null,
     pool: p.pool ?? null,
+    txHash: p.txHash ?? null,
     createdAt: new Date(p.createdAt),
   };
 }
 
+const isUniqueViolation = (e: unknown, constraint: string) => {
+  const err = e as { code?: string; constraint?: string; message?: string; cause?: unknown };
+  const c = (err.cause ?? err) as { code?: string; constraint?: string; message?: string };
+  return (c.code === "23505" || err.code === "23505") && (c.constraint === constraint || err.constraint === constraint || `${c.message ?? ""}${err.message ?? ""}`.includes(constraint));
+};
+
 /**
  * Writes one upstream attempt the moment it settles, under its run. A crash
  * after this point cannot lose the receipt (or the spend) of a paid answer.
+ * A receipt already on another purchase is not evidence for this one: the row
+ * is still written (the spend happened), without the receipt and with the
+ * reason, so the run carries on and verification flags it.
  */
 export async function savePurchase(db: Db, runId: string, p: PurchaseToStore): Promise<void> {
-  await db.insert(schema.purchases).values(purchaseRow(runId, p));
+  try {
+    await db.insert(schema.purchases).values(purchaseRow(runId, p));
+  } catch (e) {
+    if (!p.receiptHash || !isUniqueViolation(e, "purchases_receipt")) throw e;
+    const note = `duplicate_receipt: ${p.receiptHash} is already recorded on another purchase`;
+    await db.insert(schema.purchases).values({ ...purchaseRow(runId, p), receiptHash: null, error: p.error ? `${p.error}; ${note}` : note });
+  }
 }
 
 export type RunRow = typeof schema.verdictRuns.$inferSelect;
@@ -116,19 +134,49 @@ export type NewRun = Omit<typeof schema.verdictRuns.$inferInsert, "status">;
  * is atomic: a second request with the same key gets the existing run back
  * instead of buying another verdict, whatever the timing.
  */
-export async function claimRun(db: Db, run: NewRun): Promise<{ claimed: true } | { claimed: false; existing: RunRow }> {
-  const inserted = await db
-    .insert(schema.verdictRuns)
-    .values({ ...run, status: "running" })
-    .onConflictDoNothing({ target: [schema.verdictRuns.consumerId, schema.verdictRuns.idempotencyKey] })
-    .returning({ id: schema.verdictRuns.id });
-  if (inserted.length > 0) return { claimed: true };
-  const [existing] = await db
-    .select()
-    .from(schema.verdictRuns)
-    .where(and(eq(schema.verdictRuns.consumerId, run.consumerId!), eq(schema.verdictRuns.idempotencyKey, run.idempotencyKey!)));
-  if (!existing) throw new Error("run claim lost and no existing run found");
-  return { claimed: false, existing };
+export async function claimRun(
+  db: Db,
+  run: NewRun,
+  opts: {
+    /**
+     * An existing run this request may take over rather than replay: one that
+     * failed transiently, or whose key has expired. Its key is retired (renamed
+     * to <key>#<run id>, so it stays on record) and the claim is made afresh.
+     */
+    reclaimable?: (existing: RunRow) => boolean;
+  } = {},
+): Promise<{ claimed: true; retired?: RunRow } | { claimed: false; existing: RunRow }> {
+  for (let attempt = 0; ; attempt++) {
+    const inserted = await db
+      .insert(schema.verdictRuns)
+      .values({ ...run, status: "running" })
+      .onConflictDoNothing({ target: [schema.verdictRuns.consumerId, schema.verdictRuns.idempotencyKey] })
+      .returning({ id: schema.verdictRuns.id });
+    if (inserted.length > 0) return { claimed: true };
+    const [existing] = await db
+      .select()
+      .from(schema.verdictRuns)
+      .where(and(eq(schema.verdictRuns.consumerId, run.consumerId!), eq(schema.verdictRuns.idempotencyKey, run.idempotencyKey!)));
+    if (!existing) {
+      if (attempt < 2) continue; // retired between our insert and our read: claim again
+      throw new Error("run claim lost and no existing run found");
+    }
+    if (attempt >= 2 || !opts.reclaimable?.(existing)) return { claimed: false, existing };
+    // Compare-and-swap on the run's state: of two retries racing here, one
+    // retires the old run and claims; the other finds the new claim and replays it.
+    const retired = await db
+      .update(schema.verdictRuns)
+      .set({ idempotencyKey: `${run.idempotencyKey}#${existing.id}` })
+      .where(and(eq(schema.verdictRuns.id, existing.id), eq(schema.verdictRuns.status, existing.status), eq(schema.verdictRuns.idempotencyKey, run.idempotencyKey!)))
+      .returning({ id: schema.verdictRuns.id });
+    if (retired.length === 0) continue;
+    const again = await db
+      .insert(schema.verdictRuns)
+      .values({ ...run, status: "running" })
+      .onConflictDoNothing({ target: [schema.verdictRuns.consumerId, schema.verdictRuns.idempotencyKey] })
+      .returning({ id: schema.verdictRuns.id });
+    if (again.length > 0) return { claimed: true, retired: existing };
+  }
 }
 
 export async function finishRun(db: Db, id: string, end: { status: "done" | "refused" | "failed"; verdictId?: string; outcome?: unknown; at?: Date }): Promise<void> {
@@ -280,6 +328,16 @@ export async function saveVerdictRun(db: Db, run: RunToStore, meta: VerdictMeta)
       await tx.insert(schema.purchases).values(run.purchases.map((p) => purchaseRow(id, p)));
     }
     if (v.findings.length > 0) {
+      // Each finding points at the purchase whose receipt it cites.
+      const paid = await tx
+        .select({ id: schema.purchases.id, receiptHash: schema.purchases.receiptHash })
+        .from(schema.purchases)
+        .where(eq(schema.purchases.verdictId, id));
+      const byReceipt = new Map(paid.filter((p) => p.receiptHash).map((p) => [p.receiptHash!, p.id]));
+      const purchaseOf = (f: Finding) => {
+        const r = (f.evidence as { receiptHash?: unknown } | undefined)?.receiptHash;
+        return typeof r === "string" ? byReceipt.get(r) ?? null : null;
+      };
       await tx.insert(schema.findings).values(
         v.findings.map((f, ordinal) => ({
           verdictId: id,
@@ -296,6 +354,7 @@ export async function saveVerdictRun(db: Db, run: RunToStore, meta: VerdictMeta)
           notes: f.notes,
           adapterVersion: f.adapterVersion ?? null,
           unpurchased: unpurchased.has(canonicalJson(f)),
+          purchaseId: purchaseOf(f),
         })),
       );
     }
@@ -336,4 +395,24 @@ export async function loadStoredVerdict(db: Db, id: string): Promise<StoredVerdi
     bomRoot: v.bomRoot,
     decision: { verdict: v.verdict, riskBps: v.riskBps, confidenceBps: v.confidenceBps },
   };
+}
+
+export type StoredAttestation = typeof schema.verdictAttestations.$inferSelect;
+
+/** The signature stored for a verdict, or null. */
+export async function getAttestation(db: Db, verdictId: string): Promise<StoredAttestation | null> {
+  const [a] = await db.select().from(schema.verdictAttestations).where(eq(schema.verdictAttestations.verdictId, verdictId));
+  return a ?? null;
+}
+
+/**
+ * Stores a verdict's signature once. The first one written stands (append-only):
+ * a second writer gets the stored row back, not its own.
+ */
+export async function saveAttestation(db: Db, a: Omit<typeof schema.verdictAttestations.$inferInsert, "signedAt"> & { signedAt?: Date }): Promise<StoredAttestation> {
+  const [row] = await db.insert(schema.verdictAttestations).values(a).onConflictDoNothing({ target: schema.verdictAttestations.verdictId }).returning();
+  if (row) return row;
+  const stored = await getAttestation(db, a.verdictId);
+  if (!stored) throw new Error(`attestation for ${a.verdictId} neither written nor found`);
+  return stored;
 }
