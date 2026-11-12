@@ -46,6 +46,17 @@ describe("destinations", () => {
     };
     expect(await deliver(["https://ntfy.sh/t"], { key: "k", title: "t", message: "m", level: "info" }, f)).toBe(0);
   });
+
+  it("never throws on a malformed destination or a fetch that throws at once, and cuts long bodies (audit L10)", async () => {
+    const bodies: string[] = [];
+    const ok: typeof fetch = async (_u, init) => (bodies.push(String(init?.body)), new Response(null));
+    const sync = (() => { throw new Error("sync"); }) as unknown as typeof fetch;
+    // "https://" passes the https filter but is not a URL: kindOf throws inside deliver.
+    await expect(deliver(["https://", "https://hooks.slack.com/x"], { key: "k", title: "t", message: "m", level: "failing" }, ok)).resolves.toBe(1);
+    await expect(deliver(["https://ntfy.sh/t"], { key: "k", title: "t", message: "m", level: "failing" }, sync)).resolves.toBe(0);
+    await deliver(["https://ntfy.sh/t"], { key: "k", title: "t", message: `HTTP 502: ${"x".repeat(50_000)}`, level: "failing" }, ok);
+    expect(bodies.at(-1)!.length).toBeLessThan(1_600);
+  });
 });
 
 describe("shared state", () => {
