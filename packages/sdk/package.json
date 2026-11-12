@@ -1,8 +1,8 @@
 {
   "name": "@skeinlabs/sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
-  "description": "TypeScript client for Skein token listing verdicts: verdict(), quote(), verify(), stream(), typed errors, retries and a spend cap checked before any payment. Pays with a partner key or per call through Telegraph.",
+  "description": "TypeScript client for Skein token listing verdicts: verdict(), quote(), verify(), stream(), typed errors, retries and a spend cap checked before any payment. Pays with a partner key, per call through Telegraph, or per call with x402.",
   "exports": {
     ".": "./src/index.ts",
     "./telegraph": "./src/telegraph.ts",
@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
     "build": "tsup",
-    "prepublishOnly": "tsup"
+    "check:published": "node scripts/check-published.mjs",
+    "check:pack": "node scripts/check-pack.mjs",
+    "prepublishOnly": "node scripts/require-pnpm.mjs && tsup"
   },
   "devDependencies": {
     "@skein/api": "workspace:*",
@@ -36,6 +38,22 @@
   ],
   "publishConfig": {
     "access": "public",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "typesVersions": {
+      "*": {
+        "telegraph": [
+          "./dist/telegraph.d.ts"
+        ],
+        "attest": [
+          "./dist/attest.d.ts"
+        ],
+        "webhooks": [
+          "./dist/webhooks.d.ts"
+        ]
+      }
+    },
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -54,8 +72,7 @@
         "types": "./dist/webhooks.d.ts",
         "import": "./dist/webhooks.js"
       }
-    },
-    "types": "./dist/index.d.ts"
+    }
   },
   "keywords": [
     "skein",

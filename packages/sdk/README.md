@@ -8,9 +8,9 @@ listing verdict for an EVM token (**APPROVE**, **REJECT**, **ESCALATE** or
 - typed errors (`SkeinError`, `SpendCapError`) carrying the API's codes
 - retries that reuse the idempotency key, so a retried call is never charged twice
 - a per-call spend cap, checked **before** any payment
-- two ways to pay: a Skein partner key, or per call through Telegraph escrow
+- three ways to pay: a Skein partner key, per call through Telegraph escrow, or per call with x402
 - every verdict signed by Skein, checkable offline with `@skeinlabs/sdk/attest`
-- no runtime dependencies (the Telegraph and attest entries need `viem`)
+- no runtime dependencies (the Telegraph and attest entries, and an x402 signing account, need `viem`)
 
 **[Read the full tutorial →](https://skeinlabs.site/tutorial)**
 
@@ -64,8 +64,9 @@ try {
 
 ## Verdict (pay per call through Telegraph)
 
-No Skein account: each verdict is one paid Telegraph ask, settled from your
-own escrow on the Telegraph network.
+No Skein account: each verdict is one paid Telegraph ask to Skein's miner
+(`FRAUD_RISK_GENERAL`, catalogue id 845301), settled from your own escrow on
+the Telegraph network.
 
 ```ts
 import { Skein } from "@skeinlabs/sdk";
@@ -80,6 +81,43 @@ const skein = new Skein({ apiUrl: "https://api.skeinlabs.site", payer: { kind: "
 const v = await skein.verdict({ subject: { chainId: 1, token: "0x…" } });
 console.log(v.verdict, v.payment); // { rail: "telegraph", minerId, amountUsdc, receiptHash, signalHash }
 ```
+
+The answer is used only if it comes from Skein's miner (845301, or its
+registration id 5137, which receipts name) and is about the token, chain and
+policy you asked for; anything else throws `TelegraphMismatchError`, whose
+`payment` says what the ask cost. The Telegraph rail sends only the subject and
+the policy: a request with `context` is refused before paying (use the partner
+key or x402 for checks that need it). Payer options: `minerId` (default
+`SKEIN_MINER_ID`), `intent` (default `FRAUD_RISK_GENERAL`), `expectedMinerIds`,
+and `routed: true` to let the network pick the miner.
+
+## Verdict (pay per call with x402)
+
+The direct API also takes x402 (`exact` scheme, USDC on Base Sepolia): the SDK
+reads the 402, signs one EIP-3009 transfer authorization and resends the
+request with it. It signs nothing unless the terms name the network, payTo and
+asset you pinned, at a price within your cap, and every retry resends the same
+`X-PAYMENT`, so a retry never pays twice.
+
+```ts
+import { Skein } from "@skeinlabs/sdk";
+import { privateKeyToAccount } from "viem/accounts";
+
+const skein = new Skein({
+  apiUrl: "https://api.skeinlabs.site",
+  payer: {
+    kind: "x402",
+    account: privateKeyToAccount(process.env.PAYER_KEY as `0x${string}`), // a burner
+    network: "base-sepolia",
+    payTo: SKEIN_X402_PAY_TO, // pin Skein's address (from a 402 you checked once, or Skein's docs)
+    maxUsdc: 0.3,
+  },
+});
+const v = await skein.verdict({ subject: { chainId: 8453, token: "0x…" } });
+console.log(v.payment); // { rail: "x402", amountUsdc, settled, network, payer, transaction }
+```
+
+An ABSTAIN is never settled (`settled: false`, `amountUsdc: 0`).
 
 ## Check Skein's signature yourself
 
@@ -114,8 +152,11 @@ Pin the attester address in your own config rather than fetching it on every cal
 | `status()` / `ledger()` | free | Network, wallet and cap alerts, the attester; the public spend ledger |
 | `setWebhook(url)` / `webhook()` / `deleteWebhook()` | partner key | Get told when an async verdict is sealed; the secret is shown once |
 
-`verifyWebhook(rawBody, signatureHeader, secret)` from `@skeinlabs/sdk/webhooks`
-checks a delivery's `X-Skein-Signature` (HMAC-SHA256, constant-time, Web Crypto).
+`verifyWebhook(rawBody, req.headers, secret)` from `@skeinlabs/sdk/webhooks`
+checks a delivery: `X-Skein-Signature` is an HMAC-SHA256 of
+`${X-Skein-Timestamp}.${body}`, and a timestamp more than five minutes off is
+refused, so a captured delivery cannot be replayed (constant-time, Web Crypto).
+`{ allowLegacyBodyOnly: true }` also accepts the older body-only signature.
 The full HTTP API is described at https://api.skeinlabs.site/v1/openapi.json.
 
 Options: `apiUrl`, `payer`, `maxUsdcPerCall`, `retries` (2), `maxRetryWaitMs`
