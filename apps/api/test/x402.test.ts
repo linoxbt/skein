@@ -187,6 +187,21 @@ describe("x402 on POST /v1/verdicts", () => {
     expect(await settled()).toBe(before + 1);
   });
 
+  it("settles a payment once however many copies of it arrive together, and they all get the one verdict", async () => {
+    const t = await terms();
+    const payment = await pay(t);
+    const settles = count("settle");
+    const charges = api.node.charges.length;
+    const res = await Promise.all(Array.from({ length: 4 }, () => ask("0x00000000000000000000000000000000000ab4b1", payment)));
+    expect(count("settle")).toBe(settles + 1);
+    const ok = res.filter((r) => r.status === 200 || r.status === 202);
+    expect(ok.length + res.filter((r) => r.status === 503).length).toBe(4); // 503 PAYMENT_PENDING only while the settlement is in flight
+    const ids = new Set((await Promise.all(ok.map((r) => r.json()))).map((b) => (b as { id: string }).id));
+    expect(ids.size).toBe(1);
+    expect((await api.db.select().from(schema.verdicts).where(eq(schema.verdicts.subjectToken, "0x00000000000000000000000000000000000ab4b1"))).length).toBe(1);
+    expect(api.node.charges.length).toBeGreaterThan(charges);
+  });
+
   it("one balance cannot buy more verdicts than it pays for, however many authorizations it signs (H1)", async () => {
     const t = await terms();
     facilitator.balance = 250_000; // exactly one verdict's worth
