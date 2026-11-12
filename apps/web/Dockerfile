@@ -4,7 +4,7 @@ FROM node:22.20.0-slim AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
-# The workspace libraries the site imports (@skein/ui) must be present to install and build.
+# The workspace libraries the site imports (@skein/ui, and @skein/engine for /verify) must be present to install and build.
 COPY packages ./packages
 COPY apps/web ./apps/web
 RUN pnpm install --frozen-lockfile --filter "@skein/web..."

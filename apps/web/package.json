@@ -12,10 +12,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@skein/engine": "workspace:*",
+    "@skein/ui": "workspace:*",
     "next": "15.5.28",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "@skein/ui": "workspace:*"
+    "viem": "2.57.5",
+    "yaml": "2.8.4"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "5.16.2",
