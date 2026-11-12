@@ -14,7 +14,7 @@
 // decision named in --allow); 1 when any token is blocked; 2 when any token
 // got anything else (review, retry, refused, error: Skein being down is not a pass).
 import { writeFileSync } from "node:fs";
-import { Skein, SkeinError, SpendCapError, type Payer, type VerdictResult } from "@skeinlabs/sdk";
+import { Skein, SkeinError, SpendCapError, type Payer, type Rail, type VerdictResult } from "@skeinlabs/sdk";
 
 const CHAINS: Record<string, number> = { ethereum: 1, eth: 1, base: 8453, bsc: 56, bnb: 56, arbitrum: 42161 };
 const DECISION = { APPROVE: "list", REJECT: "block", ESCALATE: "review", ABSTAIN: "retry" } as const;
@@ -62,7 +62,7 @@ function parse(arg: string) {
 }
 
 /** What this verdict cost us: a paid ask costs what it cost; a partner-key cache hit or replay costs nothing. */
-const costOf = (v: VerdictResult) => (v.payment.rail !== "apiKey" ? v.payment.amountUsdc : v.cached || v.replayed ? 0 : v.cost.priceUsdc);
+const costOf = (v: VerdictResult<Rail>) => (v.payment.rail !== "apiKey" ? v.payment.amountUsdc : v.cached || v.replayed ? 0 : v.cost.priceUsdc);
 
 const USAGE = "usage: npx tsx gate.ts [--allow review,retry] <chain:0xtoken>…   e.g. base:0x4200000000000000000000000000000000000006";
 let subjects: { chainId: number; token: string }[];

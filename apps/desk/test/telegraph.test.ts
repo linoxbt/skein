@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_UNPAID_ATTEMPTS, process, receive, tick, type AgentDeps, type TelegraphSkein } from "../lib/agent";
 import { memoryStore, Store, summarise, type KV } from "../lib/store";
 import type { Application } from "../lib/types";
+import { subjectFromWire } from "./subject";
 
 let api: Awaited<ReturnType<typeof simulatedApi>>;
 let n = 0x700;
@@ -21,7 +22,7 @@ async function mint(subject: unknown): Promise<string> {
   const res = await api.app.request("/v1/verdicts", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${api.key}`, "idempotency-key": crypto.randomUUID() },
-    body: JSON.stringify({ subject }),
+    body: JSON.stringify({ subject: typeof subject === "string" ? subjectFromWire(subject) : subject }),
   });
   return ((await res.json()) as { id: string }).id;
 }
@@ -154,7 +155,7 @@ describe("H9: a paid ask survives the function that made it", () => {
     const d = deps({ telegraph: tg(a.client) });
     const app = await receive(d, { project: "Wrong Token", chainId: 8453, token: tok() }, "agent");
     const out = (await process(d, app.id))!;
-    expect(out.decision).toMatchObject({ action: "analyst", verdict: null, rail: "telegraph", paidUsdc: 0.15, refusal: { code: "SUBJECT_MISMATCH" } });
+    expect(out.decision).toMatchObject({ action: "analyst", verdict: null, rail: "telegraph", paidUsdc: 0.15, refusal: { code: "TELEGRAPH_MISMATCH" } });
   });
 });
 

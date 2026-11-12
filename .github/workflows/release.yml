@@ -52,6 +52,9 @@ jobs:
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp typecheck
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp test
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp build
+      - run: node packages/sdk/scripts/check-pack.mjs --no-build
+      # Refuses to go on when this version is already on npm with different bytes.
+      - run: node packages/sdk/scripts/check-published.mjs packages/sdk --no-build && node packages/sdk/scripts/check-published.mjs packages/mcp --no-build
       - name: Publish
         run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp publish -r --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || '' }}
         env:

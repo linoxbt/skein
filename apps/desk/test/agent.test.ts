@@ -11,6 +11,7 @@ async function overwrite(store: Store, a: Application) {
   if (!cur || !(await store.update(a, cur.etag))) throw new Error("overwrite failed");
 }
 import { columnOf } from "../lib/types";
+import { subjectFromWire } from "./subject";
 
 let api: Awaited<ReturnType<typeof simulatedApi>>;
 let n = 0;
@@ -109,16 +110,16 @@ describe("the Desk agent", () => {
         const res = await api.app.request("/v1/verdicts", {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${api.key}`, "idempotency-key": crypto.randomUUID() },
-          body: JSON.stringify({ subject: (req.params as { subject: unknown }).subject }),
+          body: JSON.stringify({ subject: subjectFromWire((req.params as { subject: unknown }).subject) }),
         });
         const v = (await res.json()) as { id: string };
-        return { ok: true, response: { miner_id: "skein", result: { id: v.id } }, receipt: { receipt_hash: `0x${"fe".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
+        return { ok: true, response: { miner_id: "845301", result: { id: v.id } }, receipt: { receipt_hash: `0x${"fe".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
       },
     };
     const d = deps({ telegraph: tg(asker), rail: "telegraph" });
     const app = await receive(d, { project: "Via Telegraph", chainId: 8453, token: tok() }, "webhook");
     const out = (await process(d, app.id))!;
-    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, billing: "paid", minerId: "skein", receiptHash: `0x${"fe".repeat(32)}`, action: "shortlist" });
+    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, billing: "paid", minerId: "845301", receiptHash: `0x${"fe".repeat(32)}`, action: "shortlist" });
     // The ask was recorded on the application before the verdict was read.
     expect(out.ask).toMatchObject({ billing: "paid", amountUsdc: 0.15, verdictId: out.decision!.verdictId });
   });
@@ -173,10 +174,10 @@ describe("concurrency (leases)", () => {
         const res = await api.app.request("/v1/verdicts", {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${api.key}`, "idempotency-key": crypto.randomUUID() },
-          body: JSON.stringify({ subject: (req.params as { subject: unknown }).subject }),
+          body: JSON.stringify({ subject: subjectFromWire((req.params as { subject: unknown }).subject) }),
         });
         const v = (await res.json()) as { id: string };
-        return { ok: true, response: { miner_id: "skein", result: { id: v.id } }, receipt: { receipt_hash: `0x${"cd".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
+        return { ok: true, response: { miner_id: "845301", result: { id: v.id } }, receipt: { receipt_hash: `0x${"cd".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
       },
     };
     const d = deps({ telegraph: tg(asker), rail: "telegraph" });
