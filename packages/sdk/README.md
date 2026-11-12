@@ -89,7 +89,8 @@ policy you asked for; anything else throws `TelegraphMismatchError`, whose
 the policy: a request with `context` is refused before paying (use the partner
 key or x402 for checks that need it). Payer options: `minerId` (default
 `SKEIN_MINER_ID`), `intent` (default `FRAUD_RISK_GENERAL`), `expectedMinerIds`,
-and `routed: true` to let the network pick the miner.
+`routed: true` to let the network pick the miner, and `dropContext: true` to
+buy without the context instead of refusing.
 
 ## Verdict (pay per call with x402)
 

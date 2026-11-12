@@ -1,10 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Skein, SkeinError, type VerdictObject, type VerdictResult } from "@skeinlabs/sdk";
+import { Skein, SkeinError, type Rail, type VerdictObject, type VerdictResult } from "@skeinlabs/sdk";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 
 export interface SkeinMcpOptions {
-  skein: Skein;
+  /** Any rail: Skein<Rail> takes a client made with any payer. */
+  skein: Skein<Rail>;
   /** Where verdict pages live, for the verify link. */
   webUrl: string;
   /** Total this server may spend in one session, in USDC. */
@@ -12,7 +13,7 @@ export interface SkeinMcpOptions {
   /** Per-call cap, already enforced by the Skein client; shown in tool descriptions. */
   maxUsdcPerCall: number;
   /** How the client pays; default: the Skein client's own payer. */
-  rail?: "apiKey" | "telegraph" | "x402";
+  rail?: Rail;
   /**
    * What a partner-key verdict counts against the session cap: "list" (default),
    * Skein's list price, though the key may be free; "free": nothing.
@@ -41,7 +42,7 @@ const fail = (e: unknown) => ({
 });
 
 /** The verdict in a few lines an agent can act on, plus the full object as structured content. */
-export function describeVerdict(v: VerdictResult, link: string): string {
+export function describeVerdict(v: VerdictResult<Rail>, link: string): string {
   const lines = [
     `${v.verdict} · risk ${v.riskBps} bps · confidence ${Math.round(v.confidenceBps / 100)}% · coverage ${Math.round(v.coverage * 100)}%`,
     v.summary,

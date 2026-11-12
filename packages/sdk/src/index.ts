@@ -51,10 +51,20 @@ export type Payer =
   | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string; routed?: boolean; expectedMinerIds?: readonly string[]; dropContext?: boolean }
   | { kind: "x402"; account: X402Account; network: X402Network; payTo: string; asset?: string; maxUsdc?: number };
 
-export interface SkeinOptions {
+export type PayerByRail = { [K in Payer["kind"]]: Extract<Payer, { kind: K }> };
+/** How a client pays: "apiKey", "telegraph" or "x402". */
+export type Rail = Payer["kind"];
+/**
+ * The rails a plain `Skein` (no type argument) is typed for, as before x402:
+ * code that switches over payment.rail keeps compiling. A client made with an
+ * x402 payer is a Skein<"x402">, whose verdicts carry the x402 payment.
+ */
+export type DefaultRail = "apiKey" | "telegraph";
+
+export interface SkeinOptions<R extends Rail = DefaultRail> {
   /** e.g. https://api.skeinlabs.site (with or without /v1). */
   apiUrl: string;
-  payer?: Payer;
+  payer?: PayerByRail[R] & { kind: R };
   /** Refuse, before paying, any verdict whose quoted price is above this. */
   maxUsdcPerCall?: number;
   /** Retries for network errors, 429 and retryable 5xx. Default 2. */
@@ -131,7 +141,9 @@ export type Payment =
       transaction: string | null;
     };
 
-export type VerdictResult = VerdictObject & { payment: Payment };
+/** Each rail's payment, by rail (an indexed type, so a Skein<"telegraph"> is assignable to a Skein). */
+export type PaymentByRail = { [K in Payment["rail"]]: Extract<Payment, { rail: K }> };
+export type VerdictResult<R extends Rail = DefaultRail> = VerdictObject & { payment: PaymentByRail[R] };
 
 /** One entry of GET /v1/policies. */
 export interface PolicySummary {
@@ -222,13 +234,18 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     signal?.addEventListener("abort", () => (clearTimeout(t), reject(signal.reason)), { once: true });
   });
 
-export class Skein {
+export class Skein<R extends Rail = DefaultRail> {
   private readonly base: string;
   private readonly fetch: typeof fetch;
   private readonly retries: number;
   private readonly timeoutMs: number;
 
-  constructor(private readonly opts: SkeinOptions) {
+  // Kept as SkeinOptions<Rail>: R then appears only in what verdict() returns, so a
+  // Skein<"telegraph"> is a Skein (of its default rails), as before x402.
+  private readonly opts: SkeinOptions<Rail>;
+
+  constructor(opts: SkeinOptions<R>) {
+    this.opts = opts as unknown as SkeinOptions<Rail>;
     this.base = opts.apiUrl.replace(/\/$/, "").replace(/\/v1$/, "");
     this.fetch = opts.fetch ?? ((...a) => globalThis.fetch(...a));
     this.retries = opts.retries ?? 2;
@@ -341,7 +358,7 @@ export class Skein {
   }
 
   private partnerHeaders(): Record<string, string> {
-    const payer = this.opts.payer;
+    const payer = this.opts.payer as Payer | undefined;
     if (payer?.kind !== "apiKey") throw new SkeinError("PAYMENT_REQUIRED", "webhooks need a partner API key (payer kind apiKey)", 402);
     return { authorization: `Bearer ${payer.key}` };
   }
@@ -394,8 +411,8 @@ export class Skein {
    * Buys one verdict and returns it once it is sealed. With maxUsdcPerCall
    * set, the price is quoted first and the call refused before any payment.
    */
-  async verdict(req: VerdictRequest): Promise<VerdictResult> {
-    const payer = this.opts.payer;
+  async verdict(req: VerdictRequest): Promise<VerdictResult<R>> {
+    const payer = this.opts.payer as Payer | undefined;
     if (!payer) throw new SkeinError("NO_PAYER", "verdict() needs a payer: { kind: 'apiKey', key }, { kind: 'telegraph', client } or { kind: 'x402', account, network, payTo }");
     if (payer.kind === "telegraph" && !payer.dropContext && canonicalContext(req.context)) {
       // Skein's miner endpoint, like the intent's request schema, takes a subject and a policy only.
@@ -410,9 +427,8 @@ export class Skein {
       if (!q.ok && q.refusal) throw new SkeinError(q.refusal.code, q.refusal.detail, q.refusal.code === "BUDGET_TOO_LOW" ? 422 : 503, q.refusal);
       if (q.priceUsdc > this.opts.maxUsdcPerCall) throw new SpendCapError(q.priceUsdc, this.opts.maxUsdcPerCall);
     }
-    if (payer.kind === "apiKey") return this.viaApi(req);
-    if (payer.kind === "x402") return this.viaX402(payer, req);
-    return this.viaTelegraph(payer, req);
+    const v = payer.kind === "apiKey" ? await this.viaApi(req) : payer.kind === "x402" ? await this.viaX402(payer, req) : await this.viaTelegraph(payer, req);
+    return v as VerdictResult<R>;
   }
 
   /**
@@ -421,7 +437,7 @@ export class Skein {
    * wait(id). Spend-cap checks are the caller's (verdict() does them).
    */
   async submit(req: VerdictRequest): Promise<{ id: string; status: "running" } | VerdictResult> {
-    const payer = this.opts.payer;
+    const payer = this.opts.payer as Payer | undefined;
     if (payer?.kind !== "apiKey") throw new SkeinError("NO_PAYER", "submit() needs an apiKey payer");
     const { status, body } = await this.call<VerdictObject | { id: string; status: "running" }>(
       "/v1/verdicts",
@@ -548,7 +564,7 @@ export class Skein {
    * retried only with that same X-PAYMENT, so a retry can never pay twice (the
    * API keys the run on the authorization).
    */
-  private async viaX402(payer: Extract<Payer, { kind: "x402" }>, req: VerdictRequest): Promise<VerdictResult> {
+  private async viaX402(payer: Extract<Payer, { kind: "x402" }>, req: VerdictRequest): Promise<VerdictResult<"x402">> {
     const caps = [payer.maxUsdc, this.opts.maxUsdcPerCall].filter((x): x is number => typeof x === "number" && Number.isFinite(x) && x > 0);
     if (!caps.length) throw new SkeinError("NO_PRICE_CAP", "the x402 payer needs a price cap: set payer.maxUsdc or maxUsdcPerCall; nothing was signed", 400);
     const maxUusdc = Math.round(Math.min(...caps) * 1e6);
