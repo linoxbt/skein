@@ -21,7 +21,7 @@ const META = sfxMeta as Record<string, { dur: number; peak: number }>;
 
 // Real data: live ledger and Sniper counts on Nov 11, 2026, and the two live verdicts.
 const LAUNCHES_24H = 1627;
-const LEDGER = { verdicts: 312, receipts: 819, miners: 10 };
+const LEDGER = { verdicts: 353, receipts: 1017, miners: 10 }; // /v1/ledger, Nov 12, 2026
 const LINES = data.approve.lines;
 const ROWS = (data.launches as { s: string; rug: boolean }[]);
 const CHECK: Record<string, string> = { contract_audit: "CONTRACT AUDIT", holder_count: "HOLDERS", liquidity_depth: "LIQUIDITY", sanctions: "SANCTIONS", wash_trading: "WASH TRADING" };
@@ -278,7 +278,7 @@ const Proof: React.FC = () => {
   );
 };
 
-/** Results: out of sample, then the live ledger. */
+/** Results: out of sample (the prospective benchmark), then the live ledger. */
 const Results: React.FC = () => {
   const f = useCurrentFrame(); // local: 0 = bar 11
   const b = (n: number, k = 0) => at(n, k) - at(11);
@@ -288,9 +288,12 @@ const Results: React.FC = () => {
       <Glow color={C.thread} opacity={s2 ? 0.06 : interpolate(f, [0, 10, 40], [0.35, 0.18, 0.1], clamp)} />
       {!s2 && (
         <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-          <Mono size={26} color={C.text}>Bad launches Skein approved</Mono>
-          <div style={{ fontFamily: F.display, fontWeight: 300, fontSize: 380, letterSpacing: "-0.07em", color: C.thread, lineHeight: 0.95, textShadow: `0 0 90px ${C.thread}88`, transform: `scale(${1.25 - 0.25 * p01(f, 0, 6)})` }}>0</div>
-          <Mono size={24} style={{ marginTop: 10 }}>of 27 · labelled 72 hours later · out of sample</Mono>
+          {/* The prospective benchmark (data/prospective, Nov 12): of 49 launches that went bad, Skein rejected 19
+              outright, and 82.6% of its REJECTs were right. It approved none of the 80, so "bad launches approved"
+              would be true and say nothing; this is the number that measures judgment. */}
+          <Mono size={26} color={C.text}>Bad launches Skein rejected outright</Mono>
+          <div style={{ fontFamily: F.display, fontWeight: 300, fontSize: 380, letterSpacing: "-0.07em", color: C.thread, lineHeight: 0.95, textShadow: `0 0 90px ${C.thread}88`, transform: `scale(${1.25 - 0.25 * p01(f, 0, 6)})` }}>19</div>
+          <Mono size={24} style={{ marginTop: 10 }}>of 49 · 83% of its rejects right · labelled 72 hours later</Mono>
         </AbsoluteFill>
       )}
       {s2 && (
