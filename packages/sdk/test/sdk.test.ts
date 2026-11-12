@@ -305,13 +305,29 @@ describe("Telegraph payer edge cases", () => {
   it("says what was paid when the miner answers without a verdict", async () => {
     const asker = { ask: async () => ({ ok: true as const, response: { miner_id: SKEIN_MINER_ID, result: { verdict: "ABSTAIN", reasons: [{ code: "BUDGET_TOO_LOW" }] } }, receipt: { receipt_hash: `0x${"ab".repeat(32)}` }, amountUusdc: 150_000, durationMs: 1 }) };
     const err = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
-    expect(err).toMatchObject({ code: "TELEGRAPH_NO_VERDICT", payment: { amountUsdc: 0.15, billing: "paid" } });
+    expect(err).toMatchObject({ code: "TELEGRAPH_NO_VERDICT", payment: { amountUsdc: 0.15, billing: "paid", receiptHash: `0x${"ab".repeat(32)}`, minerId: SKEIN_MINER_ID } });
+  });
+
+  it("carries the payment on every failure after a paid ask, and gives the ask one deadline", async () => {
+    let opts: { timeoutMs: number; deadline?: number } | undefined;
+    const asker = {
+      ask: async (_r: unknown, o: { timeoutMs: number; deadline?: number }) => (
+        (opts = o),
+        { ok: true as const, response: { miner_id: "5137", result: { id: "vrd_doesnotexist" } }, receipt: { receipt_hash: `0x${"ac".repeat(32)}` }, amountUusdc: 250_000, durationMs: 1 }
+      ),
+    };
+    const before = Date.now();
+    const err = await skein({ payer: { kind: "telegraph", client: asker }, timeoutMs: 30_000 }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
+    // Reading the verdict failed after the ask was paid: the error still says what it cost and to whom.
+    expect(err).toMatchObject({ code: "NOT_FOUND", payment: { amountUsdc: 0.25, billing: "paid", receiptHash: `0x${"ac".repeat(32)}`, minerId: "5137" } });
+    expect(opts!.deadline).toBeGreaterThanOrEqual(before + 30_000);
+    expect(opts!.deadline).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
   it("reports a paid ask that failed as billing unknown", async () => {
     const asker = { ask: async () => ({ ok: false as const, kind: "timeout", error: "x", paidUusdc: 150_000, billing: "unknown" }) };
     const err = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
-    expect(err).toMatchObject({ code: "TELEGRAPH_TIMEOUT", payment: { amountUsdc: 0.15, billing: "unknown" } });
+    expect(err).toMatchObject({ code: "TELEGRAPH_TIMEOUT", payment: { amountUsdc: 0.15, billing: "unknown", receiptHash: null, minerId: SKEIN_MINER_ID } });
   });
 
   it("waits for a verdict the miner was still making at its deadline", async () => {

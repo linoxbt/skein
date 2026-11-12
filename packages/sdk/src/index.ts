@@ -159,6 +159,18 @@ export interface PolicySummary {
   [k: string]: unknown;
 }
 
+/**
+ * What a failed call cost. billing "paid": the ask was billed (a receipt came
+ * back); "unknown": the payment was sent and the call failed, so it may have
+ * been billed. minerId: the miner paid (Telegraph), when known.
+ */
+export interface FailurePayment {
+  amountUsdc: number;
+  billing: "paid" | "unknown";
+  receiptHash?: string | null;
+  minerId?: string | null;
+}
+
 /** Every API error, with the API's code (BUDGET_TOO_LOW, RATE_LIMITED, …) or an SDK code. */
 export class SkeinError extends Error {
   constructor(
@@ -169,9 +181,11 @@ export class SkeinError extends Error {
     /**
      * Set when money moved (or may have) before the failure: a Telegraph ask
      * or an x402 authorization that was paid (or sent) but produced no usable
-     * verdict. Count it against your caps.
+     * verdict, whatever failed after it (the miner's answer, reading or
+     * waiting for the verdict, a subject or policy mismatch). The one place a
+     * failure's cost is reported: count it against your caps.
      */
-    readonly payment?: { amountUsdc: number; billing: "paid" | "unknown"; receiptHash?: string | null },
+    readonly payment?: FailurePayment,
   ) {
     super(message);
     this.name = "SkeinError";
@@ -195,7 +209,7 @@ export class SpendCapError extends SkeinError {
  * says how much. Never act on such an answer.
  */
 export class TelegraphMismatchError extends SkeinError {
-  constructor(message: string, details: unknown, payment: { amountUsdc: number; billing: "paid"; receiptHash?: string | null }) {
+  constructor(message: string, details: unknown, payment: FailurePayment) {
     super("TELEGRAPH_MISMATCH", message, 502, details, payment);
     this.name = "TelegraphMismatchError";
   }
@@ -507,7 +521,8 @@ export class Skein<R extends Rail = DefaultRail> {
     if (req.policy) params.policy = req.policy;
     const minerId = payer.routed ? undefined : (payer.minerId ?? SKEIN_MINER_ID);
     const expected = new Set([...(payer.expectedMinerIds ?? SKEIN_MINER_IDS), ...(minerId ? [minerId] : [])].map(String));
-    const out = await payer.client.ask({ intent, params }, { ...(minerId ? { minerId } : {}), timeoutMs: this.timeoutMs });
+    // One absolute deadline for the whole ask (probe, payment, retry, identity lookups).
+    const out = await payer.client.ask({ intent, params }, { ...(minerId ? { minerId } : {}), timeoutMs: this.timeoutMs, deadline: Date.now() + this.timeoutMs });
     if (!out.ok) {
       const paidUusdc = out.paidUusdc ?? 0;
       throw new SkeinError(
@@ -515,7 +530,7 @@ export class Skein<R extends Rail = DefaultRail> {
         out.error,
         out.httpStatus ?? 0,
         undefined,
-        paidUusdc > 0 ? { amountUsdc: paidUusdc / 1e6, billing: "unknown" } : undefined,
+        paidUusdc > 0 ? { amountUsdc: paidUusdc / 1e6, billing: "unknown", receiptHash: null, minerId: minerId ?? null } : undefined,
       );
     }
     const receiptProblems = out.receiptProblems ?? [];
@@ -528,7 +543,7 @@ export class Skein<R extends Rail = DefaultRail> {
       ...(receiptProblems.length ? { receiptProblems } : {}),
       ...(dropped.length ? { contextDropped: dropped } : {}),
     };
-    const paid = { amountUsdc: payment.amountUsdc, billing: "paid" as const, receiptHash: payment.receiptHash };
+    const paid: FailurePayment = { amountUsdc: payment.amountUsdc, billing: "paid", receiptHash: payment.receiptHash, minerId: payment.minerId };
     // Only Skein's miner answers with a Skein verdict id. Another miner on the
     // intent could return the id of a real, signed verdict for another token.
     const receiptMiner = out.receipt?.miner;

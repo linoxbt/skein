@@ -158,6 +158,7 @@ export interface TelegraphAskOutcomeFail {
 export interface TelegraphAsker {
   ask(
     req: { intent: string; params?: Record<string, unknown> },
-    opts: { minerId?: string; timeoutMs: number },
+    /** deadline: one absolute deadline (epoch ms) for the whole ask; timeoutMs bounds each request. */
+    opts: { minerId?: string; timeoutMs: number; deadline?: number },
   ): Promise<TelegraphAskOutcomeOk | TelegraphAskOutcomeFail>;
 }

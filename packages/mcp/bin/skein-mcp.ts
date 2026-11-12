@@ -35,8 +35,16 @@ for (const w of cfg.warnings) console.error(`skein-mcp: warning: ${w}`);
 
 let payer: Payer | undefined;
 if (env.SKEIN_PAYER_KEY) {
+  let network: ReturnType<typeof networkFromEnv>;
+  try {
+    network = networkFromEnv(env);
+  } catch (e) {
+    // A malformed or mainnet TELEGRAPH_CHAIN_ID (without TELEGRAPH_ALLOW_MAINNET=1).
+    console.error(`skein-mcp: ${(e as Error).message}`);
+    process.exit(1);
+  }
   const client = new TelegraphClient({
-    network: networkFromEnv(env),
+    network,
     signer: viemSigner(env.SKEIN_PAYER_KEY as `0x${string}`),
     maxUusdcPerCall: Math.round(cfg.maxUsdcPerCall * 1e6),
   });

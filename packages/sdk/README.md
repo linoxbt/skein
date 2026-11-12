@@ -93,6 +93,10 @@ options: `minerId` (default `SKEIN_MINER_ID`), `intent` (default
 pick the miner, and `strictContext: true` to refuse a request with context
 before paying instead.
 
+`networkFromEnv(process.env)` builds the network from the `TELEGRAPH_*`
+variables instead of `TESTNET`; it throws `NetworkConfigError` on a malformed
+`TELEGRAPH_CHAIN_ID`, and on a mainnet chain unless `TELEGRAPH_ALLOW_MAINNET=1`.
+
 ## Verdict (pay per call with x402)
 
 The direct API also takes x402 (`exact` scheme, USDC on Base Sepolia): the SDK
