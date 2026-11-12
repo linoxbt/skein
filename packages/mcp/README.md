@@ -45,12 +45,19 @@ Without a key, `skein_quote` and `skein_verify` still work; `skein_verdict` refu
 |---|---|---|
 | `SKEIN_API_KEY` | | A Skein partner key (free during the hackathon) |
 | `SKEIN_PAYER_KEY` | | Instead of a key: a burner private key that pays each verdict through Telegraph escrow |
-| `SKEIN_MINER_ID` | | Pin the Skein miner on Telegraph (otherwise routed by intent) |
+| `SKEIN_INTENT` | `FRAUD_RISK_GENERAL` | With `SKEIN_PAYER_KEY`: the Telegraph intent asked |
+| `SKEIN_MINER_ID` | `845301` | With `SKEIN_PAYER_KEY`: the miner pinned (Skein's). Answers from any other miner, or about another token or policy, are refused |
 | `SKEIN_MAX_USDC_PER_CALL` | `0.30` | No verdict is bought above this |
-| `SKEIN_SESSION_CAP_USDC` | `2` | What one server process may spend in total |
+| `SKEIN_SESSION_CAP_USDC` | `2` | What one server process may spend in total. `SKEIN_DAILY_CAP_USDC` is read as a deprecated alias: the cap is per process, not per day |
+| `SKEIN_API_KEY_BILLING` | `list` | `list`: a partner-key verdict counts at Skein's list price against the session cap (a free key costs nothing, but the cap stays meaningful); `free`: it counts 0 |
 | `SKEIN_API_URL` | `https://api.skeinlabs.site` | |
 | `SKEIN_WEB_URL` | `https://skeinlabs.site` | Where verify links point |
 | `TELEGRAPH_*`, `RPC_URL` | Telegraph testnet | Network settings for the Telegraph rail |
+
+The caps must be positive numbers: a value like `2usdc` stops the server
+with a message rather than turning the cap off. A Telegraph ask is counted at
+what it cost, even when Skein answered from cache. The Telegraph rail sends
+only the subject and the policy.
 
 stdout carries the protocol; logs go to stderr.
 

@@ -1,6 +1,6 @@
 {
   "name": "@skeinlabs/mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Skein as an MCP server for LLM agents (Claude, Cursor, any MCP client): skein_verdict, skein_quote and skein_verify, with a per-call and per-session spend cap.",
   "exports": {

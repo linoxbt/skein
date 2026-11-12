@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Skein, SkeinError, type VerdictObject, type VerdictResult } from "@skeinlabs/sdk";
 import { z } from "zod";
+import pkg from "../package.json" with { type: "json" };
 
 export interface SkeinMcpOptions {
   skein: Skein;
@@ -10,6 +11,13 @@ export interface SkeinMcpOptions {
   sessionCapUsdc: number;
   /** Per-call cap, already enforced by the Skein client; shown in tool descriptions. */
   maxUsdcPerCall: number;
+  /** How the client pays; default: the Skein client's own payer. */
+  rail?: "apiKey" | "telegraph" | "x402";
+  /**
+   * What a partner-key verdict counts against the session cap: "list" (default),
+   * Skein's list price, though the key may be free; "free": nothing.
+   */
+  apiKeyBilling?: "list" | "free";
 }
 
 const CHAINS = { ethereum: 1, base: 8453, bsc: 56, bnb: 56, arbitrum: 42161 } as const;
@@ -40,7 +48,12 @@ export function describeVerdict(v: VerdictResult, link: string): string {
     ...v.reasons.map((r) => `- ${r.detail}`),
   ];
   if (v.openRisks.length) lines.push(`Open risks: ${v.openRisks.join("; ")}`);
-  const paid = v.payment.rail === "telegraph" ? `paid ${v.payment.amountUsdc} USDC through Telegraph (receipt ${v.payment.receiptHash ?? "none"})` : "paid with a Skein partner key";
+  const paid =
+    v.payment.rail === "telegraph"
+      ? `paid ${v.payment.amountUsdc} USDC through Telegraph (receipt ${v.payment.receiptHash ?? "none"})`
+      : v.payment.rail === "x402"
+        ? `paid ${v.payment.amountUsdc} USDC with x402${v.payment.transaction ? ` (tx ${v.payment.transaction})` : " (not settled)"}`
+        : "paid with a Skein partner key";
   lines.push(`Upstream cost ${v.cost.upstreamUsdc} USDC across ${v.bom.items} receipts; ${paid}.`);
   lines.push(`Verdict hash ${v.verdictHash}. Verify: ${link}`);
   if (v.attestation) lines.push(`Signed by Skein (${v.attestation.signer}, EIP-191): ${v.attestation.signature}`);
@@ -48,8 +61,10 @@ export function describeVerdict(v: VerdictResult, link: string): string {
   return lines.join("\n");
 }
 
-export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "telegraph" }): { server: McpServer; spentUsdc: () => number } {
-  const server = new McpServer({ name: "skein", version: "0.3.0" });
+export function createSkeinMcp(opts: SkeinMcpOptions): { server: McpServer; spentUsdc: () => number } {
+  const server = new McpServer({ name: "skein", version: pkg.version });
+  const rail = opts.rail ?? opts.skein.rail;
+  const listPrice = (opts.apiKeyBilling ?? "list") === "list";
   const web = opts.webUrl.replace(/\/$/, "");
   let spent = 0;
 
@@ -67,19 +82,22 @@ export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "tele
     async (args) => {
       const subject = { chainId: toChain(args.chainId), token: args.token };
       // Reserve before paying, so concurrent calls cannot pass the session cap together.
-      // A Telegraph ask can cost more than the list price (floor x demand + fee), up to the per-call cap.
+      // A Telegraph ask can cost more than the list price (floor x demand + fee), up to the per-call cap,
+      // and an x402 price is the 402's, not the quote's.
       let reserved = 0;
       try {
         const q = await opts.skein.quote({ subject, ...(args.policy ? { policy: args.policy } : {}) });
-        reserved = opts.rail === "telegraph" ? Math.max(q.priceUsdc, opts.maxUsdcPerCall) : q.priceUsdc;
+        reserved = rail === "telegraph" || rail === "x402" ? Math.max(q.priceUsdc, opts.maxUsdcPerCall) : listPrice ? q.priceUsdc : 0;
         if (spent + reserved > opts.sessionCapUsdc) {
+          const would = spent + reserved;
           reserved = 0;
-          return { isError: true, content: text(`SESSION_CAP: this would take the session to ${(spent + q.priceUsdc).toFixed(2)} USDC, above its cap of ${opts.sessionCapUsdc} USDC; nothing was paid`) };
+          return { isError: true, content: text(`SESSION_CAP: this could take the session to ${would.toFixed(2)} USDC, above its cap of ${opts.sessionCapUsdc} USDC; nothing was paid`) };
         }
         spent += reserved;
         const v = await opts.skein.verdict({ subject, quote: q, ...(args.policy ? { policy: args.policy } : {}) });
-        // Settle the reservation to what this call cost: nothing for a cache hit or a replay.
-        const cost = v.cached || v.replayed ? 0 : v.payment.rail === "telegraph" ? v.payment.amountUsdc : q.priceUsdc;
+        // Settle the reservation to what this call cost. A paid Telegraph ask or x402 payment costs what
+        // was paid even when Skein answered from cache; a partner-key cache hit or replay costs nothing.
+        const cost = v.payment.rail !== "apiKey" ? v.payment.amountUsdc : v.cached || v.replayed || !listPrice ? 0 : q.priceUsdc;
         spent += cost - reserved;
         reserved = 0;
         const link = `${web}/v/${v.id}`;
@@ -179,7 +197,7 @@ export function createSkeinMcp(opts: SkeinMcpOptions & { rail?: "apiKey" | "tele
     "skein_policies",
     {
       title: "List Skein policies",
-      description: "Free. The published, immutable policies a verdict can be bought under (for example dex-list@0.2.0 for a DEX listing, agent-pretrade@0.2.0 for a trading agent), with each file's SHA-256.",
+      description: "Free. The published, immutable policies a verdict can be bought under (for example dex-list for a DEX listing, agent-pretrade for a trading agent; each id@version is fixed), with each file's SHA-256.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
