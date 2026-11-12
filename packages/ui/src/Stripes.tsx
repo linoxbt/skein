@@ -12,7 +12,7 @@ function seeded(seed: number) {
 
 const PALETTE = ["#00110e", "#002b24", "#004a3e", "#0a7a68", "#0fa88f", "#2ee6c8", "#8af5e3", "#000000", "#000000", "#001a15"];
 
-export function stripeGradient(seed = 7, bands = 64) {
+function stripeGradient(seed = 7, bands = 64) {
   const rnd = seeded(seed);
   const stops: string[] = [];
   let x = 0;
