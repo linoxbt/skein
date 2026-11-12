@@ -77,6 +77,10 @@ export async function simulatedApi(opts: { env?: Record<string, string | undefin
     allowPreSeason: true,
     ...opts.config,
   };
+  // A daily cap given directly keeps the stop threshold in proportion (80% by default).
+  if (opts.config?.dailyCapUusdc !== undefined && opts.config.stopAtUusdc === undefined) {
+    config.stopAtUusdc = Math.round((opts.config.dailyCapUusdc * Number(env.GLOBAL_CAP_STOP_PCT || 80)) / 100);
+  }
   const signer = viemSigner(`0x${"44".repeat(32)}`);
   const client = new TelegraphClient({ network: TESTNET, signer, fetch: node.fetch, maxUusdcPerCall: 50_000, allowPreSeason: true });
   const service = new VerdictService({

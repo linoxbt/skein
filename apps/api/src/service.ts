@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import {
   claimRun,
@@ -15,10 +15,12 @@ import {
 import { canonicalJson, type Policy, type Subject } from "@skein/engine";
 import { loadCatalogue, runVerdict, type Catalogue, type PipelineEvent, type PoolResolver, type VerdictContext, type VerdictRun } from "@skein/pipeline";
 import { CHECK_INTENTS, type TelegraphClient } from "@skein/telegraph";
-import { and, desc, eq, gte, lt, ne } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { and, desc, eq, gte, lt, ne, sql } from "drizzle-orm";
+import { Attester } from "./attest";
 import type { ApiConfig } from "./config";
+import { acquireFlight, releaseFlight } from "./limits";
 import { pinnedFetch, resolveSafeUrl, type Lookup } from "./safeurl";
+import { openSecret, webhookHeaders } from "./webhooks";
 
 export interface ServiceDeps {
   db: Db;
@@ -41,6 +43,8 @@ export interface ServiceDeps {
   errors?: { capture(error: unknown, context?: Record<string, string | number | boolean | null | undefined>): Promise<boolean> };
   /** Reaches the x402 facilitator (x402.ts); tests pass a fake. */
   facilitatorFetch?: typeof fetch;
+  /** Reads a subject's bytecode for the "not a contract" check; tests pass a fake. */
+  getCode?: (chainId: number, address: string) => Promise<string | null>;
 }
 
 export interface Consumer {
@@ -57,6 +61,8 @@ export interface StartRequest {
   contextHash: string;
   budgetUusdc?: number;
   channel: "telegraph" | "api" | "job" | "cli";
+  /** The channel whose daily cap this run's spend counts against (a refresh job counts against Telegraph's). */
+  capChannel?: "telegraph" | "api" | "job" | "cli";
   consumer?: Consumer;
   idempotencyKey?: string;
   requestHash?: string;
@@ -84,6 +90,22 @@ const TERMINAL = new Set(["done", "refused", "error"]);
 /** What a caller is told when a run fails: no internals (they go to the log). */
 export const FAILED_MESSAGE = "the verdict could not be completed; any upstream spend is recorded";
 
+/**
+ * A miner's raw answer is public in the event stream; past this size it is
+ * replaced by its size and hash (the full answer stays in the purchase record
+ * and in /v1/verify's inputs).
+ */
+export const MAX_EVENT_RAW_BYTES = 8 * 1024;
+
+/** The pricing rule a verdict was sold under (verdicts.pricing_rule). */
+export function pricingFor(channel: StartRequest["channel"], verdict: string, upstreamUusdc: number, priceUusdc: number): { priceUusdc: number; rule: string } {
+  // Spec §6. Through Telegraph the network bills every answer, ABSTAIN included, at the floor.
+  if (channel === "telegraph") return { priceUusdc, rule: "telegraph_floor" };
+  // On the direct API, ABSTAIN is charged at upstream cost only: a refusal to guess is not sold at the full price.
+  if (verdict === "ABSTAIN") return { priceUusdc: upstreamUusdc, rule: "abstain_upstream_only" };
+  return { priceUusdc, rule: "standard" };
+}
+
 /** The context, normalised, so equal requests hash equally and the cache never serves another context's verdict. */
 export function normaliseContext(c: VerdictContext): VerdictContext {
   const lower = (s?: string) => s?.toLowerCase();
@@ -102,6 +124,19 @@ export function contextHash(c: VerdictContext): string {
   return createHash("sha256").update(canonicalJson(normaliseContext(c))).digest("hex");
 }
 
+/** One in-progress verdict per token, policy and context, across replicas (the flights lease). */
+export const flightKey = (subject: Subject, policyRef: string, ctxHash: string) => `${subject.chainId}:${subject.token}:${policyRef}:${ctxHash}`;
+
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+
+/** A purchase as the public event stream shows it: raw answers over MAX_EVENT_RAW_BYTES are summarised. */
+export function publicPurchase<T extends { rawResult?: unknown }>(p: T): T | (Omit<T, "rawResult"> & { rawResult: { truncated: true; bytes: number; sha256: string } }) {
+  if (p.rawResult === undefined) return p;
+  const raw = JSON.stringify(p.rawResult) ?? "";
+  if (raw.length <= MAX_EVENT_RAW_BYTES) return p;
+  return { ...p, rawResult: { truncated: true, bytes: Buffer.byteLength(raw), sha256: sha256(raw) } };
+}
+
 export class VerdictService {
   readonly bus = new EventEmitter();
   /**
@@ -111,8 +146,11 @@ export class VerdictService {
    */
   readonly buffers = new Map<string, VerdictEvent[]>();
   readonly running = new Map<string, Promise<RunOutcome>>();
+  /** Webhook deliveries in flight; shutdown waits for them (bounded). */
+  readonly deliveries = new Set<Promise<void>>();
   /** Background refreshes in flight, by cache key (D5). */
   private readonly refreshing = new Set<string>();
+  readonly attester: Attester;
   catalogue: Catalogue;
   private readonly now: () => Date;
   private draining = false;
@@ -121,6 +159,7 @@ export class VerdictService {
     this.catalogue = deps.catalogue ?? { fetchedAt: new Date(0).toISOString(), minersByIntent: {} };
     this.now = deps.now ?? (() => new Date());
     this.bus.setMaxListeners(1000);
+    this.attester = new Attester(deps.db, deps.config.attestationKey);
   }
 
   get db(): Db {
@@ -135,6 +174,21 @@ export class VerdictService {
   async refreshCatalogue(): Promise<void> {
     const next = await loadCatalogue(this.deps.client, INTENTS);
     if (Object.values(next.minersByIntent).some((m) => m.length > 0)) this.catalogue = next;
+  }
+
+  /**
+   * Keeps an error in error_log (30 days) and reports it to error tracking, so
+   * /v1/status's errorsLastHour and Sentry see it. Never throws.
+   */
+  async logError(err: unknown, route: string, requestId?: string): Promise<void> {
+    const e = err instanceof Error ? err : new Error(String(err));
+    void this.deps.errors?.capture(e, { route, ...(requestId ? { requestId } : {}) });
+    const message = `${e.name}: ${e.message}`.slice(0, 1000);
+    const fingerprint = sha256(`${e.name}:${(e.message.split("\n")[0] ?? "").replace(/[0-9a-f]{8,}|\d+/gi, "#")}:${route.replace(/\/(vrd|run)_[\w-]+|\/0x[0-9a-fA-F]+/g, "/:id")}`).slice(0, 16);
+    await this.db
+      .insert(schema.errorLog)
+      .values({ service: "skein-api", fingerprint, message, route, requestId: requestId ?? null, stack: e.stack?.slice(0, 8000) ?? null })
+      .catch(() => {});
   }
 
   /**
@@ -200,15 +254,16 @@ export class VerdictService {
             ...(req.consumer ? { consumerId: req.consumer.id } : {}),
           });
         }
+        const capChannel = req.capChannel ?? req.channel;
         const spend = spendGate(this.db, {
           runId: req.id,
-          channel: req.channel,
+          channel: capChannel,
           ...(req.consumer ? { consumerId: req.consumer.id } : {}),
           caps: {
-            dailyUusdc: config.dailyCapUusdc,
+            dailyUusdc: config.stopAtUusdc,
             ...(req.consumer ? { consumerDailyUusdc: req.consumer.dailyCapUusdc } : {}),
-            // Uncached Telegraph requests (spot checks among them) have their own day budget (D5).
-            ...(req.channel === "telegraph" ? { channelDailyUusdc: config.spotcheckDailyCapUusdc } : {}),
+            // Uncached Telegraph requests (spot checks and the refreshes they start) have their own day budget (D5).
+            ...(capChannel === "telegraph" ? { channelDailyUusdc: config.spotcheckDailyCapUusdc } : {}),
           },
           now: this.now,
         });
@@ -231,7 +286,7 @@ export class VerdictService {
             deadlineMs: config.verdictDeadlineMs,
             now: this.now,
             onEvent: (e: PipelineEvent) => {
-              const payload = e.type === "plan" ? e.plan : e.type === "purchase" ? e.purchase : e.type === "finding" ? e.finding : { verdictHash: e.verdict.verdictHash, decision: e.verdict.decision };
+              const payload = e.type === "plan" ? e.plan : e.type === "purchase" ? publicPurchase(e.purchase) : e.type === "finding" ? e.finding : { verdictHash: e.verdict.verdictHash, decision: e.verdict.decision };
               void this.record(req.id, e.type, payload);
             },
           },
@@ -239,39 +294,37 @@ export class VerdictService {
         if (!run.ok) {
           await finishRun(this.db, req.id, { status: "refused", outcome: run.plan.refusal, at: this.now() });
           await this.record(req.id, "refused", run.plan.refusal);
-          void this.notify(req, { status: "refused", refusal: run.plan.refusal });
+          this.track(this.notify(req, { status: "refused", refusal: run.plan.refusal }));
           return { kind: "refused", refusal: run.plan.refusal };
         }
         const upstream = run.purchases.reduce((a, x) => a + x.amountUusdc, 0);
-        // ABSTAIN is charged at upstream cost only: a refusal to guess is not sold at the full price.
-        const abstain = run.verdict.decision.verdict === "ABSTAIN";
-        const priceUusdc = abstain ? upstream : config.priceUusdc;
+        const pricing = pricingFor(req.channel, run.verdict.decision.verdict, upstream, config.priceUusdc);
         await saveVerdictRun(this.db, run, {
           id: req.id,
           channel: req.channel,
           network: config.networkLabel ?? config.network.caip2,
-          priceUusdc,
-          pricingRule: abstain ? "abstain_upstream_only" : "standard",
+          priceUusdc: pricing.priceUusdc,
+          pricingRule: pricing.rule,
           contextHash: req.contextHash,
           purchasesStored: true,
           durationMs: this.now().getTime() - started,
           createdAt: this.now(),
           ...(req.consumer ? { consumerId: req.consumer.id } : {}),
-          ...(req.idempotencyKey ? { idempotencyKey: req.idempotencyKey } : {}),
+          // The idempotency key lives on the run (verdict_runs), where it can expire; the sealed verdict does not carry it.
           ...(req.requestHash ? { requestHash: req.requestHash } : {}),
         });
-        const ledger = [
-          ...run.purchases.filter((x) => x.amountUusdc > 0).map((x) => ({ kind: "purchase" as const, amountUusdc: x.amountUusdc, ref: x.receiptHash ?? `${req.id}:${x.check}` })),
-          // Telegraph settles what callers pay through the network; partner keys are free during the hackathon.
-          ...(req.channel === "telegraph" && priceUusdc > 0 ? [{ kind: "revenue_owed" as const, amountUusdc: priceUusdc, ref: req.id }] : []),
-        ];
+        // Signed as it is sealed, and stored: what /v1/verify checks later is this signature.
+        await this.attester.seal(req.id);
+        // Revenue is recorded where it is earned: per answered Telegraph call (/miner/verdict) and per settled x402 payment.
+        const ledger = run.purchases.filter((x) => x.amountUusdc > 0).map((x) => ({ kind: "purchase" as const, amountUusdc: x.amountUusdc, ref: x.receiptHash ?? `${req.id}:${x.check}` }));
         if (ledger.length > 0) await this.db.insert(schema.spendLedger).values(ledger);
         await finishRun(this.db, req.id, { status: "done", verdictId: req.id, at: this.now() });
         await this.record(req.id, "done", { id: req.id });
-        void this.notify(req, { status: "done", id: req.id, verdict: run.verdict.decision.verdict, verdictHash: run.verdict.verdictHash });
+        this.track(this.notify(req, { status: "done", id: req.id, verdict: run.verdict.decision.verdict, verdictHash: run.verdict.verdictHash }));
         return { kind: "done", id: req.id };
       } catch (e) {
         console.error(`verdict ${req.id} failed:`, e);
+        await this.logError(e, `run ${req.channel}`, req.id);
         await finishRun(this.db, req.id, { status: "failed", outcome: { code: "VERDICT_FAILED", message: FAILED_MESSAGE }, at: this.now() }).catch(() => {});
         await this.record(req.id, "error", { message: FAILED_MESSAGE });
         return { kind: "failed", message: FAILED_MESSAGE };
@@ -283,22 +336,46 @@ export class VerdictService {
     return p;
   }
 
+  private track(p: Promise<void>): void {
+    const q = p.catch((e: Error) => console.error(JSON.stringify({ level: "error", msg: "webhook delivery failed", error: e.message })));
+    this.deliveries.add(q);
+    void q.finally(() => this.deliveries.delete(q));
+  }
+
   /**
    * D5: a cache hit older than CACHE_REFRESH_MIN_AGE_SEC starts one
-   * background refresh (never two for the same key), spending from the same
-   * capped budgets, so spot checks keep seeing fresh verdicts without each
-   * one buying.
+   * background refresh (never two for the same key, on any replica: the
+   * flights lease), spending from the Telegraph channel's day budget, so spot
+   * checks keep seeing fresh verdicts without each one buying.
    */
-  maybeRefresh(req: Omit<StartRequest, "id" | "channel">, cachedAt: Date): boolean {
+  maybeRefresh(req: Omit<StartRequest, "id" | "channel">, cachedAt: Date, policyRef: string): boolean {
     const age = (this.now().getTime() - cachedAt.getTime()) / 1000;
-    const key = `${req.subject.chainId}:${req.subject.token}:${req.policy.id}@${req.policy.version}:${req.contextHash}`;
+    const key = flightKey(req.subject, policyRef, req.contextHash);
     if (age < this.deps.config.cacheRefreshMinAgeSec || this.refreshing.has(key) || this.draining) return false;
     this.refreshing.add(key);
-    void this.start({ ...req, id: newVerdictId(), channel: "job" }).finally(() => this.refreshing.delete(key));
+    const id = newVerdictId(this.now().getTime());
+    void (async () => {
+      try {
+        // Another replica (or a live request) is already buying this one.
+        if (await acquireFlight(this.db, key, id, this.deps.config.verdictDeadlineMs + 60_000)) return;
+        try {
+          await this.start({ ...req, id, channel: "job", capChannel: "telegraph" });
+        } finally {
+          await releaseFlight(this.db, key, id).catch(() => {});
+        }
+      } catch (e) {
+        console.error(JSON.stringify({ level: "error", msg: "background refresh failed", key, error: (e as Error).message }));
+      } finally {
+        this.refreshing.delete(key);
+      }
+    })();
     return true;
   }
 
-  /** Signed webhook to the consumer's registered URL; three tries, never blocks the run. */
+  /**
+   * Signed webhook to the consumer's registered URL; three tries, never blocks
+   * the run. Headers and body: webhooks.ts.
+   */
   private async notify(req: StartRequest, body: Record<string, unknown>): Promise<void> {
     if (!req.consumer || req.channel !== "api") return;
     const hooks = await this.db
@@ -306,8 +383,13 @@ export class VerdictService {
       .from(schema.webhooks)
       .where(and(eq(schema.webhooks.consumerId, req.consumer.id), eq(schema.webhooks.active, true)))
       .catch(() => []);
-    const payload = JSON.stringify({ event: `verdict.${body.status}`, runId: req.id, ...body });
+    const payload = JSON.stringify({ event: "verdict.completed", legacyEvent: `verdict.${body.status}`, runId: req.id, ...body });
     for (const h of hooks) {
+      const secret = openSecret(h.secret, h.secretHash, this.deps.config.webhookSecretKey);
+      if (!secret) {
+        console.error(JSON.stringify({ level: "error", msg: "webhook not delivered: its secret cannot be read (WEBHOOK_SECRET_KEY missing or changed)", consumer: req.consumer.id }));
+        continue;
+      }
       // DNS can change after registration: check the address again before sending,
       // and connect to exactly the address checked (no second lookup to rebind).
       const safe = await resolveSafeUrl(h.url, this.deps.lookup);
@@ -316,14 +398,14 @@ export class VerdictService {
         continue;
       }
       const send = this.deps.fetch ?? pinnedFetch(safe.address, safe.family);
-      const sig = createHmac("sha256", h.secret).update(payload).digest("hex");
       for (let attempt = 0; attempt < 3; attempt++) {
         const ctl = new AbortController();
         const t = setTimeout(() => ctl.abort(), 5_000);
         try {
+          // Signed per attempt: the timestamp is the moment of sending, so a retry is fresh too.
           const res = await send(h.url, {
             method: "POST",
-            headers: { "content-type": "application/json", "x-skein-signature": `sha256=${sig}`, "x-skein-event": `verdict.${body.status}` },
+            headers: webhookHeaders(secret, payload, Math.floor(this.now().getTime() / 1000)),
             body: payload,
             signal: ctl.signal,
             // A redirect could point anywhere, including inward: never follow one.
@@ -336,14 +418,25 @@ export class VerdictService {
         } finally {
           clearTimeout(t);
         }
-        await new Promise((r) => setTimeout(r, 1000 * 4 ** attempt).unref());
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * 4 ** attempt).unref());
       }
     }
   }
 
-  /** Marks runs that never finished (a crash or redeploy) as lost. */
-  sweep(): Promise<number> {
-    return sweepLostRuns(this.db, new Date(this.now().getTime() - this.deps.config.verdictDeadlineMs - 60_000));
+  /**
+   * Marks runs that never finished (a crash or redeploy) as lost, and records
+   * the x402 refund a lost paid run is owed (a retry with the same payment
+   * re-runs it and cancels the refund).
+   */
+  async sweep(): Promise<number> {
+    const n = await sweepLostRuns(this.db, new Date(this.now().getTime() - this.deps.config.verdictDeadlineMs - 60_000));
+    if (n > 0) {
+      await this.db.execute(sql`
+        UPDATE x402_payments p SET refund_uusdc = p.amount_uusdc, refund_reason = 'LOST: the run stopped before it finished', updated_at = now()
+        FROM verdict_runs r
+        WHERE r.id = p.run_id AND r.status = 'lost' AND p.status = 'settled' AND p.refunded_at IS NULL AND p.refund_uusdc = 0`);
+    }
+    return n;
   }
 
   /** Drops SSE event rows past retention; they back the stream, they are not evidence. */
@@ -352,10 +445,15 @@ export class VerdictService {
     await this.db.delete(schema.events).where(lt(schema.events.ts, cutoff));
   }
 
-  /** Stops new runs and waits (up to timeoutMs) for running ones to store their result. */
+  /**
+   * Stops new runs and waits (up to timeoutMs in all) for running ones to
+   * store their result, then for the webhook deliveries they started.
+   */
   async drain(timeoutMs: number): Promise<void> {
     this.draining = true;
-    const all = Promise.allSettled([...this.running.values()]);
-    await Promise.race([all, new Promise((r) => setTimeout(r, timeoutMs).unref())]);
+    const until = Date.now() + timeoutMs;
+    const wait = (ps: Promise<unknown>[]) => Promise.race([Promise.allSettled(ps), new Promise((r) => setTimeout(r, Math.max(0, until - Date.now())).unref())]);
+    await wait([...this.running.values()]);
+    await wait([...this.deliveries]);
   }
 }

@@ -1,8 +1,10 @@
 import { createHash, createHmac } from "node:crypto";
 import { schema } from "@skein/db";
 import { beforeAll, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import { walletState } from "../src/app";
 import { simulatedApi } from "../src/simulated";
+import { openSecret, verifyV2 } from "../src/webhooks";
 
 type Api = Awaited<ReturnType<typeof simulatedApi>>;
 let n = 0;
@@ -175,22 +177,53 @@ describe("keys and webhooks", () => {
     expect(res.status).toBe(401);
   });
 
-  it("delivers a signed webhook when an async verdict finishes", async () => {
-    const delivered: { body: string; sig: string }[] = [];
+  it("delivers a webhook signed over its timestamp and body when an async verdict finishes (M6)", async () => {
+    const delivered: { body: string; headers: Headers }[] = [];
     api.service.deps.lookup = async () => ["93.184.216.34"];
     api.service.deps.fetch = async (_url, init) => {
-      delivered.push({ body: String(init?.body), sig: new Headers(init?.headers).get("x-skein-signature") ?? "" });
+      delivered.push({ body: String(init?.body), headers: new Headers(init?.headers) });
       return new Response("ok");
     };
     const reg = await j(api.app.request("/v1/webhooks", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${api.key}` }, body: JSON.stringify({ url: "https://hooks.example.com/skein" }) }));
+    expect(reg.events).toEqual(["verdict.completed"]);
     const { post } = client(api);
     const started = await j(post({ subject: { chainId: 8453, token: tok() }, mode: "async" }));
     await api.service.running.get(started.id);
-    await new Promise((r) => setTimeout(r, 50));
+    await Promise.all([...api.service.deliveries]);
     const hit = delivered.find((d) => d.body.includes(started.id))!;
     expect(hit).toBeTruthy();
-    expect(hit.sig).toBe(`sha256=${createHmac("sha256", reg.secret).update(hit.body).digest("hex")}`);
-    expect(JSON.parse(hit.body)).toMatchObject({ event: "verdict.done", id: started.id });
+    const ts = hit.headers.get("x-skein-timestamp")!;
+    expect(Math.abs(Number(ts) - Date.now() / 1000)).toBeLessThan(60);
+    expect(hit.headers.get("x-skein-signature-v2")).toBe(`sha256=${createHmac("sha256", reg.secret).update(`${ts}.${hit.body}`).digest("hex")}`);
+    expect(verifyV2(reg.secret, hit.body, ts, hit.headers.get("x-skein-signature-v2"), Math.floor(Date.now() / 1000))).toBe(true);
+    // Replayed later, the same delivery fails the receiver's check.
+    expect(verifyV2(reg.secret, hit.body, ts, hit.headers.get("x-skein-signature-v2"), Number(ts) + 301)).toBe(false);
+    // The legacy header still signs the body alone, for receivers on SDK <= 0.3.
+    expect(hit.headers.get("x-skein-signature")).toBe(`sha256=${createHmac("sha256", reg.secret).update(hit.body).digest("hex")}`);
+    expect(hit.headers.get("x-skein-event")).toBe("verdict.completed");
+    expect(JSON.parse(hit.body)).toMatchObject({ event: "verdict.completed", legacyEvent: "verdict.done", status: "done", id: started.id });
+  });
+
+  it("keeps webhook secrets encrypted at rest when WEBHOOK_SECRET_KEY is set, and signs with the decrypted one", async () => {
+    const key = Buffer.alloc(32, 7);
+    const enc = await simulatedApi({ fast: true, env: {}, config: { webhookSecretKey: key } });
+    const delivered: { body: string; headers: Headers }[] = [];
+    enc.service.deps.lookup = async () => ["93.184.216.34"];
+    enc.service.deps.fetch = async (_url, init) => {
+      delivered.push({ body: String(init?.body), headers: new Headers(init?.headers) });
+      return new Response("ok");
+    };
+    const reg = await j(enc.app.request("/v1/webhooks", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${enc.key}` }, body: JSON.stringify({ url: "https://hooks.example.com/enc" }) }));
+    const [row] = await enc.db.select().from(schema.webhooks).where(eq(schema.webhooks.url, "https://hooks.example.com/enc"));
+    expect(row!.secret).toMatch(/^enc:v1:/);
+    expect(row!.secret).not.toContain(reg.secret);
+    expect(openSecret(row!.secret, row!.secretHash, key)).toBe(reg.secret);
+    expect(openSecret(row!.secret, row!.secretHash, Buffer.alloc(32, 8))).toBeNull();
+    const started = await j(enc.app.request("/v1/verdicts", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${enc.key}`, "idempotency-key": "enc-1" }, body: JSON.stringify({ subject: { chainId: 8453, token: tok() }, mode: "async" }) }));
+    await enc.service.running.get(started.id);
+    await Promise.all([...enc.service.deliveries]);
+    const hit = delivered.find((d) => d.body.includes(started.id))!;
+    expect(verifyV2(reg.secret, hit.body, hit.headers.get("x-skein-timestamp"), hit.headers.get("x-skein-signature-v2"), Math.floor(Date.now() / 1000))).toBe(true);
   });
 
   it("shows the caller's webhook without its secret, and turns it off", async () => {
