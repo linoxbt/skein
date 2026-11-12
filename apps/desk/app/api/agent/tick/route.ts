@@ -1,21 +1,25 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { tick } from "@/lib/agent";
-import { deskDeps } from "@/lib/desk";
-import { errorResponse, guarded } from "@/lib/http";
+import { agentReady } from "@/lib/agent";
+import { AUTO_DAILY, deskDeps, kickBackgroundAgent, onNetlify } from "@/lib/desk";
+import { bearerIs, errorResponse, guarded } from "@/lib/http";
+import { runAgent } from "@/lib/intake";
 
 export const dynamic = "force-dynamic";
 
-/** Called every minute by the scheduled function (netlify/functions/desk-tick.mts). */
+/**
+ * One run of the agent: the intake files fresh launches (DESK_AUTO_DAILY a
+ * day), then every open application is settled within a time budget. On
+ * Netlify the scheduled function starts the background function instead
+ * (netlify/functions/desk-agent-background.mts), and this route only hands
+ * over to it on the Telegraph rail: a request function can be stopped
+ * mid-ask, after paying. Elsewhere (next start) it does the work itself.
+ */
 export async function POST(req: Request) {
-  const secret = process.env.DESK_CRON_SECRET;
-  const presented = req.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
-  if (!secret || presented.length !== secret.length || !timingSafeEqual(Buffer.from(presented), Buffer.from(secret))) {
-    return errorResponse(401, "UNAUTHORIZED", "bad cron secret");
-  }
+  if (!bearerIs(req, process.env.DESK_CRON_SECRET)) return errorResponse(401, "UNAUTHORIZED", "bad cron secret");
   return guarded("POST /api/agent/tick", async () => {
     const deps = await deskDeps({ waitMs: 5_000 });
-    if (!deps.skein) return NextResponse.json({ agent: "offline" });
-    return NextResponse.json({ agent: "online", ...(await tick(deps, 20_000)) });
+    if (!agentReady(deps)) return NextResponse.json({ agent: "offline" });
+    if (deps.rail === "telegraph" && onNetlify()) return NextResponse.json({ agent: "online", background: await kickBackgroundAgent(new URL(req.url).origin) });
+    return NextResponse.json({ agent: "online", ...(await runAgent(deps, { budgetMs: 20_000, daily: AUTO_DAILY })) });
   });
 }
