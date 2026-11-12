@@ -3,7 +3,8 @@ import { dexScreenerResolver } from "@skein/pipeline";
 import { TelegraphClient, viemSigner } from "@skein/telegraph";
 import { createPublicClient, erc20Abi, http, parseAbi } from "viem";
 import { createApp, walletState } from "./app";
-import { configFromEnv } from "./config";
+import { publishPolicies, snapshotCatalogue } from "./catalog";
+import { configFromEnv, productionProblems } from "./config";
 import { connectForRuntime } from "./db";
 import { parseSeedConsumers, revokeKeys, seedConsumers } from "./seed";
 import { VerdictService } from "./service";
@@ -12,6 +13,12 @@ import { Alerts } from "./alerts";
 import { pruneShared } from "./limits";
 
 const config = configFromEnv();
+// Fail closed: a production API with an unsafe configuration does not start (Railway keeps the previous deployment).
+const problems = productionProblems(process.env, config);
+if (problems.length > 0) {
+  for (const p of problems) console.error(JSON.stringify({ level: "error", msg: "refusing to start", problem: p }));
+  throw new Error(`refusing to start in production: ${problems.join("; ")}`);
+}
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is required");
 const { db, pool, role: dbRole } = await connectForRuntime(url);
@@ -64,7 +71,12 @@ const every = (ms: number, task: () => Promise<unknown>, name: string) => {
 const ESCROW_ABI = parseAbi(["function effectiveBalance(address account) view returns (int256)"]);
 const chain = createPublicClient({ transport: http(config.network.rpcUrl) });
 const timers = [
-  every(5 * 60_000, () => service.refreshCatalogue(), "catalogue refresh"),
+  every(5 * 60_000, async () => {
+    await service.refreshCatalogue();
+    // The catalogue and intent health as of this refresh, in miner_catalog and intent_status (catalog.ts).
+    await snapshotCatalogue(db, service.catalogue);
+  }, "catalogue refresh"),
+  every(24 * 60 * 60_000, () => publishPolicies(db), "policy publication"),
   every(60_000, async () => {
     const n = await service.sweep();
     if (n) {
@@ -72,7 +84,7 @@ const timers = [
       await alerts.raise("lost-runs", `${n} verdict run(s) stopped before finishing and were marked lost`);
     }
   }, "lost-run sweep"),
-  // Spec: stop-and-alert at 80% of the day's cap (verdicts stop at 100%).
+  // Spec §8: stop-and-alert at 80% of the day's cap (verdicts stop at GLOBAL_CAP_STOP_PCT, 80 by default).
   every(5 * 60_000, async () => {
     const spent = await service.spentTodayUusdc();
     if (spent >= 0.8 * config.dailyCapUusdc) await alerts.raise("cap", `upstream spend today is ${spent / 1e6} USDC, at or over 80% of the ${config.dailyCapUusdc / 1e6} USDC daily cap`);

@@ -1,6 +1,8 @@
 import { appRoleSql, appRoleUrl, bundledMigrations, derivedPassword, migrationsReadSql, MIGRATIONS_DIR, schema, sniperRoleSql, type Db } from "@skein/db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { readMigrationFiles } from "drizzle-orm/migrator";
+import { readFileSync } from "node:fs";
 import pg from "pg";
 
 /**
@@ -92,18 +94,38 @@ export async function appliedMigrations(q: { query(sql: string): Promise<{ rows:
 }
 
 /**
+ * The bundled migrations missing from the database, by tag. drizzle records
+ * each applied migration's SHA-256 (of its SQL file) and its journal time; a
+ * bundled migration counts as applied only when both match, so a database at
+ * the right count but on other migrations (another branch's, or an edited
+ * file) is not taken as ready. Throws when the table cannot be read.
+ */
+export async function missingMigrations(q: { query(sql: string): Promise<{ rows: Record<string, unknown>[] }> }): Promise<string[]> {
+  const bundled = readMigrationFiles({ migrationsFolder: MIGRATIONS_DIR });
+  const journal = JSON.parse(readFileSync(`${MIGRATIONS_DIR}/meta/_journal.json`, "utf8")) as { entries: { tag: string; when: number }[] };
+  const tagOf = new Map(journal.entries.map((e) => [e.when, e.tag]));
+  const r = await q.query(`select hash, created_at from drizzle.__drizzle_migrations`);
+  const applied = new Set(r.rows.map((x) => `${String(x.hash)}@${Number(x.created_at)}`));
+  return bundled.filter((m) => !applied.has(`${m.hash}@${m.folderMillis}`)).map((m) => tagOf.get(m.folderMillis) ?? String(m.folderMillis));
+}
+
+/**
  * Waits (up to `timeoutMs`) until the database has every migration this build
- * ships. A replica that starts before the migrate job finishes waits here; its
- * health check fails meanwhile, so Railway keeps the previous deployment serving.
+ * ships, matched by hash and journal time (missingMigrations). A replica that
+ * starts before the migrate job finishes waits here; its health check fails
+ * meanwhile, so Railway keeps the previous deployment serving.
  */
 export async function waitForMigrations(q: { query(sql: string): Promise<{ rows: Record<string, unknown>[] }> }, timeoutMs = Number(process.env.MIGRATION_WAIT_MS ?? 100_000), stepMs = 3_000): Promise<void> {
   const want = bundledMigrations();
   const until = Date.now() + timeoutMs;
   for (;;) {
-    const have = await appliedMigrations(q).catch(() => 0);
-    if (have >= want) return;
-    if (Date.now() > until) throw new Error(`the database has ${have} of ${want} migrations; the migrate job has not run for this build`);
-    console.log(JSON.stringify({ level: "info", msg: "waiting for migrations", have, want }));
+    const missing = await missingMigrations(q).catch(() => null);
+    if (missing && missing.length === 0) return;
+    const have = missing ? want - missing.length : 0;
+    if (Date.now() > until) {
+      throw new Error(`the database has ${have} of ${want} migrations; the migrate job has not run for this build${missing ? ` (missing or different: ${missing.join(", ")})` : ""}`);
+    }
+    console.log(JSON.stringify({ level: "info", msg: "waiting for migrations", have, want, ...(missing ? { missing } : {}) }));
     await new Promise((r) => setTimeout(r, stepMs));
   }
 }
