@@ -83,14 +83,22 @@ const MAX_ABSTAIN_SHARE = Number(process.env.PROBE_MAX_ABSTAIN_SHARE ?? 0.5);
 const MIN_PURCHASES = Number(process.env.PROBE_MIN_PURCHASES ?? 10);
 const MAX_PURCHASE_ERROR_SHARE = Number(process.env.PROBE_MAX_PURCHASE_ERROR_SHARE ?? 0.5);
 
-type Quality = { windowHours: number; verdicts: number; abstain: number; abstainFailed?: number; purchases: number; purchaseErrors: number };
+const MAX_P95_MS = Number(process.env.PROBE_MAX_P95_MS ?? 10_000);
+
+type Quality = { windowHours: number; verdicts: number; abstain: number; abstainFailed?: number; purchases: number; purchaseErrors: number; verdictP95Ms?: number | null };
 const quality = (s: Record<string, unknown>) => (s.quality && typeof s.quality === "object" ? (s.quality as Quality) : null);
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export const CHECKS: Check[] = [
   http("api", "API process", `${API}/healthz`),
   http("api-db", "API database", `${API}/readyz`),
-  status("escrow", "Purchaser escrow", (s) => (s.walletAlert === true ? `escrow at ${s.payerEscrowUsdc} USDC, below the alert level: deposit more (docs/RUNBOOK.md)` : null)),
+  status("escrow", "Purchaser escrow", (s) => {
+    if (s.walletAlert === true) return `escrow at ${s.payerEscrowUsdc} USDC, below the alert level: deposit more (docs/RUNBOOK.md)`;
+    // Unknown is not fine: the API could not read the chain, or has no payer, and would buy blind.
+    if (s.payerEscrowUsdc === null || s.payerEscrowUsdc === undefined) return "the purchaser's escrow balance is unknown: the API cannot read it (RPC_URL) or has no payer key";
+    if (s.paused === true) return `uncached verdicts are paused: ${String(s.pausedReason ?? "unknown reason")}`;
+    return null;
+  }),
   status("cap", "Daily spend cap", (s) => (s.capAlert === true ? `spent ${s.spentTodayUsdc} of ${s.dailyCapUsdc} USDC today` : null)),
   status("db-role", "Least-privilege database role", (s) => (typeof s.dbRole === "string" && s.dbRole !== "skein_app" ? `the API is querying as "${s.dbRole}", not skein_app: see the API's startup log` : null)),
   status("errors", "Unhandled API errors", (s) => (Number(s.errorsLastHour) > 0 ? `${s.errorsLastHour} unhandled error(s) in the last hour: see error_log or the API logs by request id` : null)),
@@ -108,6 +116,40 @@ export const CHECKS: Check[] = [
     const share = q.purchaseErrors / q.purchases;
     return share > MAX_PURCHASE_ERROR_SHARE ? `${q.purchaseErrors} of ${q.purchases} purchases in the last ${q.windowHours} h failed (${pct(share)}, limit ${pct(MAX_PURCHASE_ERROR_SHARE)}): read a recent verdict's /bom errors` : null;
   }),
+  // Spec §15: alert when p95 verdict latency passes 10 s (bought verdicts of the last 3 h; small samples are not judged).
+  status("latency", "Verdict latency", (s) => {
+    const q = quality(s);
+    if (!q || q.verdicts < MIN_VERDICTS || q.verdictP95Ms == null) return null;
+    return q.verdictP95Ms > MAX_P95_MS ? `p95 verdict latency is ${(q.verdictP95Ms / 1000).toFixed(1)} s over the last ${q.windowHours} h (limit ${MAX_P95_MS / 1000} s): see /v1/status intents for the slow check` : null;
+  }),
+  // The pinned OFAC address list must not go stale (audit M2): refresh it with scripts/ofac-snapshot.py.
+  status("ofac", "OFAC snapshot", (s) => {
+    const o = s.ofacSnapshot as { stale?: boolean; ageDays?: number | null; maxAgeDays?: number; fetched?: string } | undefined;
+    if (!o) return null;
+    return o.stale === true ? `the OFAC SDN snapshot is ${o.ageDays ?? "?"} days old (fetched ${o.fetched}, limit ${o.maxAgeDays}): refresh it` : null;
+  }),
+  // Spec §15: a repro mismatch alerts. The newest verdict is re-verified each run.
+  {
+    key: "repro",
+    name: "Verdict reproduction",
+    async run(ctx) {
+      try {
+        const l = await get(ctx, `${API}/v1/ledger`);
+        if (l.status !== 200) return { ok: false, reason: `/v1/ledger answered HTTP ${l.status}` };
+        const id = (json(l.body)?.recent as { id?: string }[] | undefined)?.[0]?.id;
+        if (!id) return { ok: true };
+        const res = await ctx.fetch(`${API}/v1/verify`, { method: "POST", headers: { "content-type": "application/json", "user-agent": "skein-probe" }, body: JSON.stringify({ id }), signal: AbortSignal.timeout(60_000) });
+        if (res.status === 429) return { ok: true }; // rate-limited: try again next run
+        const r = json(await res.text());
+        if (res.status !== 200 || !r) return { ok: false, reason: `/v1/verify answered HTTP ${res.status} for ${id}` };
+        if (r.ok === true) return { ok: true };
+        const failing = Object.entries((r.checks as Record<string, unknown>) ?? {}).filter(([, v]) => v === false).map(([k]) => k);
+        return { ok: false, reason: `verdict ${id} does not reproduce (${failing.join(", ") || "see problems"}): ${((r.problems as string[]) ?? []).slice(0, 3).join("; ")}` };
+      } catch (e) {
+        return { ok: false, reason: `repro check: ${(e as Error).message}` };
+      }
+    },
+  },
   http("web", "Web console", `${WEB}/`),
   http("web-404", "Web 404 pages", `${WEB}/v/vrd_doesnotexist`, 404),
   http("desk", "Skein Desk queue", `${DESK}/api/applications`),

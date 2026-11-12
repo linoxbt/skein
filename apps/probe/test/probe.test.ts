@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { CHECKS } from "../src/checks";
-import { runOnce } from "../src/run";
+import { runOnce, sslFor } from "../src/run";
 
 let pg: PGlite;
 beforeAll(async () => {
@@ -16,7 +16,7 @@ beforeAll(async () => {
 });
 
 /** A fake internet: every service healthy unless `broken` says otherwise. */
-function world(broken: Set<string>, status: Record<string, unknown> = {}) {
+function world(broken: Set<string>, status: Record<string, unknown> = {}, verify: Record<string, unknown> = { ok: true, checks: {}, problems: [] }) {
   const pushes: { title: string; body: string }[] = [];
   const f = (async (input: string | URL, init?: RequestInit) => {
     const url = String(input);
@@ -25,7 +25,9 @@ function world(broken: Set<string>, status: Record<string, unknown> = {}) {
       return new Response("ok");
     }
     if (broken.has("api") && url.includes("/healthz") && url.includes("api.")) return new Response("down", { status: 502 });
-    if (url.endsWith("/v1/status")) return Response.json({ walletAlert: false, capAlert: false, errorsLastHour: 0, payerEscrowUsdc: 108, ...status });
+    if (url.endsWith("/v1/status")) return Response.json({ walletAlert: false, capAlert: false, errorsLastHour: 0, payerEscrowUsdc: 108, ofacSnapshot: { fetched: "2026-11-11", ageDays: 1, maxAgeDays: 30, stale: false }, ...status });
+    if (url.endsWith("/v1/ledger")) return Response.json({ recent: [{ id: "vrd_latest" }] });
+    if (url.endsWith("/v1/verify")) return Response.json(verify);
     if (url.includes("/v/vrd_doesnotexist")) return new Response("nf", { status: 404 });
     if (url.includes("/api/miners/")) return new Response('{"activation_status":"active"}');
     return new Response("ok");
@@ -35,7 +37,7 @@ function world(broken: Set<string>, status: Record<string, unknown> = {}) {
 
 describe("probe", () => {
   it("covers every public service, the escrow, the cap, errors, the miner and the backup", () => {
-    expect(CHECKS.map((c) => c.key)).toEqual(["api", "api-db", "escrow", "cap", "db-role", "errors", "abstain", "purchases", "web", "web-404", "desk", "sniper", "miner", "backup"]);
+    expect(CHECKS.map((c) => c.key)).toEqual(["api", "api-db", "escrow", "cap", "db-role", "errors", "abstain", "purchases", "latency", "ofac", "repro", "web", "web-404", "desk", "sniper", "miner", "backup"]);
   });
 
   it("alerts once when something breaks, stays quiet while it stays broken, and says when it recovers", async () => {
@@ -109,5 +111,38 @@ describe("probe", () => {
     expect(r.failing.map((x) => x.key).sort()).toEqual(["api", "backup"]);
     expect(r.failing.find((x) => x.key === "backup")!.reason).toContain("heartbeats");
     expect(w.pushes.length).toBeGreaterThanOrEqual(2); // alerts still went out, deduplicated in memory
+  });
+
+  it("alerts on slow verdicts, a stale OFAC list, an unknown escrow and a verdict that does not reproduce", async () => {
+    await beat(pg, "backup");
+    const w = world(
+      new Set(),
+      {
+        payerEscrowUsdc: null,
+        quality: { windowHours: 3, verdicts: 12, abstain: 0, abstainFailed: 0, purchases: 48, purchaseErrors: 0, verdictP95Ms: 14_200 },
+        ofacSnapshot: { fetched: "2026-08-01", ageDays: 103, maxAgeDays: 30, stale: true },
+      },
+      { ok: false, checks: { policyRerun: false, receiptsMatch: true }, problems: ["verdict hash mismatch"] },
+    );
+    const alerter = new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: pg, fetch: w.f });
+    const r = await runOnce({ ctx: { fetch: w.f, db: pg, now: Date.now }, alerter, db: pg, retryMs: 1 });
+    expect(r.failing.map((x) => x.key).sort()).toEqual(["escrow", "latency", "ofac", "repro"]);
+    const bodies = w.pushes.map((p) => p.body).join("\n");
+    expect(bodies).toContain("p95 verdict latency is 14.2 s");
+    expect(bodies).toContain("OFAC SDN snapshot is 103 days old");
+    expect(bodies).toContain("escrow balance is unknown");
+    expect(bodies).toContain("verdict vrd_latest does not reproduce (policyRerun): verdict hash mismatch");
+
+    // Fast verdicts over a small sample are not judged.
+    const calm = world(new Set(), { quality: { windowHours: 3, verdicts: 2, abstain: 0, purchases: 8, purchaseErrors: 0, verdictP95Ms: 30_000 } });
+    const quiet = await runOnce({ ctx: { fetch: calm.f, db: pg, now: Date.now }, alerter: new Alerter({ url: "https://ntfy.sh/skein-test", service: "skein-probe", db: pg, fetch: calm.f }), db: pg, retryMs: 1 });
+    expect(quiet.failing.map((x) => x.key)).toEqual([]);
+  });
+
+  it("uses TLS for any database outside Railway's private network", () => {
+    expect(sslFor("postgres://u:p@postgres.railway.internal:5432/db")).toEqual({});
+    expect(sslFor("postgres://u:p@localhost/db")).toEqual({});
+    expect(sslFor("postgres://u:p@db.example.supabase.co:5432/db", undefined)).toEqual({ ssl: true });
+    expect(sslFor("postgres://u:localhost@proxy.rlwy.net:1234/db", "PEM")).toEqual({ ssl: { ca: "PEM" } });
   });
 });
