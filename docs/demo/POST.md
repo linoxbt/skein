@@ -14,7 +14,7 @@ Video: [`skein-teaser.mp4`](skein-teaser.mp4) (42 s, no narration, 1080p).
 
 > 2/ Every verdict is APPROVE, REJECT, ESCALATE or ABSTAIN, never a guess. It comes with its reasons, its cost, and a receipt for every paid check, rolled into one Merkle root and signed.
 
-> 3/ Out of sample: 40 launches labelled 72 hours after Skein's verdict. 27 went bad. Skein approved none of them. Simpler rules on the same data let 22% through.
+> 3/ Measured in the open: every launch is labelled 72 hours after its verdict. Of 80 so far, 49 went bad. Simpler rules on the same paid data approved up to a third of them. Skein approved none of the 80: on launches minutes old, its answer is REJECT or a human.
 
 > 4/ It also screens addresses against the OFAC sanctions list. A Lazarus Group wallet gets REJECT at 100% confidence, with the list entry as evidence.
 
@@ -41,13 +41,13 @@ Video: [`skein-teaser.mp4`](skein-teaser.mp4) (42 s, no narration, 1080p).
 >
 > Every verdict carries its reasons, its cost, and a receipt for every paid check, rolled into one Merkle root and signed. Anyone can recompute it from the raw answers at skeinlabs.site/verify.
 >
-> It is measured in the open. On 40 launches labelled 72 hours after the verdict, 27 went bad. Skein approved none of them; simpler rules on the same data let 22% through.
+> It is measured in the open. Every launch is labelled 72 hours after its verdict: of 80 so far, 49 went bad. Simpler rules on the same paid data approved up to a third of them. Skein approved none of the 80; on launches minutes old its answer is REJECT or a human, and it says so.
 >
 > Built for Telegraph Season II. Try it at skeinlabs.site, `npm i @skeinlabs/sdk`, or as an MCP server for Claude and Cursor.
 
 ## Sources for the numbers
 
 - **1,627 launches in 24 hours:** the Skein Sniper feed (`last24h.seen`), Nov 11, 2026.
-- **40 / 27 / 0 / 22%:** the prospective benchmark, published on the `data/prospective` branch (`REPORT.md`).
+- **80 / 49 / up to a third / none:** the prospective benchmark of Nov 12, published on the `data/prospective` branch (`REPORT.md`): the single-best rule approved 34.7% of the bad launches and the weighted average 16.3%; Skein approved none of the 80 (no launch in the set is labelled good, so this is caution, not proof of judgment).
 - **Lazarus Group REJECT:** [`vrd_mwcfy2nj685b1z0e264a`](https://skeinlabs.site/v/vrd_mwcfy2nj685b1z0e264a).
 - **Teaser totals (312 verdicts, 819 paid receipts, 10 miners):** `/v1/ledger`, Nov 11, 2026.

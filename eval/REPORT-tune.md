@@ -9,11 +9,14 @@ Current state: each token was checked as it is today, because the miners Skein b
 
 41 of 41 cases have a run (good 21, bad 20, ambiguous 0). 
 
-| System | False APPROVE on bad | REJECT precision | REJECT recall | ESCALATE | ABSTAIN | Cost / verdict | p50 / p95 latency | Coverage |
-|---|---|---|---|---|---|---|---|---|
-| skein | 0.0% (95% CI 0.0%–0.0%) | 100.0% | 40.0% (95% CI 19.0%–62.5%) | 24.4% | 39.0% | $0.048 | 4962 / 6668 ms | 57.0% |
-| single_best | 15.0% (95% CI 0.0%–31.8%) | 75.0% | 45.0% (95% CI 23.8%–68.2%) | 51.2% | 4.9% | $0.010 | 4962 / 6668 ms | 95.1% |
-| weighted_avg | 20.0% (95% CI 4.2%–38.9%) | 90.0% | 45.0% (95% CI 23.8%–68.2%) | 22.0% | 0.0% | $0.048 | 4962 / 6668 ms | 57.0% |
-| cheapest | 0.0% (95% CI 0.0%–0.0%) | 100.0% | 40.0% (95% CI 19.0%–62.5%) | 9.8% | 39.0% | $0.038 | 4962 / 6668 ms | 76.1% |
+| System | APPROVE (all) | APPROVE on good | False APPROVE on bad | REJECT precision | REJECT recall | ESCALATE | ABSTAIN | Cost / verdict | Coverage |
+|---|---|---|---|---|---|---|---|---|---|
+| skein | 17.1% | 33.3% | 0.0% (95% CI 0.0%–16.1%) | 100.0% | 40.0% (95% CI 21.9%–61.3%) | 24.4% | 39.0% | $0.048 | 57.0% |
+| single_best | 14.6% | 14.3% | 15.0% (95% CI 5.2%–36.0%) | 75.0% | 45.0% (95% CI 25.8%–65.8%) | 51.2% | 4.9% | $0.010 | 95.1% |
+| weighted_avg | 53.7% | 85.7% | 20.0% (95% CI 8.1%–41.6%) | 90.0% | 45.0% (95% CI 25.8%–65.8%) | 22.0% | 0.0% | $0.048 | 57.0% |
+| cheapest | 31.7% | 61.9% | 0.0% (95% CI 0.0%–16.1%) | 100.0% | 40.0% (95% CI 21.9%–61.3%) | 9.8% | 39.0% | $0.038 | 76.1% |
+
+Latency (Skein's wall time; the baselines reuse the same runs): p50 4962 ms, p95 6668 ms.
 
 Baselines reuse Skein's paid findings (no extra spend). The direct-API baseline needs its own data source and is not in this table.
+Intervals are 95% Wilson score intervals on the counts behind each rate.

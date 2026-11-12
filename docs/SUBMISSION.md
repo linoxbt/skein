@@ -102,14 +102,15 @@ x402 payments use Base Sepolia.
   refuses with 503 and `dex-list` is the default.
 - Some upstream miners time out at times. A required check that fails gives
   ABSTAIN, which says which check failed.
-- The prospective benchmark has no launch labelled good yet (27 bad, 13
-  ambiguous). It can show that Skein avoids bad launches, but it cannot yet
-  measure false REJECTs.
+- The prospective benchmark has no launch labelled good yet (49 bad, 31
+  ambiguous on Nov 12), and Skein approved none of its launches. It shows how
+  often Skein stops a bad launch outright, but it cannot measure false
+  APPROVEs or false REJECTs until good launches appear.
 
 ## Evidence
 
-- **Real purchases.** 797 upstream receipts from 10 miners and 307 verdicts so
-  far. The demo's own verdict, bought live during the recording, is
+- **Real purchases.** 1,017 upstream receipts from 10 miners and 353 verdicts
+  by Nov 12 (live totals below). The demo's own verdict, bought live during the recording, is
   https://skeinlabs.site/v/vrd_mw8c7dkh4a1d465l3u5f: APPROVE for AERO on
   Base, 5.9 s, 0.05 USDC across five receipts. Live totals are at https://skeinlabs.site/ledger and
   https://api.skeinlabs.site/v1/ledger.
@@ -123,16 +124,21 @@ x402 payments use Base Sepolia.
   (https://devnode.telegraphprotocol.com/api/miners/5137). The first paid ask
   to it was on Nov 7.
 - **Benchmark.** 61 labelled cases, and a holdout of 20 tokens run once after
-  the rules were frozen. Skein approved none of the 7 documented scams and
-  rejected none of the 13 long-listed tokens. It abstained on 8 of the 20.
-  Two simpler rules applied to the same paid findings each let one scam
-  through. See `eval/FINDINGS-holdout.md`.
+  the rules were frozen. Skein approved none of the 7 documented scams (95%
+  Wilson interval 0–35%: the sample is small) and rejected none of the 13
+  long-listed tokens; it abstained on 8 of the 20. The weighted average and the
+  best single check, on the same paid findings, each let one scam through. The
+  same rules on the required checks alone did as well at 22% lower cost and
+  approved more good tokens, so the optional checks have not earned their
+  place yet. See `eval/REPORT-holdout.md` and `eval/FINDINGS-holdout.md`.
 - **Prospective benchmark (out of sample).** Each verdict was bought before
   the outcome was known, and each launch is labelled 72 hours later. The
-  first run covers 40 sniper launches: 27 went bad and 13 are ambiguous.
-  Skein approved none of the bad ones; the single-best-miner and
-  weighted-average rules, applied to the same findings, approved 22% of
-  them. REJECT precision was 88.9%. Updated daily: https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md.
+  Nov 12 run covers 80 sniper launches: 49 went bad, 31 are ambiguous and
+  none is labelled good. Skein approved none of the 80, so its 0% false
+  APPROVE there cannot be told apart from never approving. It rejected 38.8%
+  of the bad launches outright (82.6% precision); the weighted-average rule on
+  the same findings rejected 40.8% but also approved 16% of them. Updated
+  daily: https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md.
 - **Sniper.** Live feed: https://sniper-production-bea6.up.railway.app/feed.json.
   It buys a verdict for every launch it considers, and has bought no token.
   On launches minutes old, its policy's holder floor fails almost everything,

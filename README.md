@@ -359,40 +359,46 @@ and redirects are never followed.
 
 ## Results
 
-**Live on Telegraph testnet** (as of Nov 8, 2026; live totals at
-[/ledger](https://skeinlabs.site/ledger)):
+**Live on Telegraph testnet.** The numbers move every day, so they are not
+copied here: [/ledger](https://skeinlabs.site/ledger) and
+[`/v1/ledger`](https://api.skeinlabs.site/v1/ledger) show verdicts served by
+outcome, upstream receipts, miners paid and upstream spend. On Nov 12, 2026
+they read 353 verdicts (5 APPROVE, 51 REJECT, 87 ESCALATE, 210 ABSTAIN), 1,017
+receipts from 10 miners and 10.56 USDC spent. Most ABSTAINs come from Skein
+Sniper's fresh launches, where a required check has nothing to read yet.
 
-| Verdicts served | Upstream receipts | Miners paid | Upstream spend |
-|---:|---:|---:|---:|
-| 187 | 407 | 9 | 4.35 USDC |
+**Held-out benchmark** ([eval/REPORT-holdout.md](eval/REPORT-holdout.md)).
+Twenty tokens (13 long-listed, 7 documented scams) were run once, after the
+rules were frozen. Intervals are 95% Wilson intervals; with 7 scams they are
+wide, and the table should be read that way:
 
-**Held-out benchmark.** Twenty tokens were run once, after the rules were
-frozen:
+| | Skein | Required checks only ("cheapest") | Weighted average | Best single check |
+|---|:---:|:---:|:---:|:---:|
+| Scams approved (of 7) | 0 (0–35%) | 0 (0–35%) | 1 | 1 |
+| Scams rejected (of 7) | 3 | 3 | 6 | 5 |
+| Good tokens approved (of 13) | 4 | 7 | 10 | 3 |
+| Good tokens rejected (of 13) | 0 | 0 | 0 | 3 |
+| Abstained (of 20) | 8 | 8 | 0 | 3 |
+| Cost per verdict | $0.049 | $0.038 | $0.049 | $0.010 |
 
-| | Skein | Weighted average | Best single check |
-|---|:---:|:---:|:---:|
-| Documented scams approved (of 7) | **0** | 1 | 1 |
-| Documented scams rejected (of 7) | 3 | 6 | 5 |
-| Long-listed tokens rejected (of 13) | **0** | 0 | 3 |
-| Abstained (of 20) | 8 | 0 | 3 |
-
-The two baselines are recomputed from Skein's own paid findings, so only the
-rule differs:
-- Skein never approved a scam and never rejected a good token.
-- The price is caution: it abstained on 8 of 20, which a listing desk treats
-  as "not approved".
-
-The sample is small and judged on the tokens' current state; method and
-caveats are in [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
+What this does and does not show:
+- Skein's rules never approved a scam or rejected a good token here, but 0 of
+  7 is consistent with a true false-approve rate of up to about a third.
+- **The same rules on the required checks alone did as well for less**: the
+  same scams stopped, more good tokens approved, 22% cheaper. On this sample
+  the optional checks added escalations, not catches. The tune split
+  ([eval/REPORT-tune.md](eval/REPORT-tune.md)) shows the same pattern.
+- The weighted average rejects more scams but also approves one, which is the
+  error a listing desk cannot afford.
+- The tokens are judged on their current state, not before their events; method
+  and caveats are in [eval/FINDINGS-holdout.md](eval/FINDINGS-holdout.md).
 
 **Skein Sniper.** Live figures are at
 [`/feed.json`](https://sniper-production-bea6.up.railway.app/feed.json)
-(`allTime`, and `book.medianSkippedChange`). On Nov 11 it had checked 280
-launches and bought none. The 40 checked from Nov 10 to 11 were ABSTAINs from
-an upstream purchase outage (runbook, "Incidents"), not judgments.
-
-That is not a measure of foresight. `medianSkippedChange` moves with the
-market: −99.99% on Nov 8 and −2.3% on Nov 11.
+(`allTime`, and `book.medianSkippedChange`). By Nov 12 it had checked 320
+launches and approved none, so it has never made its paper buy.
+`medianSkippedChange` moves with the market (−99.99% on Nov 8, −2.3% on
+Nov 11) and is not a measure of foresight.
 
 A backtest of the 106 answered verdicts is in
 [eval/FINDINGS-sniper.md](eval/FINDINGS-sniper.md). It found:
@@ -401,20 +407,21 @@ A backtest of the 106 answered verdicts is in
 - **Liquidity and holders are not.** Launches that passed every check still
   had their liquidity pulled.
 
-From Nov 11 the sniper runs `agent-pretrade@0.3.0`, which blocks on any audit
-WARN and abstains on a launch with no trades yet. The sniper still does not
-buy. Approving fresh launches would need a liquidity-lock signal that no
-Telegraph intent offers yet.
+From Nov 11 the sniper runs `agent-pretrade@0.3.0`, chosen on that backtest
+(in-sample). Approving fresh launches would need a liquidity-lock signal that
+no Telegraph intent offers yet.
 
-These rules were chosen in-sample. The out-of-sample test is the prospective
-benchmark, which labels each launch 72 hours after its verdict and publishes
-daily to [`data/prospective`](https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md).
-
-Its first run, on Nov 11, labelled 40 launches: 27 bad and 13 ambiguous.
-- **Skein** approved none of the bad ones. REJECT precision was 88.9% and
-  recall 59%.
-- **The single-best-miner and weighted-average rules,** applied to the same
-  paid findings, each approved 22% of the bad launches.
+**Prospective benchmark** (out of sample,
+[`data/prospective`](https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md),
+updated daily). Each launch is labelled by what happened in the 72 hours after
+its verdict. The Nov 12 run labelled 80 launches: **49 bad, 31 ambiguous and
+none good**. Skein approved none of the 80, so its 0% false-approve rate there
+says nothing about its judgment: a rule that never approves scores the same.
+What the run does measure is how often Skein stops a bad launch outright: REJECT
+recall 38.8% (95% CI 25.5–52.8%) at 82.6% precision, against 40.8% for the
+weighted average, which also approved 16% of the bad launches. The first runs
+scored `agent-pretrade@0.2.0` verdicts from before the 0.3.0 rules were chosen;
+the policy that sealed each verdict is recorded in its run file.
 
 ---
 
