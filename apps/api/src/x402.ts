@@ -44,13 +44,13 @@ export interface X402Config {
   facilitatorUrl: string;
   /** Upstream spend ceiling for all x402 callers together, per UTC day. */
   dailyCapUusdc: number;
-  /** Verdicts one payer address may buy per UTC day, so one payer cannot use up the shared cap. */
-  payerDailyMax: number;
-  /** Paid requests one payer address may make per minute (X402_PAYER_PER_MINUTE). */
-  payerPerMinute: number;
+  /** Verdicts one payer address may buy per UTC day, so one payer cannot use up the shared cap (default 20). */
+  payerDailyMax?: number;
+  /** Paid requests one payer address may make per minute (X402_PAYER_PER_MINUTE, default 10). */
+  payerPerMinute?: number;
   maxTimeoutSeconds: number;
-  /** The resource the terms name: from configuration, never from the request's Host header. */
-  resource: string;
+  /** The resource the terms name: from configuration, never from the request's Host header (default https://api.skeinlabs.site/v1/verdicts). */
+  resource?: string;
 }
 
 const NETWORKS: Record<X402Network, { chainId: number; usdc: Address; name: string; version: string }> = {
@@ -119,7 +119,7 @@ export function requirements(cfg: X402Config): PaymentRequirements {
     scheme: "exact",
     network: cfg.network,
     maxAmountRequired: String(cfg.priceUusdc),
-    resource: cfg.resource,
+    resource: cfg.resource ?? `${DEFAULT_API_URL}/v1/verdicts`,
     description: "One Skein listing verdict: signed, with its bill of materials. Settled before it is bought; a refusal is refunded, an ABSTAIN costs its upstream spend.",
     mimeType: "application/json",
     payTo: cfg.payTo,

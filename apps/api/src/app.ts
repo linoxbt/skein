@@ -677,8 +677,9 @@ export function createApp(service: VerdictService) {
         .select({ n: count() })
         .from(schema.x402Payments)
         .where(and(eq(schema.x402Payments.payer, payer), gte(schema.x402Payments.createdAt, utcMidnight(now())), ne(schema.x402Payments.status, "failed")));
-      if ((today?.n ?? 0) >= x402!.payerDailyMax) {
-        throw new ApiError(429, "RATE_LIMITED", `this payer has bought ${x402!.payerDailyMax} verdicts today, the most one address may (UTC day)`, undefined, { "Retry-After": String(secondsToUtcMidnight(now())) });
+      const payerMax = x402!.payerDailyMax ?? 20;
+      if ((today?.n ?? 0) >= payerMax) {
+        throw new ApiError(429, "RATE_LIMITED", `this payer has bought ${payerMax} verdicts today, the most one address may (UTC day)`, undefined, { "Retry-After": String(secondsToUtcMidnight(now())) });
       }
     }
     const v = await facilitator!.verify(payment, terms);
