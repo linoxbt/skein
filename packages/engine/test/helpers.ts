@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { parsePolicy, type Check, type Finding, type FindingStatus, type Policy, type PolicyInput, type Severity } from "../src";
+import { adapterFor, parsePolicy, type Check, type Finding, type FindingStatus, type Policy, type PolicyInput, type Severity, type StoredPurchase } from "../src";
 
 const dir = fileURLToPath(new URL("../../policies/policies/", import.meta.url));
 
@@ -48,6 +48,30 @@ export function cleanCex(overrides: Partial<Record<Check, Finding | null>> = {})
     else base[k] = v;
   }
   return Object.values(base);
+}
+
+/**
+ * Every cex-standard check bought and answered clean through the current
+ * adapters: the findings with the purchases (raw answers) they replay from.
+ */
+export function boughtCex(subject: { chainId: number; token: string }, over: Partial<Record<Check, unknown>> = {}): { findings: Finding[]; purchases: StoredPurchase[]; receipts: string[] } {
+  const raw: Record<Check, unknown> = {
+    contract_audit: { result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
+    sanctions: { matched: false },
+    holder_concentration: { top10_holders_pct: 0.2 },
+    liquidity_depth: { liquidity_usd: 25_000_000 },
+    wash_trading: { verdict: "organic", wash_volume_pct: 3 },
+    holder_count: { holders_count: 50_000 },
+    social_bots: { verdict: "human" },
+    code_review: { verdict: "Approve" },
+    ...over,
+  };
+  const purchases = (Object.keys(raw) as Check[]).map((check, i): StoredPurchase => ({
+    check, adapterVersion: adapterFor(check).version, rawResult: raw[check], sourceGroup: `src-${check}`,
+    minerId: `m-${check}`, receiptHash: `0x${(1000 + i).toString(16).padStart(64, "0")}`, httpStatus: 200,
+  }));
+  const findings = purchases.map((p) => adapterFor(p.check, p.adapterVersion).adapt(p.rawResult, { ...p, subject }));
+  return { findings, purchases, receipts: purchases.map((p) => p.receiptHash!) };
 }
 
 export function customPolicy(over: Partial<PolicyInput>): Policy {
