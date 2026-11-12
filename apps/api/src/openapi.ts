@@ -73,8 +73,8 @@ export const OPENAPI = {
       post: {
         summary: "Buy a verdict",
         description:
-          "Idempotent per Idempotency-Key: a retry with the same key and body returns the same run and is never charged twice. mode=async answers 202 at once; follow /v1/verdicts/{id}/events.\n\n" +
-          "Without a partner key, when the deployment has x402 on, this route takes x402 (v1, scheme exact) payment: an unpaid request gets 402 with { x402Version, accepts }, and a request with an X-PAYMENT header (a signed EIP-3009 USDC authorization) is verified by the facilitator before anything is bought. The payment settles only once a verdict is sealed (a cache hit included), and the 200 carries X-PAYMENT-RESPONSE. Refusals and failures are not settled. The payment itself is the idempotency key: a retry with the same X-PAYMENT replays the run and never settles twice. x402 is sync only.",
+          "Idempotent per Idempotency-Key for 24 hours: a retry with the same key and body returns the same run and is never charged twice. A run that ended in a failure that may clear (VERDICT_FAILED, LOST, UPSTREAM_UNAVAILABLE, DAILY_CAP_REACHED, RATE_LIMITED, MARGIN_GUARD, WALLET_EMPTY) does not hold its key: the retry runs again. mode=async answers 202 at once; follow /v1/verdicts/{id}/events. A sync request still running after SYNC_TIMEOUT_MS (25 s) answers 202 { id, status: running, timedOut: true } (until 2026-11-12 this was 504 TIMEOUT); poll the id. Identical concurrent requests share one purchase.\n\n" +
+          "Without a partner key, when the deployment has x402 on, this route takes x402 (v1, scheme exact) payment: an unpaid request gets 402 with { x402Version, accepts }. A request with an X-PAYMENT header (a signed EIP-3009 USDC authorization for exactly the price, from an EOA) is checked, verified by the facilitator, refused before payment where it can be (spend caps, an empty purchaser wallet, a plan that cannot be bought: 'nothing was charged'), then settled before anything is bought; the answer carries X-PAYMENT-RESPONSE and X-Skein-Payment. Pricing: an answered verdict costs the price; an ABSTAIN costs its upstream spend and the rest is owed back; a refusal or failure after settlement is owed back in full (or retried with the same X-PAYMENT within 24 hours at no extra cost). Refunds owed are listed at /v1/ledger and sent by the operator. The payment is the idempotency key: a retry with the same X-PAYMENT replays the run, never verified or settled again. Per payer: X402_PAYER_PER_MINUTE requests a minute, X402_PAYER_DAILY_MAX verdicts a UTC day.",
         security: [{ partnerKey: [] }, {}],
         parameters: [
           { name: "Idempotency-Key", in: "header", required: false, description: "Required with a partner key; with x402 the payment authorization is the key.", schema: { type: "string", maxLength: 128 } },
@@ -100,7 +100,7 @@ export const OPENAPI = {
         },
         responses: {
           "200": { description: "The verdict", content: { "application/json": { schema: { $ref: "#/components/schemas/Verdict" } } } },
-          "202": { description: "Accepted (async): { id, status }" },
+          "202": { description: "Accepted (async, or sync past its time): { id, status: running, events, timedOut? }" },
           "402": { description: "Payment required: { x402Version: 1, accepts: [PaymentRequirements], error } when x402 is on; otherwise the usual error body" },
           "400": error, "401": error, "409": error, "429": error, "503": error,
         },
@@ -113,7 +113,13 @@ export const OPENAPI = {
       post: {
         summary: "Re-check a verdict: replay adapters and policy, rebuild the Merkle root, check the receipts and the signature",
         requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["id"], properties: { id: { type: "string" } } } } } },
-        responses: { "200": { description: "{ ok, checks, signals, problems }" }, "404": error },
+        responses: {
+          "200": {
+            description:
+              "{ ok, checks: { adaptersRerun, policyRerun, verdictHashRecomputes, bomRootRebuilt, engineVersion, decisionMatches, receiptsMatch, policyFile, signals, attestation, attestationSignature, attestationMatchesVerdict, attestationSigner }, signals, verdictHash, bomRoot, receipts, problems, attester, publishedAttester, attestation (the stored one: signedAt, atSeal), policy { ref, sha256, url }, inputs (the stored record reproduce() ran on, raw answers included) }. The attestation is the one stored when the verdict was sealed; a verdict sealed before 2026-11-12 was signed on its first read (atSeal false).",
+          },
+          "404": error,
+        },
       },
     },
     "/v1/policies": { get: { summary: "Every published policy, with its file hash", responses: { "200": { description: "The policies" } } } },
@@ -130,12 +136,19 @@ export const OPENAPI = {
       },
     },
     "/v1/status": { get: { summary: "Network, wallet, caps, attester and each check's miners", responses: { "200": { description: "Status" } } } },
-    "/v1/ledger": { get: { summary: "The public spend ledger", responses: { "200": { description: "Totals" } } } },
+    "/v1/ledger": {
+      get: {
+        summary: "The public spend ledger",
+        description: "All-time totals: verdicts, upstream spend, receipts, miners; revenueOwedUsdc (Telegraph answers at the floor, ABSTAIN included), revenueSettledUsdc (x402, gross), refundsOwedUsdc and refundsSentUsdc. Stability and abstain causes cover the last 30 days (windowDays).",
+        responses: { "200": { description: "Totals" } },
+      },
+    },
     "/v1/webhooks": {
       get: { summary: "The caller's active webhook (never its secret)", security: [{ partnerKey: [] }], responses: { "200": { description: "{ webhook: { url, createdAt } | null }" }, "401": error } },
       post: {
         summary: "Register (or replace) the caller's webhook. The signing secret is shown once.",
-        description: "Deliveries are POSTs with X-Skein-Signature: sha256=HMAC_SHA256(secret, body) and X-Skein-Event (verdict.done, verdict.refused). The URL must be public https; it is checked again before each delivery, and redirects are not followed.",
+        description:
+          "Deliveries are POSTs with X-Skein-Event: verdict.completed, X-Skein-Timestamp: <unix seconds>, and X-Skein-Signature-V2: sha256=<hex HMAC_SHA256(secret, timestamp + '.' + raw body)>; refuse a timestamp more than 300 s from your clock, which stops replays. The body is { event: 'verdict.completed', legacyEvent: 'verdict.done' | 'verdict.refused', status: 'done' | 'refused', runId, ... }. The legacy X-Skein-Signature: sha256=HMAC_SHA256(secret, body) is still sent (no replay protection; deprecated). The URL must be public https; it is checked again before each delivery, and redirects are not followed.",
         security: [{ partnerKey: [] }],
         requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["url"], properties: { url: { type: "string", format: "uri" } } } } } },
         responses: { "201": { description: "{ url, secret, signature, events }" }, "400": error, "401": error, "429": error },

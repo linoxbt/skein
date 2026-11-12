@@ -28,7 +28,7 @@ import { getAddress, isAddress, verifyTypedData, type Address, type Hex } from "
  * with the reason) and totalled at /v1/ledger (refundsOwedUsdc). The API holds
  * no key for X402_PAY_TO, so nothing is sent back automatically: the operator
  * sends owed refunds from the payTo wallet and marks them refunded
- * (docs/RUNBOOK.md, "x402 refunds"). On testnet this is test USDC.
+ * (apps/api/bin/x402-refunds.ts). On testnet this is test USDC.
  *
  * Not supported: smart-contract wallets (ERC-1271 signatures); only EOA
  * signatures recover. Overpayment: the value must equal the price exactly.

@@ -10,6 +10,7 @@
     "start": "node --import tsx src/server.ts",
     "migrate": "tsx bin/migrate.ts",
     "partner:add": "tsx bin/partner-add.ts",
+    "x402:refunds": "tsx bin/x402-refunds.ts",
     "dev": "tsx bin/dev.ts"
   },
   "dependencies": {
