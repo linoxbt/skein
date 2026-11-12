@@ -1,0 +1,97 @@
+{
+  "caseId": "pro-fe58064c2d4bb2f2a0e57cda1323f741d0c90090",
+  "importedFrom": "vrd_mw8idl4z2l1c5h5w3n13",
+  "boughtAt": "2026-11-09T00:14:06.245Z",
+  "policyRef": "agent-pretrade@0.2.0",
+  "wallMs": 4941,
+  "verdict": {
+    "findings": [
+      {
+        "check": "holder_count",
+        "status": "PASS",
+        "severity": 0,
+        "metric": "holders_count",
+        "value": 5,
+        "unit": "addresses",
+        "confidence": 0.7,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "evidence": {
+          "minerId": "9002",
+          "signalHash": "0x7be3f0d5b3b96b5e90a3e91e965be181738b33b83ca7ab52caf42c6512209c75",
+          "receiptHash": "0x6144f6ff462e56f9a51652c11b3ad42bb151df1917d5acd6a69cdab20390017a"
+        },
+        "notes": []
+      },
+      {
+        "check": "sanctions",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.3,
+        "sourceGroup": "13.237.89.59",
+        "evidence": {
+          "minerId": "78021",
+          "signalHash": "0x1f023ff903e76b29ca5433081033098e5347944ece182c11bb4c8db39d89feb6",
+          "receiptHash": "0x6d6aeb3520f69c744e198f7be3dac288463e4a5e7e1dc00f606d8eca58114e25"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ]
+      },
+      {
+        "check": "contract_audit",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.7,
+        "sourceGroup": "gopluslabs.io",
+        "evidence": {
+          "minerId": "200001",
+          "signalHash": "0xcf752ec82ba8227a44ab9027c37e8787e16f2d5cfd397ea80268dde8748c75ea",
+          "receiptHash": "0x11507c3cab86931bde55652f980ada971e9738d2579df2489e1a045c7c027449"
+        },
+        "notes": []
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "wash_trading",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "ABSTAIN",
+      "coverageBps": 5500
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "amountUusdc": 10000,
+      "durationMs": 2016
+    },
+    {
+      "check": "holder_count",
+      "amountUusdc": 10000,
+      "durationMs": 4698
+    },
+    {
+      "check": "sanctions",
+      "amountUusdc": 10000,
+      "durationMs": 453
+    }
+  ]
+}
