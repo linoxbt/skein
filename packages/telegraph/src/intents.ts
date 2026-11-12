@@ -18,8 +18,6 @@ export const CHECK_INTENTS: Readonly<Record<Check, string | null>> = {
   code_review: "CODE_REVIEW_GENERAL",
 };
 
-export const MEMO_INTENT = "TEXT_SUMMARIZATION_GENERAL";
-
 /**
  * Intents Skein serves. Plan A is a new intent; FRAUD_RISK_GENERAL already
  * exists (11 IP/URL/payment-fraud miners) and is the Plan B candidate.

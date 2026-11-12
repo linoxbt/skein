@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { amountFromTemplate, ChallengeMismatchError, findEscrowAccept, parseTemplate, readChallenge, receiptProblems, signEscrowPayment, TelegraphClient, TESTNET, viemSigner } from "../src";
+import { ChallengeMismatchError, decodeReceipt, parseTemplate, readChallenge, receiptProblems, signEscrowPayment, TelegraphClient, TESTNET, viemSigner } from "../src";
 import { FakeNode, type Behaviour } from "../src/testing/fake-node";
 
 // A throwaway key used only in tests (Hardhat's first default account).
@@ -112,15 +112,31 @@ describe("receipts", () => {
 
 describe("escrow challenge parsing", () => {
   it("reads the amount from the template, not the dollar price", () => {
-    expect(amountFromTemplate(TEMPLATE)).toBe("10000");
-    expect(amountFromTemplate("Price: $0.01")).toBeNull();
+    expect(parseTemplate(TEMPLATE).amountUusdc).toBe("10000");
+    expect(() => parseTemplate("Price: $0.01")).toThrow(ChallengeMismatchError);
   });
   it("prefers the PAYMENT-REQUIRED header and falls back to the body", () => {
     const accept = { scheme: "escrow", network: "n", payTo: "0x1", extra: { message: "m" } };
     const header = Buffer.from(JSON.stringify({ accepts: [accept] })).toString("base64");
-    expect(findEscrowAccept(header, null)).toEqual(accept);
-    expect(findEscrowAccept("not-base64-json", { accepts: [{ scheme: "exact" }, accept] })).toEqual(accept);
-    expect(findEscrowAccept(null, { accepts: [{ scheme: "exact" }] })).toBeNull();
+    expect(readChallenge(header, null)?.escrow).toEqual(accept);
+    expect(readChallenge("not-base64-json", { accepts: [{ scheme: "exact" }, accept] })?.escrow).toEqual(accept);
+    expect(readChallenge(null, { accepts: [{ scheme: "exact" }] })).toBeNull();
+  });
+});
+
+describe("receipt decoding", () => {
+  const enc = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64");
+  const live = { receipt_hash: `0x${"ab".repeat(32)}`, rail: "escrow", payer: "0xaa", miner: 7302, amount_uusdc: 10000, epoch_id: 314, timestamp: 1_762_000_000, extra: "dropped" };
+  it("reads each field by type, keeps ids and amounts as strings, drops unknown fields", () => {
+    expect(decodeReceipt(enc(live))).toEqual({ receipt_hash: live.receipt_hash, rail: "escrow", payer: "0xaa", miner: "7302", amount_uusdc: "10000", epoch_id: 314, timestamp: 1_762_000_000 });
+  });
+  it("is no receipt when a field is missing or of the wrong type, instead of a cast", () => {
+    expect(decodeReceipt(enc({ ...live, payer: undefined }))).toBeNull();
+    expect(decodeReceipt(enc({ ...live, timestamp: "soon" }))).toBeNull();
+    expect(decodeReceipt(enc({ ...live, amount_uusdc: { n: 1 } }))).toBeNull();
+    expect(decodeReceipt(enc([live]))).toBeNull();
+    expect(decodeReceipt("%%%")).toBeNull();
+    expect(decodeReceipt(null)).toBeNull();
   });
 });
 
@@ -214,6 +230,51 @@ describe("TelegraphClient.ask on the escrow rail", () => {
     const { node, client } = setup(() => ({ kind: "answer", result: {} }), { now: () => pre });
     expect(await client.ask(ask, { timeoutMs: 1000 })).toMatchObject({ ok: false, kind: "preseason" });
     expect(node.charges).toHaveLength(0);
+  });
+});
+
+describe("a 402 refusing a sent payment (audit L5)", () => {
+  it("is counted as possibly billed and never retried beside a second signed authorization", async () => {
+    // The node's clock is past the authorization's window, so it refuses the payment.
+    const node = new FakeNode({ respond: () => ({ kind: "answer", result: {} }), nowSec: () => Math.floor(SEASON / 1000) + 3600 });
+    const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(KEY), fetch: node.fetch, maxUusdcPerCall: 50_000, now: () => SEASON });
+    const out = await client.ask(ask, { minerId: "7302", timeoutMs: 1000 });
+    expect(out).toMatchObject({ ok: false, kind: "refused", attempts: 1, httpStatus: 402, paidUusdc: 10_000, billing: "unknown" });
+    expect(node.refusals).toEqual(["expired or not valid yet"]);
+    expect(node.charges).toHaveLength(0);
+  });
+});
+
+describe("one deadline for the whole ask (audit M4)", () => {
+  it("bounds a hanging unpaid probe and its retry by the deadline, not by twice the timeout", async () => {
+    const hang: typeof fetch = (_input, init) => new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)));
+    const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(KEY), fetch: hang, maxUusdcPerCall: 50_000, now: () => SEASON });
+    const t0 = Date.now();
+    const out = await client.ask(ask, { minerId: "7302", timeoutMs: 5_000, deadline: Date.now() + 120 });
+    expect(Date.now() - t0).toBeLessThan(1_000);
+    expect(out).toMatchObject({ ok: false, kind: "timeout", billing: "none", paidUusdc: 0 });
+  });
+
+  it("bounds a paid call by the deadline too, and reports it as possibly billed", async () => {
+    const { node, client } = setup(() => ({ kind: "hang" }));
+    const t0 = Date.now();
+    const out = await client.ask(ask, { minerId: "7302", timeoutMs: 5_000, deadline: Date.now() + 1_300 });
+    expect(Date.now() - t0).toBeLessThan(2_500);
+    expect(out).toMatchObject({ ok: false, kind: "timeout", attempts: 1, billing: "unknown" });
+    expect(node.charges).toHaveLength(0);
+  });
+
+  it("does not pay when too little of the deadline is left to hear the answer", async () => {
+    const { node, client } = setup(() => ({ kind: "answer", result: {} }));
+    const out = await client.ask(ask, { minerId: "7302", timeoutMs: 5_000, deadline: Date.now() + 400 });
+    expect(out).toMatchObject({ ok: false, kind: "timeout", billing: "none", paidUusdc: 0 });
+    expect(node.charges).toHaveLength(0);
+    expect(await client.ask(ask, { minerId: "7302", timeoutMs: 5_000, deadline: Date.now() - 1 })).toMatchObject({ ok: false, kind: "timeout", billing: "none" });
+  });
+
+  it("a signal lookup with no time left is unchecked, not a wait", async () => {
+    const { client } = setup(() => ({ kind: "answer", result: {} }));
+    expect(await client.verifySignal(`0x${"cd".repeat(32)}`, { deadline: Date.now() - 1 })).toBe("unchecked");
   });
 });
 

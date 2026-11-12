@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { isSelfRouting } from "@skein/engine";
 import { describe, expect, it } from "vitest";
-import { ALLOWLIST, CHECK_INTENTS, SERVED_INTENTS, sourceGroup, TelegraphClient, TESTNET } from "../src";
+import { ALLOWLIST, CHECK_INTENTS, networkFromEnv, NetworkConfigError, SERVED_INTENTS, sourceGroup, TelegraphClient, TESTNET } from "../src";
 
 interface Snapshot {
   intents: Record<string, { miner_count: number; miners: { id: string; base_url: string }[] }>;
@@ -88,5 +88,24 @@ describe("miner identity on receipts", () => {
     expect(await client().sameMiner("2859", "9002")).toBe(false);
     expect(await client().sameMiner("4819", "78021")).toBe(false);
     expect(await client().sameMiner("999", "78021")).toBe(false);
+  });
+});
+
+describe("network from the environment (audit L9)", () => {
+  it("defaults to the Telegraph testnet and takes a consistent testnet override", () => {
+    expect(networkFromEnv({})).toEqual(TESTNET);
+    expect(networkFromEnv({ TELEGRAPH_CHAIN_ID: "84532" })).toMatchObject({ chainId: 84532, caip2: "eip155:84532" });
+  });
+  it("refuses a chain id that is not a positive integer, or a CAIP-2 id for another chain", () => {
+    for (const bad of ["base", "1e3", "0", "-1", "11155111.5", " "]) {
+      if (bad.trim() === "") continue;
+      expect(() => networkFromEnv({ TELEGRAPH_CHAIN_ID: bad })).toThrow(NetworkConfigError);
+    }
+    expect(() => networkFromEnv({ TELEGRAPH_CHAIN_ID: "11155111", TELEGRAPH_CAIP2: "eip155:1" })).toThrow(/is not chain 11155111/);
+    expect(() => networkFromEnv({ TELEGRAPH_DIAMOND: "0xdead" })).toThrow(/TELEGRAPH_DIAMOND/);
+  });
+  it("refuses a mainnet unless explicitly allowed", () => {
+    expect(() => networkFromEnv({ TELEGRAPH_CHAIN_ID: "1" })).toThrow(/not a known testnet/);
+    expect(networkFromEnv({ TELEGRAPH_CHAIN_ID: "8453", TELEGRAPH_ALLOW_MAINNET: "1" })).toMatchObject({ chainId: 8453, caip2: "eip155:8453" });
   });
 });

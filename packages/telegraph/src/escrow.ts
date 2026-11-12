@@ -98,10 +98,6 @@ export function readChallenge(headerValue: string | null, body: unknown): Challe
   return null;
 }
 
-export function findEscrowAccept(headerValue: string | null, body: unknown): EscrowAccept | null {
-  return readChallenge(headerValue, body)?.escrow ?? null;
-}
-
 /** The template's fixed lines, in order, and the placeholder each signed field must carry. */
 const TEMPLATE_HEADER = "Telegraph Escrow Payment";
 const TEMPLATE_KEYS = ["Wallet", "Pay To", "Network", "Amount", "Resource", "Nonce", "Valid After", "Valid Before"] as const;
@@ -147,15 +143,6 @@ export function parseTemplate(template: string): ParsedTemplate {
   if (!amount) throw new ChallengeMismatchError("escrow template Amount is not \"N uUSDC\"");
   if (!/^\/v1\/ask(\/[\w.-]+)?$/.test(values.Resource!)) throw new ChallengeMismatchError(`escrow template Resource ${values.Resource} is not an ask`);
   return { payTo: values["Pay To"]!, network: values.Network!, amountUusdc: amount[1]!, resource: values.Resource! };
-}
-
-/** The amount to authorise, read from a strictly parsed template. */
-export function amountFromTemplate(template: string): string | null {
-  try {
-    return parseTemplate(template).amountUusdc;
-  } catch {
-    return null;
-  }
 }
 
 /** Fills the four placeholders; parseTemplate has already proved each occurs exactly once. */
@@ -245,14 +232,45 @@ export async function signEscrowPayment(args: {
   return { header, authorization, amountUusdc };
 }
 
+/**
+ * Reads an X-PAYMENT-RESPONSE receipt, field by field: a receipt whose fields
+ * are missing or of the wrong type is no receipt (null), never a cast. Ids
+ * and amounts the node sends as numbers are kept as strings; unknown fields
+ * are dropped, and strings are bounded.
+ */
 export function decodeReceipt(headerValue: string | null): Receipt | null {
-  if (!headerValue) return null;
+  if (!headerValue || headerValue.length > 16_384) return null;
+  let r: unknown;
   try {
-    const r = JSON.parse(b64decode(headerValue)) as Receipt;
-    return typeof r?.receipt_hash === "string" ? r : null;
+    r = JSON.parse(b64decode(headerValue));
   } catch {
     return null;
   }
+  if (typeof r !== "object" || r === null || Array.isArray(r)) return null;
+  const o = r as Record<string, unknown>;
+  const str = (v: unknown, max = 256): string | undefined => (typeof v === "string" && v.length <= max ? v : undefined);
+  const id = (v: unknown): string | undefined =>
+    typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? String(v) : str(v, 128);
+  const receiptHash = str(o.receipt_hash, 130);
+  const rail = str(o.rail, 32);
+  const payer = str(o.payer, 64);
+  const miner = id(o.miner);
+  const amount = id(o.amount_uusdc);
+  const timestamp = typeof o.timestamp === "number" && Number.isFinite(o.timestamp) ? o.timestamp : undefined;
+  if (!receiptHash || !rail || !payer || miner === undefined || amount === undefined || timestamp === undefined) return null;
+  const epoch = typeof o.epoch_id === "number" && Number.isSafeInteger(o.epoch_id) ? o.epoch_id : undefined;
+  const intent = str(o.intent, 128);
+  const settlement = str(o.settlement, 64);
+  const chain = str(o.chain, 64);
+  const txHash = str(o.tx_hash, 130);
+  return {
+    receipt_hash: receiptHash, rail, payer, miner, amount_uusdc: amount, timestamp,
+    ...(epoch !== undefined ? { epoch_id: epoch } : {}),
+    ...(intent ? { intent } : {}),
+    ...(settlement ? { settlement } : {}),
+    ...(chain ? { chain } : {}),
+    ...(txHash ? { tx_hash: txHash } : {}),
+  };
 }
 
 /**
