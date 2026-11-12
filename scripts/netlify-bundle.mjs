@@ -16,7 +16,9 @@ const root = resolve(import.meta.dirname, "..");
 const app = resolve(appArg);
 const out = resolve(outArg);
 const SKIP = new Set(["node_modules", ".next", ".turbo", "test", ".desk-data", "next-env.d.ts", "tsconfig.tsbuildinfo", "Dockerfile", "dist", ".netlify"]);
-const copyFiltered = (from, to) => cpSync(from, to, { recursive: true, filter: (src) => !SKIP.has(basename(src)) });
+// Local env files hold secrets (keys live in Netlify's environment, never in an upload).
+const isEnvFile = (name) => name.startsWith(".env") && name !== ".env.example";
+const copyFiltered = (from, to) => cpSync(from, to, { recursive: true, filter: (src) => !SKIP.has(basename(src)) && !isEnvFile(basename(src)) });
 
 // Every workspace library, found rather than listed, so a new package can't be missed.
 const workspace = new Map();
@@ -70,7 +72,13 @@ function vendor(name) {
   writeFileSync(join(dest, "package.json"), `${JSON.stringify(rewrite(pkg, ".."), null, 2)}\n`);
 }
 
-const appPkg = JSON.parse(readFileSync(join(app, "package.json"), "utf8"));
-writeFileSync(join(out, "package.json"), `${JSON.stringify(rewrite(appPkg, "./vendor"), null, 2)}\n`);
+const appPkg = rewrite(JSON.parse(readFileSync(join(app, "package.json"), "utf8")), "./vendor");
+// The workspace's security pins (root package.json pnpm.overrides, e.g. postcss)
+// must hold in the npm install too: npm's overrides take a package name, so a
+// range-scoped pnpm key ("postcss@<8.5.23") pins every copy to the fixed version.
+const rootOverrides = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).pnpm?.overrides ?? {};
+const overrides = Object.fromEntries(Object.entries(rootOverrides).map(([key, version]) => [key.replace(/(.)@.*$/, "$1"), version]));
+if (Object.keys(overrides).length > 0) appPkg.overrides = { ...(appPkg.overrides ?? {}), ...overrides };
+writeFileSync(join(out, "package.json"), `${JSON.stringify(appPkg, null, 2)}\n`);
 if (existsSync(join(out, "vendor"))) console.log(`vendored: ${[...vendored].join(", ")}`);
 console.log(`bundle ready: ${out}`);

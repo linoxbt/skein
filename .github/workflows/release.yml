@@ -4,8 +4,12 @@ name: Release packages
 # pnpm publish -r skips any package whose version is already on npm, so
 # re-running after a partial release only publishes what is missing.
 #
-# Needs the repository secret NPM_TOKEN: an npm granular access token with
-# read and write access to the @skeinlabs scope.
+# Authentication: npm trusted publishing (OIDC) when the packages are linked to
+# this workflow on npmjs.com (Settings > Trusted publishing: repository
+# linoxbt/skein, workflow release.yml, environment npm). Until then the
+# repository secret NPM_TOKEN (a granular token for the @skeinlabs scope) is
+# used. Either way the job runs in the "npm" environment, so required
+# reviewers set on that environment gate every publish.
 on:
   workflow_dispatch:
     inputs:
@@ -23,15 +27,28 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: npm
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
+      # A tag names the version it publishes: v0.3.1 must match both package.json files.
+      - name: Tag matches package versions
+        if: github.ref_type == 'tag'
+        run: |
+          set -eu
+          want="${GITHUB_REF_NAME#v}"
+          for p in packages/sdk packages/mcp; do
+            have=$(node -p "require('./$p/package.json').version")
+            [ "$have" = "$want" ] || { echo "::error::$p is $have, tag is $GITHUB_REF_NAME"; exit 1; }
+          done
+      # Trusted publishing needs npm 11.5 or later.
+      - run: npm install -g npm@11.6.2
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp typecheck
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp test
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp build

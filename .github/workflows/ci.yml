@@ -1,14 +1,25 @@
 name: CI
 on:
   push:
+    branches: [main]
   pull_request:
+
+# Read-only token: CI never writes to the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch or PR supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -19,17 +30,21 @@ jobs:
       - run: pnpm test
       # The packages outside teams install must build.
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp build
-      # Spec section 14: every stored verdict replays to the same hash with the engine that sealed it.
+      # Skein Desk deploys from Netlify, which does not wait for CI: build it here so a break never reaches production unseen.
+      - run: pnpm --filter @skein/desk build
+      # Spec section 14: every stored verdict replays to the same hash with the engine that sealed it,
+      # the simulated fixtures and every real evaluation run.
       - run: pnpm repro eval/verdicts
+      - run: pnpm repro eval/runs
       # The property tests at the depth DECISIONS D8 claims.
       - run: FC_RUNS=20000 pnpm --filter @skein/engine exec vitest run test/properties.test.ts --testTimeout=900000
 
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -56,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: ci-only-password
           POSTGRES_DB: skein
@@ -64,9 +79,9 @@ jobs:
         options: >-
           --name pg --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
