@@ -3,40 +3,40 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 /**
  * Webhook signing and secret storage.
  *
- * Each delivery is a POST with these headers:
- *   X-Skein-Event:        verdict.completed
- *   X-Skein-Timestamp:    <unix seconds when the delivery was signed>
- *   X-Skein-Signature-V2: sha256=<hex HMAC-SHA256(secret, "<timestamp>.<raw body>")>
- *   X-Skein-Signature:    sha256=<hex HMAC-SHA256(secret, <raw body>)>   (legacy)
- * A receiver should check V2 and refuse a timestamp more than 5 minutes from
- * its clock (spec §9): that is what stops a captured delivery from being
- * replayed. The legacy header signs the body alone, so it proves origin but
- * not freshness; it is kept for receivers on SDK <= 0.3 and will be dropped.
+ * Each delivery is a POST with these headers (what @skeinlabs/sdk >= 0.3.1 verifyWebhook checks):
+ *   X-Skein-Event:     verdict.completed | verdict.refused
+ *   X-Skein-Timestamp: <unix seconds when the delivery was signed>
+ *   X-Skein-Signature: sha256=<hex HMAC-SHA256(secret, "<timestamp>.<raw body>")>
+ * A receiver refuses a timestamp more than 5 minutes from its clock (spec §9):
+ * that is what stops a captured delivery from being replayed. Until
+ * 2026-11-12 X-Skein-Signature signed the body alone, with no timestamp; SDK
+ * verifyWebhook accepts that older form only with allowLegacyBodyOnly.
  *
- * The body's `event` is "verdict.completed" (the spec's name) for every
- * finished run, with `status` "done" or "refused". `legacyEvent` carries the
- * name sent before 2026-11-12 ("verdict.done" or "verdict.refused").
+ * The body's `event` is "verdict.completed" (the spec's name) when a verdict
+ * is sealed and "verdict.refused" when the request was refused, with `status`
+ * "done" or "refused". `legacyEvent` carries the name sent before 2026-11-12
+ * ("verdict.done" or "verdict.refused").
  */
 export const WEBHOOK_TOLERANCE_SEC = 300;
 
-export const signV1 = (secret: string, body: string) => `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
-export const signV2 = (secret: string, timestamp: number, body: string) => `sha256=${createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex")}`;
+export const signDelivery = (secret: string, timestamp: number, body: string) => `sha256=${createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex")}`;
 
-export function webhookHeaders(secret: string, body: string, nowSec: number): Record<string, string> {
+export const webhookEvent = (status: string) => (status === "done" ? "verdict.completed" : `verdict.${status}`);
+
+export function webhookHeaders(secret: string, body: string, nowSec: number, event: string): Record<string, string> {
   return {
     "content-type": "application/json",
-    "x-skein-event": "verdict.completed",
+    "x-skein-event": event,
     "x-skein-timestamp": String(nowSec),
-    "x-skein-signature-v2": signV2(secret, nowSec, body),
-    "x-skein-signature": signV1(secret, body),
+    "x-skein-signature": signDelivery(secret, nowSec, body),
   };
 }
 
 /** The receiver's check, as the SDK implements it (here for tests and for reference). */
-export function verifyV2(secret: string, body: string, timestampHeader: string | null, signatureHeader: string | null, nowSec: number): boolean {
+export function verifyDelivery(secret: string, body: string, timestampHeader: string | null, signatureHeader: string | null, nowSec: number): boolean {
   const ts = Number(timestampHeader);
   if (!Number.isInteger(ts) || Math.abs(nowSec - ts) > WEBHOOK_TOLERANCE_SEC || !signatureHeader) return false;
-  const want = Buffer.from(signV2(secret, ts, body));
+  const want = Buffer.from(signDelivery(secret, ts, body));
   const got = Buffer.from(signatureHeader);
   return want.length === got.length && timingSafeEqual(want, got);
 }

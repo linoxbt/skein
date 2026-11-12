@@ -11,6 +11,7 @@ import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { streamSSE } from "hono/streaming";
+import { getAddress } from "viem";
 import { z } from "zod";
 import { ApiError, errorResponse } from "./errors";
 import { acquireFlight, releaseFlight, SharedRateLimiter, type Limiter } from "./limits";
@@ -590,7 +591,7 @@ export function createApp(service: VerdictService) {
   };
 
   const paymentHeaders = (c: Context, pay: PaymentRow, refund: number | undefined) => {
-    if (pay.txHash) c.header("X-PAYMENT-RESPONSE", paymentResponse({ transaction: pay.txHash, network: pay.network, payer: pay.payer }));
+    if (pay.txHash) c.header("X-PAYMENT-RESPONSE", paymentResponse({ transaction: pay.txHash, network: pay.network, payer: getAddress(pay.payer) }));
     c.header("X-Skein-Payment", refund ? `settled; refund owed ${usdc(refund)} USDC` : "settled");
   };
 
@@ -1206,9 +1207,8 @@ export function createApp(service: VerdictService) {
       {
         url,
         secret,
-        signature: `X-Skein-Signature-V2: sha256=HMAC_SHA256(secret, X-Skein-Timestamp + "." + body); refuse a timestamp more than ${WEBHOOK_TOLERANCE_SEC} s old`,
-        legacySignature: "X-Skein-Signature: sha256=HMAC_SHA256(secret, body) (no replay protection; deprecated)",
-        events: ["verdict.completed"],
+        signature: `X-Skein-Signature: sha256=HMAC_SHA256(secret, X-Skein-Timestamp + "." + body); refuse a timestamp more than ${WEBHOOK_TOLERANCE_SEC} s old (@skeinlabs/sdk verifyWebhook does both)`,
+        events: ["verdict.completed", "verdict.refused"],
       },
       201,
     );

@@ -20,7 +20,7 @@ import { Attester } from "./attest";
 import type { ApiConfig } from "./config";
 import { acquireFlight, releaseFlight } from "./limits";
 import { pinnedFetch, resolveSafeUrl, type Lookup } from "./safeurl";
-import { openSecret, webhookHeaders } from "./webhooks";
+import { openSecret, webhookEvent, webhookHeaders } from "./webhooks";
 
 export interface ServiceDeps {
   db: Db;
@@ -390,7 +390,8 @@ export class VerdictService {
       .from(schema.webhooks)
       .where(and(eq(schema.webhooks.consumerId, req.consumer.id), eq(schema.webhooks.active, true)))
       .catch(() => []);
-    const payload = JSON.stringify({ event: "verdict.completed", legacyEvent: `verdict.${body.status}`, runId: req.id, ...body });
+    const event = webhookEvent(String(body.status));
+    const payload = JSON.stringify({ event, legacyEvent: `verdict.${body.status}`, runId: req.id, ...body });
     for (const h of hooks) {
       const secret = openSecret(h.secret, h.secretHash, this.deps.config.webhookSecretKey);
       if (!secret) {
@@ -412,7 +413,7 @@ export class VerdictService {
           // Signed per attempt: the timestamp is the moment of sending, so a retry is fresh too.
           const res = await send(h.url, {
             method: "POST",
-            headers: webhookHeaders(secret, payload, Math.floor(this.now().getTime() / 1000)),
+            headers: webhookHeaders(secret, payload, Math.floor(this.now().getTime() / 1000), event),
             body: payload,
             signal: ctl.signal,
             // A redirect could point anywhere, including inward: never follow one.

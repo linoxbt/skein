@@ -4,7 +4,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { walletState } from "../src/app";
 import { simulatedApi } from "../src/simulated";
-import { openSecret, verifyV2 } from "../src/webhooks";
+import { verifyWebhook } from "../../../packages/sdk/src/webhooks";
+import { openSecret, verifyDelivery } from "../src/webhooks";
 
 type Api = Awaited<ReturnType<typeof simulatedApi>>;
 let n = 0;
@@ -185,7 +186,7 @@ describe("keys and webhooks", () => {
       return new Response("ok");
     };
     const reg = await j(api.app.request("/v1/webhooks", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${api.key}` }, body: JSON.stringify({ url: "https://hooks.example.com/skein" }) }));
-    expect(reg.events).toEqual(["verdict.completed"]);
+    expect(reg.events).toEqual(["verdict.completed", "verdict.refused"]);
     const { post } = client(api);
     const started = await j(post({ subject: { chainId: 8453, token: tok() }, mode: "async" }));
     await api.service.running.get(started.id);
@@ -194,14 +195,31 @@ describe("keys and webhooks", () => {
     expect(hit).toBeTruthy();
     const ts = hit.headers.get("x-skein-timestamp")!;
     expect(Math.abs(Number(ts) - Date.now() / 1000)).toBeLessThan(60);
-    expect(hit.headers.get("x-skein-signature-v2")).toBe(`sha256=${createHmac("sha256", reg.secret).update(`${ts}.${hit.body}`).digest("hex")}`);
-    expect(verifyV2(reg.secret, hit.body, ts, hit.headers.get("x-skein-signature-v2"), Math.floor(Date.now() / 1000))).toBe(true);
-    // Replayed later, the same delivery fails the receiver's check.
-    expect(verifyV2(reg.secret, hit.body, ts, hit.headers.get("x-skein-signature-v2"), Number(ts) + 301)).toBe(false);
-    // The legacy header still signs the body alone, for receivers on SDK <= 0.3.
-    expect(hit.headers.get("x-skein-signature")).toBe(`sha256=${createHmac("sha256", reg.secret).update(hit.body).digest("hex")}`);
+    expect(hit.headers.get("x-skein-signature")).toBe(`sha256=${createHmac("sha256", reg.secret).update(`${ts}.${hit.body}`).digest("hex")}`);
+    expect(hit.headers.has("x-skein-signature-v2")).toBe(false);
+    // The SDK's own check accepts it, refuses it replayed past 5 minutes, and refuses a body-only signature.
+    expect(await verifyWebhook(hit.body, hit.headers, reg.secret)).toBe(true);
+    expect(await verifyWebhook(hit.body, hit.headers, reg.secret, { now: (Number(ts) + 301) * 1000 })).toBe(false);
+    expect(verifyDelivery(reg.secret, hit.body, ts, hit.headers.get("x-skein-signature"), Number(ts) + 301)).toBe(false);
+    expect(await verifyWebhook(hit.body, `sha256=${createHmac("sha256", reg.secret).update(hit.body).digest("hex")}`, reg.secret)).toBe(false);
     expect(hit.headers.get("x-skein-event")).toBe("verdict.completed");
     expect(JSON.parse(hit.body)).toMatchObject({ event: "verdict.completed", legacyEvent: "verdict.done", status: "done", id: started.id });
+  });
+
+  it("names a refused run's delivery verdict.refused", async () => {
+    const delivered: { body: string; headers: Headers }[] = [];
+    api.service.deps.fetch = async (_url, init) => {
+      delivered.push({ body: String(init?.body), headers: new Headers(init?.headers) });
+      return new Response("ok");
+    };
+    const { post } = client(api);
+    const started = await j(post({ subject: { chainId: 8453, token: tok() }, budgetUsdcMax: 0.001, mode: "async" }));
+    await api.service.running.get(started.id);
+    await Promise.all([...api.service.deliveries]);
+    const hit = delivered.find((d) => d.body.includes(started.id));
+    expect(hit).toBeTruthy();
+    expect(hit!.headers.get("x-skein-event")).toBe("verdict.refused");
+    expect(JSON.parse(hit!.body)).toMatchObject({ event: "verdict.refused", status: "refused" });
   });
 
   it("keeps webhook secrets encrypted at rest when WEBHOOK_SECRET_KEY is set, and signs with the decrypted one", async () => {
@@ -223,7 +241,7 @@ describe("keys and webhooks", () => {
     await enc.service.running.get(started.id);
     await Promise.all([...enc.service.deliveries]);
     const hit = delivered.find((d) => d.body.includes(started.id))!;
-    expect(verifyV2(reg.secret, hit.body, hit.headers.get("x-skein-timestamp"), hit.headers.get("x-skein-signature-v2"), Math.floor(Date.now() / 1000))).toBe(true);
+    expect(await verifyWebhook(hit.body, hit.headers, reg.secret)).toBe(true);
   });
 
   it("shows the caller's webhook without its secret, and turns it off", async () => {
