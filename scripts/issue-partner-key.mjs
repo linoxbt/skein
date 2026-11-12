@@ -8,7 +8,7 @@
 //
 // To revoke a key later, add its hash to REVOKED_KEY_HASHES.
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 
 const [name, kind, cap, file] = process.argv.slice(2);
 const usage = "usage: node scripts/issue-partner-key.mjs <name> <agent|team|contract> <daily cap USDC> <key file>";
@@ -17,11 +17,16 @@ if (!/^[\w .@-]{1,64}$/.test(name) || name.includes("|") || name.includes(",")) 
 if (!["agent", "team", "contract"].includes(kind)) throw new Error("kind must be agent, team or contract");
 const capUsdc = Number(cap);
 if (!Number.isFinite(capUsdc) || capUsdc < 0 || capUsdc > 100) throw new Error("daily cap: a number of USDC from 0 to 100");
-if (existsSync(file)) throw new Error(`${file} exists; refusing to overwrite a key`);
 
 const key = `sk_part_${randomBytes(24).toString("base64url")}`;
 const hash = createHash("sha256").update(key).digest("hex");
-writeFileSync(file, `${key}\n`, { mode: 0o600 });
+// "wx": create the file or fail if it exists, in one step (no check-then-write race); 600 from creation.
+try {
+  writeFileSync(file, `${key}\n`, { mode: 0o600, flag: "wx" });
+} catch (e) {
+  if (e.code === "EEXIST") throw new Error(`${file} exists; refusing to overwrite a key`);
+  throw e;
+}
 
 console.log(`${name}|${kind}|${hash}|${capUsdc}`);
 console.error(`key written to ${file} (mode 600). Append the line above to SEED_CONSUMERS and redeploy the api service.`);
