@@ -385,3 +385,14 @@ Rotate in this order, each in its host's secret store, and redeploy:
    `miner/tools.ts install-key`, then set it on the API.
 5. **`WEBHOOK_SECRET_KEY`**: changing it makes stored webhook secrets
    unreadable; ask subscribers to re-register.
+
+## Releasing the SDK and MCP
+
+Run the Release workflow (Actions → Release packages → Run workflow) on `main`
+only after Railway has deployed that commit: Railway counts every check suite
+on a commit, so a release run that fails (an npm auth error, say) makes it skip
+the deploy, which then needs a manual redeploy. npm holds each version until the
+owner approves it (OWNER_STEPS). If the publish step fails with `ENEEDAUTH`, the
+`NPM_TOKEN` secret is missing or no longer accepted: npm is restricting tokens
+that bypass 2FA, and the fix is a new granular token or trusted publishing.
+

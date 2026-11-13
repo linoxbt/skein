@@ -29,9 +29,16 @@ need your two-factor code, which the build tools are not allowed to do.
    `SEED_CONSUMERS` on the Railway api service, set the key in `sniper.key` as
    `SNIPER_SKEIN_KEY` on the sniper service, and add the old key's hash to
    `REVOKED_KEY_HASHES` on the api service.
-5. **Approve the 0.3.1 release on npm** once it is published by the release
-   workflow: <https://www.npmjs.com/package/@skeinlabs/sdk> → **Staged
-   Packages** → **Approve**, then the same for `@skeinlabs/mcp` (SDK first).
+5. **Publish 0.3.1 to npm.** The release workflow's first run (Nov 13) was
+   refused by npm with `ENEEDAUTH`: npm is restricting tokens that bypass 2FA.
+   Create a new granular access token on npmjs.com (Access Tokens → Generate →
+   Granular, read and write on the `@skeinlabs` scope) and store it as the
+   repository secret `NPM_TOKEN`
+   (<https://github.com/linoxbt/skein/settings/secrets/actions>), or link
+   trusted publishing (below). Then run Actions → **Release packages** → Run
+   workflow on `main`, and approve each staged version:
+   <https://www.npmjs.com/package/@skeinlabs/sdk> → **Staged Packages** →
+   **Approve**, then the same for `@skeinlabs/mcp` (SDK first).
 6. **Protect `main`:** <https://github.com/linoxbt/skein/settings/branches> →
    **Add classic branch protection rule** → pattern `main` → **Require status
    checks to pass** → add `check`, `e2e` and `loadtest` → **Create**.

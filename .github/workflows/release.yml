@@ -4,12 +4,16 @@ name: Release packages
 # pnpm publish -r skips any package whose version is already on npm, so
 # re-running after a partial release only publishes what is missing.
 #
-# Authentication: npm trusted publishing (OIDC) when the packages are linked to
-# this workflow on npmjs.com (Settings > Trusted publishing: repository
-# linoxbt/skein, workflow release.yml, environment npm). Until then the
-# repository secret NPM_TOKEN (a granular token for the @skeinlabs scope) is
-# used. Either way the job runs in the "npm" environment, so required
-# reviewers set on that environment gate every publish.
+# Authentication: the repository secret NPM_TOKEN (a granular token for the
+# @skeinlabs scope); npm holds each token-published version until the owner
+# approves it with 2FA. The job runs in the "npm" environment, so required
+# reviewers set on that environment gate every publish. Moving to npm trusted
+# publishing (OIDC) needs the packages linked on npmjs.com first, and npm 11.5+
+# in this job; see docs/guides/OWNER_STEPS.md.
+#
+# Run it only on a commit Railway has already deployed: Railway's "wait for CI"
+# counts every check suite on a commit, so a failed release run would make it
+# skip that commit's deploy.
 on:
   workflow_dispatch:
     inputs:
@@ -47,8 +51,6 @@ jobs:
             have=$(node -p "require('./$p/package.json').version")
             [ "$have" = "$want" ] || { echo "::error::$p is $have, tag is $GITHUB_REF_NAME"; exit 1; }
           done
-      # Trusted publishing needs npm 11.5 or later.
-      - run: npm install -g npm@11.6.2
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp typecheck
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp test
       - run: pnpm --filter @skeinlabs/sdk --filter @skeinlabs/mcp build
