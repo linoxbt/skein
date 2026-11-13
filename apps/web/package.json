@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --testTimeout=30000"
   },
   "dependencies": {
     "@skein/engine": "workspace:*",

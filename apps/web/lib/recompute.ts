@@ -82,8 +82,14 @@ const modesToTry = (v: VerdictObject): VerdictMode[] => (v.network === "simulate
 /** Engines that sealed before the run's mode went into the hash (0.4.0). */
 const MODELESS = new Set(["0.1.0", "0.2.0", "0.3.0"]);
 
-/** Most assignments of adapter versions tried before giving up. */
-const MAX_ASSIGNMENTS = 4096;
+/**
+ * Most assignments of adapter versions tried before giving up. Verdicts served
+ * since the audit name each finding's adapter version, so there is nothing to
+ * search; for older ones the true assignment is the first or one change away
+ * in practice, and a cap keeps a tampered verdict from costing seconds on a
+ * phone before it fails.
+ */
+const MAX_ASSIGNMENTS = 512;
 
 /**
  * Each finding's adapter version is part of the sealed findings, but older
