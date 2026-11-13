@@ -507,6 +507,16 @@ describe("the OFAC snapshot (audit M2)", () => {
     const later = new Date(Date.parse(`${fetched}T00:00:00Z`) + 15 * 86_400_000);
     expect(sdnSnapshotStatus(later)).toMatchObject({ ageDays: 15, stale: true });
   });
+  it("includes addresses OFAC lists only in sdn_comments.csv (31 were missed before 2026-11-13)", () => {
+    // SDN entry 39585 continues its remarks in sdn_comments.csv; this address is only there.
+    expect(screenAddresses({ deployer: "0x04dba1194ee10112fe6c3207c0687def0e78bacf" })).toEqual([
+      expect.objectContaining({ field: "deployer", sdnUid: "39585" }),
+    ]);
+    expect(Object.keys(sdnSnapshot().addresses).length).toBeGreaterThanOrEqual(125);
+    expect(sdnSnapshot().sources?.map((x) => x.url.split("/").pop())).toEqual(["sdn.csv", "sdn_comments.csv"]);
+    // Older verdicts cite the Nov 11 snapshot; it must stay known.
+    expect(SHIPPED_SDN_SNAPSHOTS).toContain("7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8");
+  });
   it("the shipped snapshot is listed, so verdicts citing it keep replaying after a refresh", () => {
     expect(SHIPPED_SDN_SNAPSHOTS).toContain(sdnSnapshot().sourceSha256);
     expect(knownLists()[sdnSnapshot().list]).toContain(sdnSnapshot().sourceSha256);
