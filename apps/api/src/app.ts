@@ -1157,6 +1157,23 @@ export function createApp(service: VerdictService) {
       .groupBy(schema.verdicts.verdict);
     const [ab] = await db.select({ n: count(), last7d: sql<number>`count(*) FILTER (WHERE ${schema.verdicts.createdAt} > now() - interval '7 days')::int` }).from(schema.verdicts).where(eq(schema.verdicts.verdict, "ABSTAIN"));
     const causeRows = rowsOf<{ code: string; check: string; status: string; note: string; n: number; last7d: number }>(causes);
+    // Verdicts and upstream spend per UTC day, over the window (the /ledger charts).
+    const days = await db.execute(sql`
+      SELECT to_char(date_trunc('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day, verdict, count(*)::int AS n, coalesce(sum(upstream_uusdc), 0)::bigint AS up
+      FROM ${schema.verdicts} WHERE created_at > ${windowStart} GROUP BY 1, 2 ORDER BY 1`);
+    const byDay = new Map<string, { day: string; verdicts: Record<string, number>; upstreamUusdc: number }>();
+    for (const r of rowsOf<{ day: string; verdict: string; n: number; up: string | number }>(days)) {
+      const d = byDay.get(r.day) ?? { day: r.day, verdicts: {}, upstreamUusdc: 0 };
+      d.verdicts[r.verdict] = Number(r.n);
+      d.upstreamUusdc += Number(r.up);
+      byDay.set(r.day, d);
+    }
+    // Distinct miners Skein paid per check, over the window.
+    const perCheck = await db
+      .select({ check: schema.purchases.check, n: sql<string>`count(distinct ${schema.purchases.minerId})` })
+      .from(schema.purchases)
+      .where(and(gt(schema.purchases.createdAt, windowStart), sql`${schema.purchases.amountUusdc} > 0`))
+      .groupBy(schema.purchases.check);
     return {
       network: config.networkLabel ?? config.network.caip2,
       verdicts: Object.fromEntries(byVerdict.map((r) => [r.verdict, r.n])),
@@ -1177,6 +1194,8 @@ export function createApp(service: VerdictService) {
         windowDays: LEDGER_WINDOW_DAYS,
         byEngine: stabRows.map((r) => ({ engine: r.engine, pairs: Number(r.pairs), same: Number(r.same), rate: Number(r.pairs) ? Number(r.same) / Number(r.pairs) : null })),
       },
+      byDay: [...byDay.values()].map((d) => ({ day: d.day, verdicts: d.verdicts, upstreamUsdc: usdc(d.upstreamUusdc) })),
+      minersByCheck: Object.fromEntries(perCheck.map((r) => [r.check, Number(r.n)])),
       recent,
     };
   });
