@@ -13,7 +13,14 @@ const inter = localFont({
   variable: "--font-inter-tight",
   display: "swap",
 });
-const grotesk = localFont({ src: [{ path: "./fonts/space-grotesk-latin-500-normal.woff2", weight: "500" }], variable: "--font-grotesk", display: "swap" });
+const grotesk = localFont({
+  src: [
+    { path: "./fonts/space-grotesk-latin-400-normal.woff2", weight: "400" },
+    { path: "./fonts/space-grotesk-latin-500-normal.woff2", weight: "500" },
+  ],
+  variable: "--font-grotesk",
+  display: "swap",
+});
 const mono = localFont({
   src: [
     { path: "./fonts/jetbrains-mono-latin-400-normal.woff2", weight: "400" },
