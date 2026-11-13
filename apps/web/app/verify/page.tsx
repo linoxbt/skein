@@ -232,8 +232,8 @@ function VerifyInner() {
               {result.server ? (
                 <>
                   <p className="mt-3 max-w-3xl text-ink-2">
-                    The raw paid answers are not public, so only the API can re-read them with the recorded adapters, match receipts to its
-                    purchase log, and look each signal up on the Telegraph node. Its report, as it answered:{" "}
+                    The API also re-reads the raw paid answers with the recorded adapters (it returns them under <code>inputs</code>), matches
+                    receipts to its purchase log, and looks each signal up on the Telegraph node. Its report, as it answered:{" "}
                     <strong className={result.server.ok ? "text-thread-deep" : "text-reject-deep"}>{result.server.ok ? "ok" : "not ok"}</strong>.
                   </p>
                   <ul className="mt-6 grid gap-px bg-rule md:grid-cols-2 md:[&>li:last-child:nth-child(odd)]:col-span-2" data-testid="server-checks">

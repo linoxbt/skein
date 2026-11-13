@@ -6,10 +6,10 @@
  * with the frozen engine that sealed the verdict (@skein/engine, the same
  * code the API runs), the verdict hash and the receipts' Merkle root are
  * recomputed, and the EIP-191 signature is recovered and compared with the
- * attester address Skein publishes. The raw paid answers are not public, so
- * re-deriving findings from them and looking signals up on the Telegraph
- * node stay with the API's /v1/verify; the page shows that report beside
- * this one.
+ * attester address Skein publishes. Re-deriving findings from the raw paid
+ * answers (which /v1/verify returns as inputs) and looking signals up on the
+ * Telegraph node stay with the API's /v1/verify; the page shows that report
+ * beside this one.
  */
 import {
   ALL_ADAPTER_VERSIONS,

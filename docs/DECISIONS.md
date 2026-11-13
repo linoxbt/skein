@@ -760,6 +760,15 @@ uptime probe and the prospective benchmark now alert through an issue and the
 run summary instead of failing. Benchmark intervals are 95% Wilson intervals,
 and every table shows the APPROVE rate next to false APPROVE.
 
+**L41. The OFAC address screen reads sdn_comments.csv too.** OFAC cuts an
+entry's remarks at a fixed length and continues them in `sdn_comments.csv`, so
+an entry with many addresses lists some of them only there. The Nov 11 snapshot
+read only `sdn.csv` and missed 31 of OFAC's 125 EVM addresses. The snapshot is
+rebuilt from both files; it records each file's sha256, and the sha256 a
+finding cites is the sha256 of those two digests joined by a newline, so it can
+be recomputed from Treasury's files. The Nov 11 snapshot's sha256 stays in
+`SHIPPED_SDN_SNAPSHOTS`, so verdicts that cite it still replay.
+
 ## Spec deviations recorded by the audit
 
 - **No OpenTelemetry traces (spec §15).** Errors go to Sentry and `error_log`,
