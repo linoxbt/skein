@@ -16,7 +16,10 @@ export interface SdnEntry {
 export interface SdnSnapshot {
   list: string;
   source: string;
+  /** Treasury's files and their sha256 (sdn.csv and sdn_comments.csv since 2026-11-13). */
+  sources?: { url: string; sha256: string }[];
   fetched: string;
+  /** What a finding cites: since 2026-11-13, sha256 of the sources' hex digests joined by "\n" (scripts/ofac-snapshot.py). */
   sourceSha256: string;
   addresses: Record<string, SdnEntry[]>;
 }
@@ -61,7 +64,8 @@ export function sdnSnapshotStatus(now: Date = new Date(), snap: SdnSnapshot = sd
  * the previous sha256 is appended here, never replaced.
  */
 export const SHIPPED_SDN_SNAPSHOTS: readonly string[] = [
-  "7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8", // 2026-11-11
+  "7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8", // 2026-11-11 (sdn.csv only)
+  "b2679e38cc2e2363050847c58f6c8f33465c2994b0c6a21bb69e962e9aae984d", // 2026-11-13 (sdn.csv + sdn_comments.csv: 31 more addresses)
 ];
 
 /** The list snapshots Skein ships, for reproduce(): a list finding must cite one of them. */

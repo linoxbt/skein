@@ -1,8 +1,18 @@
 {
  "list": "OFAC SDN",
  "source": "https://www.treasury.gov/ofac/downloads/sdn.csv",
- "fetched": "2026-11-11",
- "sourceSha256": "7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8",
+ "sources": [
+  {
+   "url": "https://www.treasury.gov/ofac/downloads/sdn.csv",
+   "sha256": "7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8"
+  },
+  {
+   "url": "https://www.treasury.gov/ofac/downloads/sdn_comments.csv",
+   "sha256": "8255ce1eb2b85e08bac9e378eb8b28c59ca4926a3645f9421502cc11d48b86f1"
+  }
+ ],
+ "fetched": "2026-11-13",
+ "sourceSha256": "b2679e38cc2e2363050847c58f6c8f33465c2994b0c6a21bb69e962e9aae984d",
  "addresses": {
   "0x0330070fd38ec3bb94f58fa55d40368271e9e54a": [
    {
@@ -18,10 +28,24 @@
     "currency": "ETH"
    }
   ],
+  "0x04dba1194ee10112fe6c3207c0687def0e78bacf": [
+   {
+    "sdnUid": "39585",
+    "name": "PEIJNENBURG, Alex Adrianus Martinus",
+    "currency": "ETH"
+   }
+  ],
   "0x08723392ed15743cc38513c4925f5e6be5c17243": [
    {
     "sdnUid": "27307",
     "name": "LAZARUS GROUP",
+    "currency": "ETH"
+   }
+  ],
+  "0x08b2efdcdb8822efe5ad0eae55517cf5dc544251": [
+   {
+    "sdnUid": "39585",
+    "name": "PEIJNENBURG, Alex Adrianus Martinus",
     "currency": "ETH"
    }
   ],
@@ -36,6 +60,13 @@
    {
     "sdnUid": "27307",
     "name": "LAZARUS GROUP",
+    "currency": "ETH"
+   }
+  ],
+  "0x0ee5067b06776a89ccc7dc8ee369984ad7db5e06": [
+   {
+    "sdnUid": "39585",
+    "name": "PEIJNENBURG, Alex Adrianus Martinus",
     "currency": "ETH"
    }
   ],
@@ -67,11 +98,30 @@
     "currency": "USDT"
    }
   ],
+  "0x1967d8af5bd86a497fb3dd7899a020e47560daaf": [
+   {
+    "sdnUid": "39593",
+    "name": "GRIMM, Matthew Simon",
+    "currency": "ETH"
+   }
+  ],
   "0x1999ef52700c34de7ec2b68a28aafb37db0c5ade": [
    {
     "sdnUid": "52071",
     "name": "MAGOMEDOV, Khadzhi Murat Dalgatovich",
     "currency": "ETH"
+   }
+  ],
+  "0x19aa5fe80d33a56d56c78e82ea5e50e5d80b4dff": [
+   {
+    "sdnUid": "33151",
+    "name": "SUEX OTC, S.R.O.",
+    "currency": "ETH"
+   },
+   {
+    "sdnUid": "33151",
+    "name": "SUEX OTC, S.R.O.",
+    "currency": "USDT"
    }
   ],
   "0x19f8f2b0915daa12a3f5c9cf01df9e24d53794f7": [
@@ -102,6 +152,13 @@
     "currency": "ETH"
    }
   ],
+  "0x1da5821544e25c636c1417ba96ade4cf6d2f9b5a": [
+   {
+    "sdnUid": "30518",
+    "name": "SECONDEYE SOLUTION",
+    "currency": "ETH"
+   }
+  ],
   "0x21b8d56bda776bbe68655a16895afd96f5534fed": [
    {
     "sdnUid": "47635",
@@ -127,6 +184,25 @@
    {
     "sdnUid": "57978",
     "name": "RASHEVSKYI, Dmytro",
+    "currency": "ETH"
+   }
+  ],
+  "0x2f389ce8bd8ff92de3402ffce4691d17fc4f6535": [
+   {
+    "sdnUid": "33151",
+    "name": "SUEX OTC, S.R.O.",
+    "currency": "ETH"
+   },
+   {
+    "sdnUid": "33151",
+    "name": "SUEX OTC, S.R.O.",
+    "currency": "USDT"
+   }
+  ],
+  "0x308ed4b7b49797e1a98d3818bff6fe5385410370": [
+   {
+    "sdnUid": "33151",
+    "name": "SUEX OTC, S.R.O.",
     "currency": "ETH"
    }
   ],
@@ -200,6 +276,13 @@
     "currency": "ETH"
    }
   ],
+  "0x48549a34ae37b12f6a30566245176994e17c6b4a": [
+   {
+    "sdnUid": "33854",
+    "name": "CHATEX",
+    "currency": "ETH"
+   }
+  ],
   "0x4f428c11dc82388fa5136d636e613ad923eb700b": [
    {
     "sdnUid": "57107",
@@ -211,6 +294,23 @@
    {
     "sdnUid": "42498",
     "name": "SIM, Hyon Sop",
+    "currency": "ETH"
+   },
+   {
+    "sdnUid": "42498",
+    "name": "SIM, Hyon Sop",
+    "currency": "ARB"
+   },
+   {
+    "sdnUid": "42498",
+    "name": "SIM, Hyon Sop",
+    "currency": "BSC"
+   }
+  ],
+  "0x502371699497d08d5339c870851898d6d72521dd": [
+   {
+    "sdnUid": "39585",
+    "name": "PEIJNENBURG, Alex Adrianus Martinus",
     "currency": "ETH"
    }
   ],
@@ -235,6 +335,13 @@
     "currency": "ETH"
    }
   ],
+  "0x5512d943ed1f7c8a43f3435c85f7ab68b30121b0": [
+   {
+    "sdnUid": "33854",
+    "name": "CHATEX",
+    "currency": "ETH"
+   }
+  ],
   "0x56de1527136f76a809e5b14ded6103eecd072ba7": [
    {
     "sdnUid": "57061",
@@ -246,6 +353,13 @@
    {
     "sdnUid": "36025",
     "name": "GARANTEX EUROPE OU",
+    "currency": "ETH"
+   }
+  ],
+  "0x5a14e72060c11313e38738009254a90968f58f51": [
+   {
+    "sdnUid": "39585",
+    "name": "PEIJNENBURG, Alex Adrianus Martinus",
     "currency": "ETH"
    }
   ],
@@ -270,6 +384,20 @@
     "currency": "ETH"
    }
   ],
+  "0x67d40ee1a85bf4a4bb7ffae16de985e8427b6b45": [
+   {
+    "sdnUid": "33854",
+    "name": "CHATEX",
+    "currency": "ETH"
+   }
+  ],
+  "0x6b0736fed0634e15e19cc57fba19cd179c13abca": [
+   {
+    "sdnUid": "24003",
+    "name": "MESRI, Behzad",
+    "currency": "ETH"
+   }
+  ],
   "0x6b69e2a7545c166417a80c61a77562052bffa9c5": [
    {
     "sdnUid": "58287",
@@ -284,10 +412,24 @@
     "currency": "ETH"
    }
   ],
+  "0x6f1ca141a28907f78ebaa64fb83a9088b02a8352": [
+   {
+    "sdnUid": "33854",
+    "name": "CHATEX",
+    "currency": "ETH"
+   }
+  ],
   "0x6fac4d18c912343bf86fa7049364dd4e424ab9c0": [
    {
     "sdnUid": "24003",
     "name": "MESRI, Behzad",
+    "currency": "ETH"
+   }
+  ],
+  "0x72a5843cc08275c8171e582972aa4fda8c397b2a": [
+   {
+    "sdnUid": "30518",
+    "name": "SECONDEYE SOLUTION",
     "currency": "ETH"
    }
   ],
@@ -331,10 +473,24 @@
     "currency": "ETH"
    }
   ],
+  "0x7db418b5d567a4e0e8c59ad71be1fce48f3e6107": [
+   {
+    "sdnUid": "30518",
+    "name": "SECONDEYE SOLUTION",
+    "currency": "ETH"
+   }
+  ],
   "0x7f03679b56d8772530efa516b58bb83d4829e881": [
    {
     "sdnUid": "24003",
     "name": "MESRI, Behzad",
+    "currency": "ETH"
+   }
+  ],
+  "0x7f19720a857f834887fc9a7bc0a0fbe7fc7f8102": [
+   {
+    "sdnUid": "30518",
+    "name": "SECONDEYE SOLUTION",
     "currency": "ETH"
    }
   ],
@@ -349,6 +505,13 @@
    {
     "sdnUid": "36025",
     "name": "GARANTEX EUROPE OU",
+    "currency": "ETH"
+   }
+  ],
+  "0x83e5bc4ffa856bb84bb88581f5dd62a433a25e0d": [
+   {
+    "sdnUid": "39585",
+    "name": "PEIJNENBURG, Alex Adrianus Martinus",
     "currency": "ETH"
    }
   ],
@@ -401,6 +564,13 @@
     "currency": "ETH"
    }
   ],
+  "0x9697749a9e8d6c119d8eeb0d6268a1b99c40684c": [
+   {
+    "sdnUid": "24003",
+    "name": "MESRI, Behzad",
+    "currency": "ETH"
+   }
+  ],
   "0x97b1043abd9e6fc31681635166d430a458d14f9c": [
    {
     "sdnUid": "43377",
@@ -436,6 +606,13 @@
    {
     "sdnUid": "44029",
     "name": "JIMENEZ CASTRO, Mario Alberto",
+    "currency": "ETH"
+   }
+  ],
+  "0x9dd7fa4b4950154f7e75bdd8a77266b99b94ec08": [
+   {
+    "sdnUid": "24003",
+    "name": "MESRI, Behzad",
     "currency": "ETH"
    }
   ],
@@ -481,6 +658,13 @@
     "currency": "ETH"
    }
   ],
+  "0xb5a69da691670f62510793f79a9b36c7db1a7b7c": [
+   {
+    "sdnUid": "24003",
+    "name": "MESRI, Behzad",
+    "currency": "ETH"
+   }
+  ],
   "0xb637f84b66876ebf609c2a4208905f9ddac9d075": [
    {
     "sdnUid": "57034",
@@ -512,6 +696,13 @@
     "currency": "ETH"
    }
   ],
+  "0xbd3276f265b83b5e828c05f46cde9d10a1521a24": [
+   {
+    "sdnUid": "57061",
+    "name": "BLAGH, Keyvan Fayyaz Gareh",
+    "currency": "ETH"
+   }
+  ],
   "0xc103b7dc095c904b92081eef0c1640081ec01c10": [
    {
     "sdnUid": "56360",
@@ -523,6 +714,13 @@
    {
     "sdnUid": "38665",
     "name": "TASK FORCE RUSICH",
+    "currency": "ETH"
+   }
+  ],
+  "0xc455f7fd3e0e12afd51fba5c106909934d8a0e4a": [
+   {
+    "sdnUid": "33854",
+    "name": "CHATEX",
     "currency": "ETH"
    }
   ],
@@ -540,10 +738,24 @@
     "currency": "ETH"
    }
   ],
+  "0xd0975b32cea532eadddfc9c60481976e39db3472": [
+   {
+    "sdnUid": "39593",
+    "name": "GRIMM, Matthew Simon",
+    "currency": "ETH"
+   }
+  ],
   "0xd5ed34b52ac4ab84d8fa8a231a3218bbf01ed510": [
    {
     "sdnUid": "53953",
     "name": "FUNNULL TECHNOLOGY INC",
+    "currency": "ETH"
+   }
+  ],
+  "0xd81414abc631c6cadae1c6198b0c2b15a9b4fde5": [
+   {
+    "sdnUid": "24003",
+    "name": "MESRI, Behzad",
     "currency": "ETH"
    }
   ],
@@ -587,6 +799,13 @@
     "currency": "ETH"
    }
   ],
+  "0xe1d865c3d669dcc8c57c8d023140cb204e672ee4": [
+   {
+    "sdnUid": "43421",
+    "name": "WANG, Yunhe",
+    "currency": "ETH"
+   }
+  ],
   "0xe1e4c5e5ed8f03ae61b581e2def126025f2b9401": [
    {
     "sdnUid": "56360",
@@ -605,6 +824,13 @@
    {
     "sdnUid": "58887",
     "name": "KIM, Ki Hyok",
+    "currency": "ETH"
+   }
+  ],
+  "0xe7aa314c77f4233c18c6cc84384a9247c0cf367b": [
+   {
+    "sdnUid": "33151",
+    "name": "SUEX OTC, S.R.O.",
     "currency": "ETH"
    }
   ],
@@ -636,6 +862,20 @@
     "currency": "ETH"
    }
   ],
+  "0xefe301d259f525ca1ba74a7977b80d5b060b3cca": [
+   {
+    "sdnUid": "39585",
+    "name": "PEIJNENBURG, Alex Adrianus Martinus",
+    "currency": "ETH"
+   }
+  ],
+  "0xf1c4c44d2dcbcfa704349e3b57628dbd8404e597": [
+   {
+    "sdnUid": "57061",
+    "name": "BLAGH, Keyvan Fayyaz Gareh",
+    "currency": "ETH"
+   }
+  ],
   "0xf2235d55b2950a0b1317469d72d07ae65b2e27cb": [
    {
     "sdnUid": "57107",
@@ -654,6 +894,13 @@
    {
     "sdnUid": "36025",
     "name": "GARANTEX EUROPE OU",
+    "currency": "ETH"
+   }
+  ],
+  "0xf45ecc3a59c7911181c659ce9115854c6175be91": [
+   {
+    "sdnUid": "24003",
+    "name": "MESRI, Behzad",
     "currency": "ETH"
    }
   ],

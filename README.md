@@ -622,11 +622,14 @@ repository rather than a public issue.
   - **Address screen (exact).** Before buying anything, Skein checks the
     token, the deployer and any treasury address against the OFAC SDN list's
     EVM digital-currency addresses. The list is a pinned snapshot,
-    `packages/pipeline/data/ofac-sdn-evm.json` (94 addresses on 2026-11-11),
-    rebuilt with `scripts/ofac-snapshot.py`. A match is a sanctions FAIL at
-    full confidence, so the verdict is `REJECT`. The evidence names the SDN
-    uid and the list file's sha256. The snapshot is only as fresh as its last
-    rebuild.
+    `packages/pipeline/data/ofac-sdn-evm.json` (125 addresses on 2026-11-13),
+    rebuilt with `scripts/ofac-snapshot.py` from both `sdn.csv` and
+    `sdn_comments.csv` (OFAC continues long remarks there; the Nov 11 snapshot
+    read only the first file and missed 31 addresses). A match is a sanctions
+    FAIL at full confidence, so the verdict is `REJECT`. The evidence names the
+    SDN uid and the snapshot's sha256, which is recomputable from Treasury's
+    two files. The snapshot is only as fresh as its last rebuild; `/v1/status`
+    shows its age and the probe alerts after 14 days.
   - **Name screen (weak).** The only sanctions intent on Telegraph screens
     names, not addresses, so its clean answer means little. It counts toward
     coverage at low confidence and can't block a verdict on its own. It also
