@@ -336,23 +336,26 @@ Base URL: `https://api.skeinlabs.site`. The full OpenAPI 3.1 document is at
 | `GET` | `/v1/policies[/{ref}]` | Published policies and their file hashes |
 | `GET` | `/v1/status` | Network, payer escrow, caps, attester, and each check's miners, latency and error rate |
 | `GET` | `/v1/ledger` | The public spend ledger |
-| `GET` `POST` `DELETE` | `/v1/webhooks` | The caller's signed webhook (`verdict.done`, `verdict.refused`) |
+| `GET` `POST` `DELETE` | `/v1/webhooks` | The caller's signed webhook (`verdict.completed`, `verdict.refused`) |
 | `POST` | `/miner/verdict` | Telegraph's miner endpoint, called only by the network's dispatcher |
 
 Every error has the shape `{ error: { code, message, requestId } }`, and
 every response carries `X-Request-Id`. Served verdicts carry
 `X-Skein-Verdict-Hash`, `X-Skein-Bom-Root` and `X-Skein-Attestation`.
 
-**Webhooks** (SDK 0.3.0+):
+**Webhooks** (SDK 0.3.1+):
 
 ```ts
 const { secret } = await skein.setWebhook("https://you.example/skein");   // shown once: store it
 import { verifyWebhook } from "@skeinlabs/sdk/webhooks";
-if (!(await verifyWebhook(rawBody, req.headers["x-skein-signature"], secret))) return res.status(401).end();
+if (!(await verifyWebhook(rawBody, req.headers, secret))) return res.status(401).end();   // pass every header
 ```
 
-Deliveries carry `X-Skein-Signature: sha256=…`, an HMAC of the body. A
-webhook URL must be public https. It is re-checked before every delivery,
+Deliveries carry `X-Skein-Timestamp` (unix seconds) and
+`X-Skein-Signature: sha256=…`, an HMAC-SHA256 of `<timestamp>.<raw body>`;
+`verifyWebhook` refuses a delivery older than 5 minutes, so a captured one
+cannot be replayed. The event is `verdict.completed` (or `verdict.refused`).
+Secrets are encrypted at rest. A webhook URL must be public https. It is re-checked before every delivery,
 and redirects are never followed.
 
 ---
@@ -410,6 +413,17 @@ A backtest of the 106 answered verdicts is in
 From Nov 11 the sniper runs `agent-pretrade@0.3.0`, chosen on that backtest
 (in-sample). Approving fresh launches would need a liquidity-lock signal that
 no Telegraph intent offers yet.
+
+**Who has used it.** Kept apart, as the hackathon rules ask:
+- **Testnet usage (live, real payments in test USDC):** every verdict on
+  [/ledger](https://skeinlabs.site/ledger) was bought on the Telegraph testnet,
+  with receipts.
+- **Internal consumers (the same team):** Skein Desk and Skein Sniper buy
+  verdicts as customers would, and the evaluation runs in `eval/`. Their
+  purchases are ours, not outside demand.
+- **Outside users:** none confirmed yet. Partner keys are issued on request
+  (README, Quick start); any outside integration will be listed here with its
+  permission.
 
 **Prospective benchmark** (out of sample,
 [`data/prospective`](https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md),
@@ -650,9 +664,15 @@ repository rather than a public issue.
 
 ## Disclosures and license
 
-**Libraries reused:** `zod`, `@noble/hashes`, `yaml`, `viem`, `drizzle-orm`,
-`drizzle-kit`, `hono`, `next`, `@electric-sql/pglite` (tests), `vitest`,
-`fast-check`, `turbo` and `tsx`. No templates were used.
+**Libraries reused** (every direct dependency, all open source): `zod`,
+`@noble/hashes`, `yaml`, `viem`, `drizzle-orm`, `drizzle-kit`, `pg`, `hono`,
+`@hono/node-server`, `undici`, `next`, `react`, `react-dom`, `tailwindcss`,
+`@netlify/blobs` and `@netlify/plugin-nextjs`, `@modelcontextprotocol/sdk`,
+`tsup`, `@electric-sql/pglite` (tests), `vitest`, `fast-check`, `playwright`
+and `axe-core` (tests), `turbo` and `tsx`; for the videos,
+`remotion`, `kokoro-js` and faster-whisper. No templates were used.
+[docs/DISCLOSURES.md](docs/DISCLOSURES.md) has the licences that carry
+conditions (Remotion's company licence, Mixkit's).
 
 **Non-Telegraph lookups:** DexScreener's public token endpoint, used only to
 find a token's main pool. The liquidity figure itself is bought through

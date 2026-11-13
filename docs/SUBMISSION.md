@@ -8,14 +8,14 @@ Deadline: **December 1, 2026, 23:59 UTC**.
 | Field | Answer |
 |---|---|
 | Project name | Skein |
-| Track | Apps & Agents (Skein is also a registered miner) |
+| Track | Providers (Skein, registered miner 5137) and Apps & Agents (Skein Desk), disclosed as the same team (spec §1) |
 | Missions | Mission 01 Exchange (listing decisions, signed risk memo); Mission 14 Web3 Native & DeFi (Skein Sniper) |
 | Intents bought | SMART_CONTRACT_AUDIT_GENERAL, SANCTIONS_SCREENING_MATCH_GENERAL, TOKEN_HOLDER_COUNT_GENERAL, LIQUIDITY_DEPTH_VERIFY_GENERAL, WASH_TRADING_DETECTION_GENERAL, SOCIAL_BOT_DETECTION_GENERAL, CODE_REVIEW_GENERAL |
 | Intent sold | FRAUD_RISK_GENERAL: miner registration 5137, catalogue id 845301, slug `skein-listing-verdict`, 0.25 USDC an answer |
 | Working link | https://skeinlabs.site (web app), https://desk.skeinlabs.site (listing desk agent), https://api.skeinlabs.site (API) |
 | Repository | https://github.com/linoxbt/skein |
 | GitHub username that starred the bounties repo | `linoxbt` |
-| Team / contact | *(your name and email)* |
+| Team / contact | **TODO (owner): your name and contact before submitting** |
 | Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 48 s, narrated; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`) |
 
 ## Short public summary
@@ -37,9 +37,11 @@ Anyone can recompute a verdict from the raw answers Skein paid for
 (`/verify`).
 
 Three things run on it today:
-- **Skein Desk**, a listing queue for an exchange. An agent buys a verdict for
-  every application and shortlists it, declines it, or sends it to an analyst,
-  with no human in the loop.
+- **Skein Desk**, a listing queue for an exchange. An agent finds fresh
+  launches itself, buys a verdict for each through Telegraph from its own
+  escrow wallet (a paid ask to Skein's miner 845301), and shortlists, declines
+  or sends to an analyst, with no human in the loop. Its decision log shows
+  each ask's receipt and cost.
 - **Skein Sniper** watches new Base launches. It buys a verdict before every
   simulated trade and dodges the rest.
 - **Skein as a miner** sells the verdict back to the network. Any Telegraph
@@ -76,7 +78,7 @@ The answer is a verdict object: `verdict`, `reasons`, `openRisks`, `riskBps`,
 **Run it locally, with no accounts:**
 ```sh
 pnpm install
-pnpm dev:api        # simulated Telegraph node and in-memory Postgres on :8080
+pnpm dev:api        # simulated Telegraph node and in-memory Postgres on :8787
 pnpm dev:web        # web app on :3000
 pnpm test           # the whole test suite
 ```
@@ -110,9 +112,11 @@ x402 payments use Base Sepolia.
 ## Evidence
 
 - **Real purchases.** 1,017 upstream receipts from 10 miners and 353 verdicts
-  by Nov 12 (live totals below). The demo's own verdict, bought live during the recording, is
-  https://skeinlabs.site/v/vrd_mw8c7dkh4a1d465l3u5f: APPROVE for AERO on
-  Base, 5.9 s, 0.05 USDC across five receipts. Live totals are at https://skeinlabs.site/ledger and
+  by Nov 12 (live totals below). The demo film's own verdicts, bought live during the recording
+  on Nov 11, are https://skeinlabs.site/v/vrd_mwcfyu0y04360z153f1b (APPROVE
+  for AERO on Base, a Desk application, five paid receipts) and
+  https://skeinlabs.site/v/vrd_mwcfy2nj685b1z0e264a (REJECT for a Lazarus
+  Group address, with the OFAC SDN entry as evidence). Live totals are at https://skeinlabs.site/ledger and
   https://api.skeinlabs.site/v1/ledger.
 - **Per-verdict receipts.** Every verdict page (`/v/{id}`) has an Evidence tab:
   miner, amount, receipt hash, signal hash, and whether the node knows that
@@ -149,10 +153,13 @@ x402 payments use Base Sepolia.
   - status: https://api.skeinlabs.site/v1/status (per-intent miners, p50 and
     p95 latency, error rate, spend against caps);
   - OpenAPI: https://api.skeinlabs.site/v1/openapi.json.
-- **Tests.** More than 340 automated tests: engine property tests (20,000 runs in
-  CI), the payment client, the pipeline, the API (replicas, x402, idempotency),
-  the SDK, MCP and Desk, plus browser and accessibility tests. All run in CI on
-  every change, and Railway deploys only green builds.
+- **Tests.** More than 500 automated tests: engine property tests (20,000 runs
+  in CI), the payment client, the pipeline, the API (replicas, settle-first
+  x402, idempotency, webhooks, SSRF), the SDK as an outside developer installs
+  it, MCP, Desk, the web app's in-browser verification, plus browser and
+  accessibility tests. All run in CI on every change, including a replay of
+  every stored and evaluation verdict. Railway deploys only green builds;
+  Netlify deploys on merge, and CI builds both sites first.
 - **Operations:**
   - two API replicas, querying as a least-privilege database role;
   - nightly backups;

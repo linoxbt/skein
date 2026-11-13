@@ -1,28 +1,48 @@
 # Owner steps
 
-Almost everything is set up. One step needs you, because npm requires your
-two-factor code.
+Almost everything is set up. These steps need you: they write secrets or
+need your two-factor code, which the build tools are not allowed to do.
 
-## Needed: approve the 0.3.0 release on npm (2 clicks each)
+## Needed
 
-`@skeinlabs/sdk` and `@skeinlabs/mcp` 0.3.0 are uploaded and waiting.
-npm holds every token-published version until a person approves it with 2FA.
+1. **Turn on Skein Desk's Telegraph rail** (the Apps-track autonomous
+   purchase). On Netlify, site **skein-desk** → Site configuration →
+   Environment variables, add:
+   - `DESK_PAYER` = `telegraph`
+   - `DESK_PAYER_KEY` = the Desk wallet's private key (secret; from the file
+     handed to you, wallet 0x4d8dc7083f1edA89bec38070E8dAb5630a3e75f3, which
+     already holds 20 test USDC in Telegraph escrow)
+   - `SKEIN_MINER_ID` = `845301`
 
-1. Open <https://www.npmjs.com/package/@skeinlabs/sdk>, signed in as
-   `lunexfinance`. Open the **Staged Packages** tab, click **Approve** on
-   0.3.0, and enter your 2FA code.
-2. Do the same at <https://www.npmjs.com/package/@skeinlabs/mcp>. Approve the
-   SDK first, because the MCP server depends on it.
-
-Or from a terminal: `npm stage list @skeinlabs/sdk`, then
-`npm stage approve <stage-id>`. This needs npm 11.15 or later.
+   Then **Deploys → Trigger deploy**. The board at desk.skeinlabs.site shows
+   `rail: telegraph`, and within a day decisions carry Telegraph receipts.
+2. **Encrypt webhook secrets at rest.** On the Railway
+   [api service's variables](https://railway.com/project/59c5fa5d-4a32-473d-bfa1-fdd4cfa36997/service/71ed3a9b-269b-484e-bba1-37ffde298910/variables),
+   add `WEBHOOK_SECRET_KEY` (secret; 32 random bytes as hex, from the file
+   handed to you).
+3. **Keep the backup key offline.** Backups are now encrypted to an age key.
+   Save the identity file handed to you somewhere safe and offline (a password
+   manager). Without it no backup can be restored.
+4. **Rotate the Skein Sniper partner key** that was exposed in a build log:
+   from a checkout run `node scripts/issue-partner-key.mjs sniper agent 2 ./sniper.key`
+   (`*.key` files are ignored by git). Append the line it prints to
+   `SEED_CONSUMERS` on the Railway api service, set the key in `sniper.key` as
+   `SNIPER_SKEIN_KEY` on the sniper service, and add the old key's hash to
+   `REVOKED_KEY_HASHES` on the api service.
+5. **Approve the 0.3.1 release on npm** once it is published by the release
+   workflow: <https://www.npmjs.com/package/@skeinlabs/sdk> → **Staged
+   Packages** → **Approve**, then the same for `@skeinlabs/mcp` (SDK first).
+6. **Protect `main`:** <https://github.com/linoxbt/skein/settings/branches> →
+   **Add classic branch protection rule** → pattern `main` → **Require status
+   checks to pass** → add `check`, `e2e` and `loadtest` → **Create**.
+7. **Fill in the Team / contact line** of docs/SUBMISSION.md before submitting.
 
 ## Already done for you
 
 | What | How |
 |---|---|
-| Postgres backups | A `backup` service on Railway runs `pg_dump` nightly (03:17 UTC) into the private bucket `skein-backups`, keeping 30. Railway's own backup schedules need a Pro workspace. |
-| Alerts | The uptime probe (every 15 min) opens a GitHub issue labelled `alert` and @-mentions you when anything fails. That covers API, database, purchaser escrow, spend cap, unhandled errors, web, Desk, sniper and the Telegraph miner. The issue closes itself on recovery. You get these in the GitHub app and by email, with no webhook to set up. |
+| Postgres backups | A `backup` service on Railway runs `pg_dump` nightly (03:17 UTC), encrypts it to the age key, and uploads it to the private bucket `skein-backups`, keeping 30. `restore-drill.sh` proves a dump restores. Railway's own backup schedules need a Pro workspace. |
+| Alerts | The Railway probe (every 10 min) pushes alerts, and the GitHub uptime workflow (GitHub runs it hours apart, not every 15 min) opens a GitHub issue labelled `alert` and @-mentions you when anything fails. That covers API, database, purchaser escrow, spend cap, unhandled errors, web, Desk, sniper and the Telegraph miner. The issue closes itself on recovery. You get these in the GitHub app and by email, with no webhook to set up. |
 | Error tracking | Every unhandled API error is kept for 30 days in the `error_log` table with its stack and request id, and `/v1/status` shows `errorsLastHour`. Errors also trigger the alert above. |
 | Netlify | skein-web and skein-desk are linked to `linoxbt/skein`, branch `main` (base `apps/web` and `apps/desk`). Every merge redeploys both. |
 | Deploy safety | Railway deploys the API and sniper only after CI is green on `main`. |
@@ -41,10 +61,10 @@ None of these is required.
   <https://sentry.io/signup/>, create a Node.js project, and copy its DSN
   (Settings → Projects → Client Keys). Add it as `SENTRY_DSN` on the same
   variables page.
-- **Branch protection.** Railway already refuses to deploy red builds. To
-  also stop red code reaching `main`: open
-  <https://github.com/linoxbt/skein/settings/branches> → **Add classic branch
-  protection rule** → pattern `main` → tick **Require status checks to pass**
-  → add `check` and `e2e` → **Create**.
+- **npm trusted publishing.** On npmjs.com, each package → Settings →
+  Trusted publishing → GitHub Actions: repository `linoxbt/skein`, workflow
+  `release.yml`, environment `npm`. Then `NPM_TOKEN` can be deleted. Adding
+  yourself as a required reviewer on the `npm` environment (GitHub → Settings
+  → Environments) gates every publish.
 - **Railway volume backups too.** These need a Pro workspace. If you upgrade,
   open the Postgres service → **Backups** and tick Daily and Weekly.

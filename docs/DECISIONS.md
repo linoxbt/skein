@@ -674,3 +674,108 @@ then pays with an `X-PAYMENT` header, a signed EIP-3009 USDC authorization.
 Tested with a fake facilitator and real EIP-712 signatures
 (`apps/api/test/x402.test.ts`). It has not been settled end to end on Base
 Sepolia: that needs a wallet holding Base Sepolia USDC.
+
+## The 2026-11-12 audit fixes (outside the decision path; D15 covers that)
+
+**L31. x402 settles before buying (supersedes L30's "settled after").** L30
+let one wallet sign many authorizations that each passed the facilitator's
+balance check, so Skein bought many verdicts and only one settled. Now:
+- **Order.** Decode and check locally (exact amount, expiry, EOA signature),
+  apply the per-payer limits (`X402_PAYER_PER_MINUTE`, `X402_PAYER_DAILY_MAX`),
+  have the facilitator verify, refuse anything that would be refused anyway
+  ("nothing was charged"), claim the payment in `x402_payments` (one request
+  per payment can claim it), settle, and only then buy. A verdict therefore
+  exists only for a settled payment.
+- **Replays.** A payment is looked up by payer and nonce before any check, so a
+  retry with the same `X-PAYMENT` after settlement replays its run instead of
+  being refused for a used nonce.
+- **Refunds.** An ABSTAIN is owed back the price minus its upstream spend
+  (spec §6: ABSTAIN is charged at upstream cost); a refusal or failure after
+  settlement is owed back in full, unless a retry with the same payment
+  succeeds. The API holds no key for the payTo address, so refunds are sent by
+  hand and recorded (`pnpm --filter @skein/api x402:refunds`, RUNBOOK).
+- **Price.** One price: `X402_PRICE_USDC`, if set, must equal
+  `SKEIN_PRICE_USDC`. The 402's resource comes from config, never the Host
+  header. Smart-contract wallets (ERC-1271) are not accepted.
+
+**L32. Attestations are signed at seal time and stored.** Signing on read
+attested to whatever row was in the database. Now the signature is made when
+the verdict is sealed and kept in the append-only `verdict_attestations`.
+Verdicts sealed before this were signed once on first read and say so
+(`atSeal: false`, with the later `signedAt`). `/verify` recomputes the hash,
+the BOM root and the decision in the browser and checks the signature against
+the published attester, so it no longer trusts the API.
+
+**L33. Webhooks carry a signed timestamp; the event is `verdict.completed`.**
+`X-Skein-Signature: sha256=HMAC(secret, "<X-Skein-Timestamp>.<body>")`, and
+SDK 0.3.1's `verifyWebhook` refuses deliveries older than 300 seconds, so a
+captured delivery can no longer be replayed (spec §9). Each retry is re-signed.
+Secrets are encrypted at rest with `WEBHOOK_SECRET_KEY`.
+
+**L34. Idempotency keys expire after 24 hours and free themselves after a
+transient failure.** A key that hit `UPSTREAM_UNAVAILABLE`, a daily cap, the
+margin guard, a lost run or a failure can be retried with the same body (the
+old run is kept under a renamed key). Never charged twice still holds: partner
+keys are free and an x402 payment settles once. A sync request that runs past
+`SYNC_TIMEOUT_MS` now answers 202 with the id, as spec §6 says (was 504).
+
+**L35. Loop guard.** Every intent ask Skein makes carries `skein-depth: 1` in
+its context; `/miner/verdict` answers a request at depth 1 or more from cache,
+or ABSTAIN `LOOP_GUARD` with nothing bought. In production the API refuses to
+start without `SKEIN_SELF_REGISTRATION_IDS`, so self-exclusion cannot be
+silently off.
+
+**L36. Spend stops at 80% of the daily cap and when the wallet runs dry.**
+Spec §8 says the purchaser "stops and alerts at 80%". Purchases now stop at
+`GLOBAL_CAP_STOP_PCT` (80) of `DAILY_CAP_USDC`, which production raised to 12.5
+to keep a 10 USDC working day. Below `HOT_WALLET_PAUSE_USDC` of escrow, verdicts
+pause with 503 `WALLET_EMPTY` and `/v1/status` shows `paused`.
+
+**L37. The catalogue tables are written; the ledger reads a 30-day window.**
+`miner_catalog` and `intent_status` are snapshotted on each 5-minute catalogue
+refresh and `policies` once per file, so the tables spec §7 names hold data.
+`/v1/ledger` computes stability and causes over 30 days, so it cannot grow
+into the 15-second statement timeout.
+
+**L38. Skein Desk buys on Telegraph in production, and finds its own work
+(supersedes D12's partner-key default).** The Apps track asks for an
+autonomous machine-to-machine purchase. Desk now asks `FRAUD_RISK_GENERAL` on
+Skein's miner 845301 from its own escrow wallet
+(0x4d8dc7083f1edA89bec38070E8dAb5630a3e75f3), and an intake files a few fresh
+launches a day by itself (`DESK_AUTO_DAILY`), from DEX Screener and the Skein
+Sniper feed. The ask runs in a Netlify background function (15 minutes), its
+outcome is saved before the verdict is read, and a paid failure is recorded
+with what it cost and never asked again. An ask is treated as lost after 15
+minutes (was 3).
+
+**L39. Skein Sniper trades (on paper) only on a signed APPROVE about the token
+it asked.** Its caps count failures and USDC (`SNIPER_DAILY_USDC`), an
+interrupted Telegraph check is never asked again, its liquidity floor is never
+below the policy's FAIL threshold, and it refuses to start without a pinned or
+readable attester.
+
+**L40. Monitors never mark main red; the benchmark reports exact intervals.**
+Railway's "wait for CI" counts every check suite on main's head commit, so the
+uptime probe and the prospective benchmark now alert through an issue and the
+run summary instead of failing. Benchmark intervals are 95% Wilson intervals,
+and every table shows the APPROVE rate next to false APPROVE.
+
+## Spec deviations recorded by the audit
+
+- **No OpenTelemetry traces (spec §15).** Errors go to Sentry and `error_log`,
+  request logs are structured JSON with a request id, and the probe alerts on
+  p95 latency. Traces were not worth a collector at this scale.
+- **No wagmi, RainbowKit or `@x402/*` in the console (spec §11, §13).** The
+  console runs a verdict with a partner key; programmatic x402 payment is in
+  the SDK (`payer: { kind: "x402" }`), which implements EIP-3009 itself (L30).
+- **No Foundry contracts or IPFS mirror (spec §13).** Skein deploys no
+  contract; the miner YAML is served from the repository at the hash
+  registered on chain (L25).
+- **Partner keys are hashed with SHA-256, not Argon2 (spec §9).** The keys are
+  256 random bits, so a slow hash adds nothing against guessing, and a fast
+  constant-time lookup keeps every request cheap.
+- **The BOM root is domain-separated, not OpenZeppelin `MerkleProof`
+  compatible (spec §5).** Leaves and nodes are prefixed 0x00 and 0x01 against
+  second-preimage attacks; the SDK and `/verify` rebuild it.
+- **Palette and type now follow spec §11** (bg #07090B, Space Grotesk headings,
+  outlined wordmark); the earlier lighter palette is gone.

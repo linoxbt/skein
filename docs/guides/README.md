@@ -9,7 +9,7 @@ Do them in this order. Each one depends on the one before it.
 | 3 | **Done (Nov 8): 61 cases, holdout run once.** [The labelled evaluation set](EVAL_SET.md) | The benchmark: how the fused verdict compares with simpler rules on the same paid findings | Time for research; guide 1 done to run it |
 
 **[Owner steps](OWNER_STEPS.md):** the one step left for you (approving the
-npm 0.3.0 release with your 2FA), what is already set up, and optional extras.
+Desk Telegraph rail, secrets and npm approval), what is already set up, and optional extras.
 
 Secrets for guides 1 and 2 are in the private `skein-secrets.md` file, sent
 outside the repo. Never commit or paste them.
