@@ -9,4 +9,5 @@ export * from "./plan";
 export * from "./adapters";
 export * from "./repro";
 export * from "./engines";
+export { parsePolicyV1, type PolicyV1 } from "./frozen/policy_v1";
 export * from "./attest";

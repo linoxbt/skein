@@ -10,7 +10,9 @@
  *
  * The client reads each 402 challenge, refuses one above maxUusdcPerCall or
  * one whose signed message does not match its own fields, signs with EIP-191,
- * and never retries a call after paying for it.
+ * and never retries a call after paying for it. networkFromEnv(env) reads the
+ * TELEGRAPH_* settings and throws NetworkConfigError on a malformed chain id,
+ * or on a mainnet one unless TELEGRAPH_ALLOW_MAINNET=1.
  */
 export {
   TelegraphClient,
@@ -19,5 +21,6 @@ export {
   TESTNET,
   PreSeasonError,
   ChallengeMismatchError,
+  NetworkConfigError,
 } from "@skein/telegraph";
 export type { NetworkConfig, ClientOptions, AskOutcome, AskRequest, AskResponse, AskFailureKind, MessageSigner, Receipt } from "@skein/telegraph";

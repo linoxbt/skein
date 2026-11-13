@@ -41,14 +41,13 @@ export default function Landing() {
         <div className="absolute inset-0">
           <ThreadBurst />
         </div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.55),transparent_60%)]" />
         <div className="relative flex h-full flex-col items-center justify-center px-5 text-center">
           <h1 className="display rise text-[56px] sm:text-[88px] lg:text-[128px]">
             One request.
             <br />
             Every thread.
           </h1>
-          <p className="rise mt-6 max-w-xl text-[18px] text-[#c9d1d6] md:text-[21px]" style={{ animationDelay: "120ms" }}>
+          <p className="rise mt-6 max-w-xl bg-bg/70 px-2 text-[18px] text-text md:text-[21px]" style={{ animationDelay: "120ms" }}>
             Skein is the listing verdict for tokens: ranked Telegraph intelligence, fused by rules, sealed with receipts.
           </p>
         </div>

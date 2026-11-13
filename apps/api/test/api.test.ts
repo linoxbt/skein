@@ -77,6 +77,10 @@ describe("POST /v1/verdicts", () => {
     expect(res.headers.get("x-skein-verdict-hash")).toBe(v.verdictHash);
     expect(res.headers.get("x-skein-bom-root")).toBe(v.bom.root);
     expect(node.charges).toHaveLength(6);
+    // Every finding names the adapter version that read it: part of the hashed finding, so a verifier needs it.
+    for (const f of v.findings as { adapterVersion?: string; status: string }[]) {
+      if (f.status !== "UNAVAILABLE") expect(f.adapterVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    }
 
     const bom = await j(app.request(`/v1/verdicts/${v.id}/bom`));
     expect(bom.lines).toHaveLength(6);
@@ -147,8 +151,9 @@ describe("POST /v1/verdicts", () => {
 describe("read-only routes", () => {
   it("quote, status, policies and ledger", async () => {
     const q = await j(app.request(`/v1/quote?chain=8453&token=${TOKEN}&policy=dex-list`));
-    // The quote prices every check the policy may buy, the optional code review included.
-    expect(q).toMatchObject({ ok: true, upstreamUsdc: 0.07, priceUsdc: 0.25, policy: "dex-list@0.2.0" });
+    // The quote prices what a verdict would buy: allowlisted miners only, so code review (no allowlisted miner in this catalogue) is dropped, as the run drops it.
+    expect(q).toMatchObject({ ok: true, upstreamUsdc: 0.06, priceUsdc: 0.25, policy: "dex-list@0.2.0" });
+    expect(q.dropped.map((d: { check: string }) => d.check)).toContain("code_review");
     expect((await j(app.request(`/v1/quote?chain=8453&token=${TOKEN}&policy=dex-list@0.1.0`))).upstreamUsdc).toBe(0.06);
     const s = await j(app.request("/v1/status"));
     expect(s).toMatchObject({ network: "eip155:11155111" });
@@ -159,6 +164,9 @@ describe("read-only routes", () => {
     const l = await j(app.request("/v1/ledger"));
     expect(l).toMatchObject({ verdicts: { APPROVE: 1 }, upstreamSpendUsdc: 0.06, receipts: 6, minersUsed: 6 });
     expect(l.stability).toMatchObject({ byEngine: [] });
+    // The /ledger charts: verdicts and spend per UTC day, and distinct miners paid per check.
+    expect(l.byDay).toEqual([{ day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), verdicts: { APPROVE: 1 }, upstreamUsdc: 0.06 }]);
+    expect(Object.values(l.minersByCheck).reduce((a: number, b) => a + (b as number), 0)).toBe(6);
     expect(s.quality).toMatchObject({ windowHours: 3 });
   });
 });

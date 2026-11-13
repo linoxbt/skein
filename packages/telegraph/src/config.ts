@@ -22,11 +22,49 @@ export const TESTNET: Readonly<NetworkConfig> = {
   rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
 };
 
+/**
+ * Chains Skein may pay on without saying so: public testnets, where USDC is
+ * minted for free. Ethereum Sepolia is the Telegraph testnet; the others are
+ * the testnets of chains Telegraph may move to.
+ */
+export const TESTNET_CHAIN_IDS: ReadonlySet<number> = new Set([
+  11155111, // Ethereum Sepolia
+  17000, // Holesky
+  560048, // Hoodi
+  84532, // Base Sepolia
+  421614, // Arbitrum Sepolia
+  11155420, // OP Sepolia
+  97, // BNB Smart Chain testnet
+  80002, // Polygon Amoy
+]);
+
+export class NetworkConfigError extends Error {
+  readonly code = "NETWORK_CONFIG";
+}
+
+/**
+ * The network from the environment, checked: TELEGRAPH_CHAIN_ID must be a
+ * positive integer, TELEGRAPH_CAIP2 must name the same chain, and a chain
+ * that is not a known testnet (real money) is refused unless
+ * TELEGRAPH_ALLOW_MAINNET=1 says so on purpose. A typo can otherwise turn a
+ * testnet purchaser into a mainnet one, or a NaN chain id into "eip155:NaN".
+ */
 export function networkFromEnv(env: Record<string, string | undefined> = process.env): NetworkConfig {
-  const chainId = env.TELEGRAPH_CHAIN_ID ? Number(env.TELEGRAPH_CHAIN_ID) : TESTNET.chainId;
+  const raw = env.TELEGRAPH_CHAIN_ID?.trim();
+  if (raw && !/^[1-9]\d{0,15}$/.test(raw)) throw new NetworkConfigError(`TELEGRAPH_CHAIN_ID must be a positive integer, not "${raw.slice(0, 40)}"`);
+  const chainId = raw ? Number(raw) : TESTNET.chainId;
+  if (!Number.isSafeInteger(chainId)) throw new NetworkConfigError(`TELEGRAPH_CHAIN_ID ${raw} is out of range`);
+  const caip2 = env.TELEGRAPH_CAIP2 || `eip155:${chainId}`;
+  if (caip2 !== `eip155:${chainId}`) throw new NetworkConfigError(`TELEGRAPH_CAIP2 ${caip2} is not chain ${chainId}`);
+  if (!TESTNET_CHAIN_IDS.has(chainId) && env.TELEGRAPH_ALLOW_MAINNET !== "1") {
+    throw new NetworkConfigError(`chain ${chainId} is not a known testnet; set TELEGRAPH_ALLOW_MAINNET=1 to pay on it`);
+  }
+  for (const [name, v] of [["TELEGRAPH_DIAMOND", env.TELEGRAPH_DIAMOND], ["TELEGRAPH_USDC", env.TELEGRAPH_USDC]] as const) {
+    if (v && !/^0x[0-9a-fA-F]{40}$/.test(v)) throw new NetworkConfigError(`${name} must be a 20-byte 0x address`);
+  }
   return {
     nodeUrl: env.TELEGRAPH_NODE_URL || TESTNET.nodeUrl,
-    caip2: env.TELEGRAPH_CAIP2 || `eip155:${chainId}`,
+    caip2,
     chainId,
     diamond: env.TELEGRAPH_DIAMOND || TESTNET.diamond,
     usdc: env.TELEGRAPH_USDC || TESTNET.usdc,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { applyThreshold, decide, VERDICT_CODES, type Finding } from "../src";
+import { adapterFor, applyThreshold, decide, VERDICT_CODES, type Finding } from "../src";
 import { decide as decide020 } from "../src/frozen/v0_2_0/decide";
+import { decide as decide030 } from "../src/frozen/v0_3_0/decide";
 import { cex, cleanCex, customPolicy, f, loadPolicy } from "./helpers";
 
 const codes = (r: { reasons: { code: string }[] }) => r.reasons.map((x) => x.code);
@@ -271,5 +272,70 @@ describe("stability (engine 0.3.0)", () => {
     const fail = decide(dex, [...required, f("wash_trading", "FAIL", { metric: "wash_volume_pct", value: 80, confidence: 0.9 })]).decision;
     expect(pass.verdict).toBe("APPROVE");
     expect(fail.verdict).not.toBe("APPROVE");
+  });
+});
+
+describe("monotone blockers and contradictions (engine 0.4.0, audit H7)", () => {
+  const token = "0x1111111111111111111111111111111111111111";
+  const audit = (flags: Record<string, string>) =>
+    adapterFor("contract_audit").adapt(
+      { result: { [token]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0", ...flags } } },
+      { sourceGroup: "gopluslabs.io", minerId: "200001", httpStatus: 200, subject: { chainId: 8453, token } },
+    );
+  const pretrade = loadPolicy("agent-pretrade@0.3.0");
+  const rest: Finding[] = [
+    f("sanctions", "PASS", { confidence: 0.8 }),
+    f("liquidity_depth", "PASS", { metric: "liquidity_usd", value: 5_000_000, confidence: 0.8 }),
+    f("holder_count", "PASS", { metric: "holders_count", value: 50_000, confidence: 0.8 }),
+    f("wash_trading", "PASS", { metric: "wash_volume_pct", value: 2, confidence: 0.8 }),
+  ];
+
+  it("the audit's repro: mintable rejects, mintable plus owner_change_balance must reject too", () => {
+    const mintable = audit({ is_mintable: "1" });
+    const worse = audit({ is_mintable: "1", owner_change_balance: "1" });
+    expect(mintable).toMatchObject({ status: "WARN", severity: 1 });
+    expect(worse).toMatchObject({ status: "FAIL", severity: 1, notes: expect.arrayContaining(["owner_powers"]) });
+    expect(decide(pretrade, [mintable, ...rest]).decision.verdict).toBe("REJECT");
+    const d = decide(pretrade, [worse, ...rest]).decision;
+    expect(d.verdict).toBe("REJECT");
+    expect(d.reasons[0]).toMatchObject({ code: "BLOCKER_CONTRACT_AUDIT_WARN", detail: "contract_audit WARN or worse is a hard blocker" });
+    // What engine 0.3.0 did (frozen, so the verdicts it sealed still replay).
+    expect(decide030(pretrade, [worse, ...rest]).decision.verdict).toBe("ESCALATE");
+  });
+
+  it("minSeverity grades answers at the blocker's own status; a worse status always meets it", () => {
+    const p = customPolicy({ blockers: [{ check: "contract_audit", status: "WARN", minSeverity: 2 }] });
+    const verdict = (x: Finding) => decide(p, [x]).decision.verdict;
+    expect(verdict(f("contract_audit", "WARN", { severity: 1 }))).not.toBe("REJECT");
+    expect(verdict(f("contract_audit", "WARN", { severity: 2 }))).toBe("REJECT");
+    expect(verdict(f("contract_audit", "FAIL", { severity: 0 }))).toBe("REJECT");
+    // The FAIL blockers of the shipped policies are unchanged: a FAIL below minSeverity does not block.
+    expect(codes(decide(cex(), cleanCex({ contract_audit: f("contract_audit", "FAIL", { severity: 2 }) })).decision)).not.toContain("BLOCKER_CONTRACT_AUDIT_FAIL");
+  });
+
+  it("a contradiction is met by a worse answer: a worse audit beside a wash-trading FAIL is never approved", () => {
+    const dex = loadPolicy("dex-list@0.2.0");
+    const base: Finding[] = [
+      f("sanctions", "PASS", { confidence: 0.8 }),
+      f("liquidity_depth", "PASS", { metric: "liquidity_usd", value: 5_000_000, confidence: 0.8, sourceGroup: "margyn.workers.dev" }),
+      f("holder_count", "PASS", { metric: "holders_count", value: 50_000, confidence: 0.8 }),
+      f("wash_trading", "FAIL", { metric: "wash_volume_pct", value: 80, confidence: 0.8, sourceGroup: "margyn.workers.dev" }),
+      f("social_bots", "PASS", { confidence: 0.8, sourceGroup: "margyn.workers.dev" }),
+    ];
+    const clean = decide(dex, [audit({}), ...base]).decision;
+    expect(clean.verdict).toBe("ESCALATE");
+    expect(clean.conflicts).toEqual(["MARKET_INTEGRITY_CONFLICT"]);
+    const mintable = [audit({ is_mintable: "1" }), ...base];
+    // Engine 0.3.0 approved the token with the worse audit: the conflict needed an exact PASS.
+    expect(decide030(dex, mintable).decision.verdict).toBe("APPROVE");
+    const d = decide(dex, mintable).decision;
+    expect(d.verdict).toBe("ESCALATE");
+    expect(d.reasons[0]!.detail).toBe("audit PASS but wash_trading FAIL; met by a worse answer (contract_audit WARN)");
+  });
+
+  it("refuses scoring tables that would rank a worse answer as less risky", () => {
+    expect(() => customPolicy({ scoring: { status_risk: { PASS: 0, WARN: 0.8, FAIL: 0.6 } } })).toThrow(/status_risk/);
+    expect(() => customPolicy({ scoring: { severity_multiplier: [1, 0.5, 1, 1] } })).toThrow(/severity_multiplier/);
+    expect(() => customPolicy({ scoring: { severity_multiplier: [0.2, 0.8, 1, 1] } })).toThrow(/every FAIL must score at least every WARN/);
   });
 });

@@ -57,6 +57,26 @@ describe("reporter", () => {
     expect(n).toBe(30);
   });
 
+  it("never throws on values that cannot be printed, and cuts long upstream bodies (audit L10)", async () => {
+    const bodies: string[] = [];
+    const r = createReporter({ dsn: DSN, service: "t", fetch: (async (_u: string, init: RequestInit) => (bodies.push(String(init.body)), new Response(null))) as unknown as typeof fetch });
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    await expect(r.capture(circular)).resolves.toBe(true);
+    await expect(r.capture(10n)).resolves.toBe(true);
+    const hostile = { get message(): string { throw new Error("getter"); } };
+    await expect(r.capture(Object.setPrototypeOf(hostile, Error.prototype))).resolves.toBe(false);
+    await expect(r.capture(new Error("x"), null as unknown as Record<string, string>)).resolves.toBe(true);
+    const body = "<html>".padEnd(50_000, "x");
+    await r.capture(new Error(`HTTP 502: ${body}`), { upstream: body });
+    const event = JSON.parse(bodies.at(-1)!.split("\n")[2]!);
+    expect(event.exception.values[0].value.length).toBeLessThan(600);
+    expect(event.extra.upstream.length).toBeLessThan(1_100);
+    // A fetch that throws synchronously is caught too.
+    const sync = createReporter({ dsn: DSN, service: "t", fetch: (() => { throw new Error("sync"); }) as unknown as typeof fetch });
+    await expect(sync.capture(new Error("y"))).resolves.toBe(false);
+  });
+
   it("reads V8 stack frames, innermost last", () => {
     const frames = framesOf("Error: x\n    at inner (/app/a.js:10:5)\n    at /app/b.js:20:7");
     expect(frames).toEqual([{ filename: "/app/b.js", lineno: 20, colno: 7 }, { function: "inner", filename: "/app/a.js", lineno: 10, colno: 5 }]);

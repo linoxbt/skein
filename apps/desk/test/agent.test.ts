@@ -1,7 +1,7 @@
 import { simulatedApi } from "@skein/api/simulated";
 import { Skein, type TelegraphAsker } from "@skeinlabs/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
-import { decide, InputError, parseApplication, process, receive, tick, type AgentDeps } from "../lib/agent";
+import { decide, InputError, parseApplication, process, receive, tick, type AgentDeps, type TelegraphSkein } from "../lib/agent";
 import { memoryStore, type Store } from "../lib/store";
 import type { Application } from "../lib/types";
 
@@ -11,6 +11,7 @@ async function overwrite(store: Store, a: Application) {
   if (!cur || !(await store.update(a, cur.etag))) throw new Error("overwrite failed");
 }
 import { columnOf } from "../lib/types";
+import { subjectFromWire } from "./subject";
 
 let api: Awaited<ReturnType<typeof simulatedApi>>;
 let n = 0;
@@ -28,6 +29,16 @@ function deps(o: Partial<AgentDeps> = {}): AgentDeps {
   });
   return { store: memoryStore(), skein, rail: "apiKey", webUrl: "https://skein.test", waitMs: 10_000, ...o };
 }
+
+/** The Telegraph rail around a test asker, reading verdicts from the simulated API. */
+const tg =
+  (asker: TelegraphAsker, opts: { minerId?: string; fetchApi?: { app: { fetch: (r: Request) => Response | Promise<Response> } } } = {}): TelegraphSkein =>
+  (wrap) =>
+    new Skein({
+      apiUrl: "http://skein.test",
+      payer: { kind: "telegraph", client: wrap(asker), ...(opts.minerId ? { minerId: opts.minerId } : {}) },
+      fetch: (i, init) => Promise.resolve((opts.fetchApi ?? api).app.fetch(new Request(String(i), init))),
+    });
 
 describe("the Desk agent", () => {
   it("shortlists a clean token", async () => {
@@ -99,30 +110,32 @@ describe("the Desk agent", () => {
         const res = await api.app.request("/v1/verdicts", {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${api.key}`, "idempotency-key": crypto.randomUUID() },
-          body: JSON.stringify({ subject: (req.params as { subject: unknown }).subject }),
+          body: JSON.stringify({ subject: subjectFromWire((req.params as { subject: unknown }).subject) }),
         });
         const v = (await res.json()) as { id: string };
-        return { ok: true, response: { miner_id: "skein", result: { id: v.id } }, receipt: { receipt_hash: `0x${"fe".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
+        return { ok: true, response: { miner_id: "845301", result: { id: v.id } }, receipt: { receipt_hash: `0x${"fe".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
       },
     };
-    const skein = new Skein({ apiUrl: "http://skein.test", payer: { kind: "telegraph", client: asker }, fetch: (i, init) => Promise.resolve(api.app.fetch(new Request(String(i), init))) });
-    const d = deps({ skein, rail: "telegraph" });
+    const d = deps({ telegraph: tg(asker), rail: "telegraph" });
     const app = await receive(d, { project: "Via Telegraph", chainId: 8453, token: tok() }, "webhook");
     const out = (await process(d, app.id))!;
-    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, receiptHash: `0x${"fe".repeat(32)}`, action: "shortlist" });
+    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, billing: "paid", minerId: "845301", receiptHash: `0x${"fe".repeat(32)}`, action: "shortlist" });
+    // The ask was recorded on the application before the verdict was read.
+    expect(out.ask).toMatchObject({ billing: "paid", amountUsdc: 0.15, verdictId: out.decision!.verdictId });
   });
 
   it("does not re-ask a lost Telegraph call", async () => {
     let asks = 0;
     const asker: TelegraphAsker = { ask: async () => (asks++, { ok: false, kind: "timeout", error: "x" }) };
-    const skein = new Skein({ apiUrl: "http://skein.test", payer: { kind: "telegraph", client: asker } });
     const t0 = Date.parse("2026-11-10T10:00:00Z");
-    const d = deps({ skein, rail: "telegraph", now: () => new Date(t0) });
+    const d = deps({ telegraph: tg(asker), rail: "telegraph", now: () => new Date(t0) });
     const app = await receive(d, { project: "Lost", chainId: 8453, token: tok() }, "form");
     await overwrite(d.store, { ...app, status: "buying", rail: "telegraph", startedAt: new Date(t0).toISOString() });
     expect((await process(d, app.id))!.status).toBe("buying");
-    const later = (await process({ ...d, now: () => new Date(t0 + 4 * 60_000) }, app.id))!;
-    expect(later.decision).toMatchObject({ action: "analyst", refusal: { code: "LOST_ASK" } });
+    // Still within the longest a background run can last: perhaps in flight elsewhere.
+    expect((await process({ ...d, now: () => new Date(t0 + 10 * 60_000) }, app.id))!.status).toBe("buying");
+    const later = (await process({ ...d, now: () => new Date(t0 + 16 * 60_000) }, app.id))!;
+    expect(later.decision).toMatchObject({ action: "analyst", rail: "telegraph", billing: "unknown", refusal: { code: "LOST_ASK" } });
     expect(asks).toBe(0);
   });
 });
@@ -161,14 +174,13 @@ describe("concurrency (leases)", () => {
         const res = await api.app.request("/v1/verdicts", {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${api.key}`, "idempotency-key": crypto.randomUUID() },
-          body: JSON.stringify({ subject: (req.params as { subject: unknown }).subject }),
+          body: JSON.stringify({ subject: subjectFromWire((req.params as { subject: unknown }).subject) }),
         });
         const v = (await res.json()) as { id: string };
-        return { ok: true, response: { miner_id: "skein", result: { id: v.id } }, receipt: { receipt_hash: `0x${"cd".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
+        return { ok: true, response: { miner_id: "845301", result: { id: v.id } }, receipt: { receipt_hash: `0x${"cd".repeat(32)}` }, amountUusdc: 150_000, durationMs: 5 };
       },
     };
-    const skein = new Skein({ apiUrl: "http://skein.test", payer: { kind: "telegraph", client: asker }, fetch: (i, init) => Promise.resolve(api.app.fetch(new Request(String(i), init))) });
-    const d = deps({ skein, rail: "telegraph" });
+    const d = deps({ telegraph: tg(asker), rail: "telegraph" });
     const app = await receive(d, { project: "Crowded", chainId: 8453, token: tok() }, "form");
     await Promise.all(Array.from({ length: 5 }, () => process(d, app.id)));
     expect(asks).toBe(1);
@@ -214,11 +226,10 @@ describe("the Telegraph rail, end to end", () => {
       },
     });
     const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(`0x${"66".repeat(32)}`), fetch: node.fetch, maxUusdcPerCall: 300_000, allowPreSeason: true });
-    const skein = new Skein({ apiUrl: "http://skein.test", payer: { kind: "telegraph", client, minerId: "skein" }, fetch: (i, init) => Promise.resolve(mined.app.fetch(new Request(String(i), init))) });
-    const d = deps({ skein, rail: "telegraph" });
+    const d = deps({ skein: null, telegraph: tg(client, { minerId: "skein", fetchApi: mined }), rail: "telegraph" });
     const app = await receive(d, { project: "Real Rail", chainId: 8453, token: tok() }, "webhook");
     const out = (await process(d, app.id))!;
-    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, action: "shortlist" });
+    expect(out.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, billing: "paid", action: "shortlist" });
     expect(out.decision!.receiptHash).toBe(node.charges[0]!.receiptHash);
     expect(node.charges).toHaveLength(1);
   });

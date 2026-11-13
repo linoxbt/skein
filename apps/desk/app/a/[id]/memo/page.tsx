@@ -9,6 +9,9 @@ import { PrintButton } from "./PrintButton";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Listing risk memo" };
 
+/** The Telegraph node the Desk pays on (the same setting its client uses). */
+const TELEGRAPH_NODE_URL = (process.env.TELEGRAPH_NODE_URL || "https://devnode.telegraphprotocol.com").replace(/\/$/, "");
+
 interface BomLine {
   check: string;
   intent: string;
@@ -49,11 +52,12 @@ export default async function MemoPage({ params }: { params: Promise<{ id: strin
   const row = "grid grid-cols-[150px_minmax(0,1fr)] gap-4 border-t border-rule py-2.5 text-[14px] md:grid-cols-[190px_minmax(0,1fr)]";
 
   return (
-    <main className="bg-paper text-ink">
+    // A div: the root layout already wraps every page in <main>.
+    <div className="memo bg-paper text-ink">
       <style>{`@media print {
         body > header, body header.fixed, footer, .no-print { display: none !important }
-        html, body, main { background: #fff !important }
-        main { padding: 0 !important }
+        html, body, main, .memo { background: #fff !important }
+        main, .memo { padding: 0 !important }
         .memo-scroll { overflow: visible !important }
         .memo-table { min-width: 0 !important; table-layout: fixed }
         .memo-table td, .memo-table th { word-break: break-all }
@@ -141,6 +145,18 @@ export default async function MemoPage({ params }: { params: Promise<{ id: strin
                 {v ? <div className={row}><span className="text-ink-2">Receipts root</span><span className="break-all font-mono">{v.bom.root} ({v.bom.items})</span></div> : null}
                 {v ? <div className={row}><span className="text-ink-2">Policy · engine</span><span className="font-mono">{v.policy.id}@{v.policy.version} · {v.engineVersion}</span></div> : null}
                 <div className={row}><span className="text-ink-2">Network</span><span className="font-mono">{d.network ?? "—"} (Telegraph testnet payments; mainnet tokens analysed)</span></div>
+                {d.rail === "telegraph" ? (
+                  <>
+                    <div className={row}><span className="text-ink-2">Bought from</span><span className="break-all font-mono">Telegraph miner {d.minerId ?? "unknown"}</span></div>
+                    <div className={row}>
+                      <span className="text-ink-2">Desk&apos;s receipt</span>
+                      <span className="break-all font-mono">
+                        {d.receiptHash ?? "none returned"}
+                        {d.signalHash ? <a className="no-print ml-2 underline underline-offset-4" href={`${TELEGRAPH_NODE_URL}/engine/v1/signal/${d.signalHash}`}>the node&apos;s record</a> : null}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
                 {v?.attestation ? (
                   <>
                     <div className={row}><span className="text-ink-2">Signed by</span><span className="break-all font-mono">{v.attestation.signer} (Skein, EIP-191)</span></div>
@@ -174,9 +190,11 @@ export default async function MemoPage({ params }: { params: Promise<{ id: strin
                 <span>Skein&apos;s price for this verdict</span><span className="sm:text-right">{usd(v?.cost.priceUsdc ?? d.listPriceUsdc)} (list {usd(d.listPriceUsdc)}{v?.cost.priceUsdc === 0 && d.listPriceUsdc > 0 ? "; ABSTAIN is charged upstream cost only" : ""})</span>
                 <span className="font-medium">The desk paid</span>
                 <span className="font-medium sm:text-right">
-                  {usd(d.paidUsdc)}{" "}
+                  {d.billing === "unknown" ? `${d.paidUsdc > 0 ? `up to ${usd(d.paidUsdc)}` : "an unknown amount"}` : usd(d.paidUsdc)}{" "}
                   {d.rail === "telegraph"
-                    ? "from its Telegraph escrow"
+                    ? d.billing === "unknown"
+                      ? "from its Telegraph escrow (the payment was sent but the ask failed; never asked again)"
+                      : "from its Telegraph escrow"
                     : d.rail === "apiKey"
                       ? d.paidUsdc === 0 ? "(Skein partner key: free during the hackathon)" : "with a Skein partner key"
                       : "(refused before any purchase)"}
@@ -188,6 +206,6 @@ export default async function MemoPage({ params }: { params: Promise<{ id: strin
           </>
         )}
       </article>
-    </main>
+    </div>
   );
 }

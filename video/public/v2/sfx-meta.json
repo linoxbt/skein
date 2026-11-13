@@ -274,5 +274,29 @@
  "wind_hum": {
   "dur": 5.5,
   "peak": 0.17
+ },
+ "deep_impact2": {
+  "dur": 8.109,
+  "peak": 3.45
+ },
+ "trailer_whoosh_impact": {
+  "dur": 4.945,
+  "peak": 0.3
+ },
+ "laser_swoosh": {
+  "dur": 11.455,
+  "peak": 2.21
+ },
+ "suspense_hit": {
+  "dur": 31.0,
+  "peak": 26.01
+ },
+ "brass_transition": {
+  "dur": 4.8,
+  "peak": 0.89
+ },
+ "drum_hit": {
+  "dur": 9.568,
+  "peak": 3.05
  }
 }

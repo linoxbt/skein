@@ -9,7 +9,8 @@
  *
  * Reporting never throws and never blocks the caller for long: each send has
  * a 3 s timeout, identical errors are sent at most once a minute, and at most
- * 30 events leave a process per minute.
+ * 30 events leave a process per minute. Messages and context are cut short
+ * (an upstream error often quotes a whole response body).
  */
 export interface ReporterOptions {
   /** https://<publicKey>@<host>/<projectId>; unset or empty disables reporting. */
@@ -47,6 +48,30 @@ export function parseDsn(dsn: string | undefined): ParsedDsn | null {
   return { envelopeUrl: `${u.protocol}//${u.host}${prefix}/api/${projectId}/envelope/`, publicKey: u.username, dsn };
 }
 
+/** The longest error message and context value sent; longer ones are cut, marked with an ellipsis. */
+export const MAX_MESSAGE = 500;
+export const MAX_EXTRA = 1_000;
+
+/** Cuts a string to `max` characters, marking the cut. */
+export function clip(s: string, max: number): string {
+  return s.length <= max ? s : `${s.slice(0, max)}… (${s.length - max} more chars)`;
+}
+
+/** Any thrown value as an Error, without throwing (circular objects, BigInts, throwing getters). */
+function asError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  if (typeof error === "string") return new Error(error);
+  try {
+    return new Error(JSON.stringify(error) ?? String(error));
+  } catch {
+    try {
+      return new Error(String(error));
+    } catch {
+      return new Error("unprintable error value");
+    }
+  }
+}
+
 const hex = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
 
 /** A stack trace as Sentry frames (innermost last), from a V8 stack string. */
@@ -71,59 +96,69 @@ export function createReporter(opts: ReporterOptions): Reporter {
     enabled: parsed !== null,
     async capture(error, context = {}) {
       if (!parsed) return false;
-      const err = error instanceof Error ? error : new Error(typeof error === "string" ? error : JSON.stringify(error));
-      const t = now();
-      const fingerprint = `${err.name}:${err.message}`.slice(0, 300);
-      if ((seen.get(fingerprint) ?? -Infinity) > t - 60_000) return false;
-      if (t - windowStart > 60_000) {
-        windowStart = t;
-        sentInWindow = 0;
-      }
-      if (sentInWindow >= 30) return false;
-      seen.set(fingerprint, t);
-      if (seen.size > 500) seen.delete(seen.keys().next().value!);
-      sentInWindow++;
-
-      const eventId = hex(16);
-      const tags: Record<string, string> = { service: opts.service };
-      const extra: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(context)) {
-        if (v === undefined) continue;
-        if (typeof v === "string" && v.length <= 200) tags[k] = v;
-        else extra[k] = v;
-      }
-      const event = {
-        event_id: eventId,
-        timestamp: t / 1000,
-        platform: "node",
-        level: "error",
-        logger: opts.service,
-        server_name: opts.service,
-        environment: opts.environment ?? "production",
-        ...(opts.release ? { release: opts.release } : {}),
-        tags,
-        extra,
-        exception: { values: [{ type: err.name, value: err.message.slice(0, 2000), stacktrace: { frames: framesOf(err.stack) } }] },
-      };
-      const body = [
-        JSON.stringify({ event_id: eventId, sent_at: new Date(t).toISOString(), dsn: parsed.dsn }),
-        JSON.stringify({ type: "event", content_type: "application/json" }),
-        JSON.stringify(event),
-      ].join("\n");
       try {
-        const res = await (opts.fetch ?? fetch)(parsed.envelopeUrl, {
-          method: "POST",
-          headers: {
-            "content-type": "application/x-sentry-envelope",
-            "x-sentry-auth": `Sentry sentry_version=7, sentry_client=skein-errors/0.1.0, sentry_key=${parsed.publicKey}`,
-          },
-          body,
-          signal: AbortSignal.timeout(3_000),
-        });
-        return res.ok;
+        return await send(error, context);
       } catch {
         return false;
       }
     },
   };
+
+  async function send(error: unknown, context: Record<string, string | number | boolean | null | undefined>): Promise<boolean> {
+    if (!parsed) return false;
+    const err = asError(error);
+    const message = clip(String(err.message ?? ""), MAX_MESSAGE);
+    const t = now();
+    const fingerprint = `${err.name}:${message}`.slice(0, 300);
+    if ((seen.get(fingerprint) ?? -Infinity) > t - 60_000) return false;
+    if (t - windowStart > 60_000) {
+      windowStart = t;
+      sentInWindow = 0;
+    }
+    if (sentInWindow >= 30) return false;
+    seen.set(fingerprint, t);
+    if (seen.size > 500) seen.delete(seen.keys().next().value!);
+    sentInWindow++;
+
+    const eventId = hex(16);
+    const tags: Record<string, string> = { service: opts.service };
+    const extra: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(context ?? {})) {
+      if (v === undefined) continue;
+      if (typeof v === "string" && v.length <= 200) tags[k] = v;
+      else extra[k] = typeof v === "string" ? clip(v, MAX_EXTRA) : v;
+    }
+    const event = {
+      event_id: eventId,
+      timestamp: t / 1000,
+      platform: "node",
+      level: "error",
+      logger: opts.service,
+      server_name: opts.service,
+      environment: opts.environment ?? "production",
+      ...(opts.release ? { release: opts.release } : {}),
+      tags,
+      extra,
+      exception: { values: [{ type: String(err.name), value: message, stacktrace: { frames: framesOf(typeof err.stack === "string" ? err.stack : undefined) } }] },
+    };
+    const body = [
+      JSON.stringify({ event_id: eventId, sent_at: new Date(t).toISOString(), dsn: parsed.dsn }),
+      JSON.stringify({ type: "event", content_type: "application/json" }),
+      JSON.stringify(event),
+    ].join("\n");
+    try {
+      const res = await (opts.fetch ?? fetch)(parsed.envelopeUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-sentry-envelope",
+          "x-sentry-auth": `Sentry sentry_version=7, sentry_client=skein-errors/0.1.0, sentry_key=${parsed.publicKey}`,
+        },
+        body,
+        signal: AbortSignal.timeout(3_000),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
 }

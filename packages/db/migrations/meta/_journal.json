@@ -64,6 +64,20 @@
       "when": 1794324735558,
       "tag": "0008_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794500903883,
+      "tag": "0009_x402_attest_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794522274068,
+      "tag": "0010_purchase_receipt_fields",
+      "breakpoints": true
     }
   ]
 }

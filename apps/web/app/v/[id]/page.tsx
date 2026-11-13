@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Lead, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
-import { StatTile } from "@/components/ui";
+import { copyText, StatTile } from "@/components/ui";
 import { GraphWithPanel, VerdictHeader, VerdictTabs } from "@/components/VerdictView";
 import { usd } from "@/lib/api";
 import { useVerdict } from "@/lib/useVerdict";
@@ -12,7 +12,7 @@ import { useVerdict } from "@/lib/useVerdict";
 export default function VerdictPage() {
   const { id } = useParams<{ id: string }>();
   const { v, bom, graph, error, running, notFound } = useVerdict(id);
-  const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState<"idle" | "copied" | "failed">("idle");
 
   if (notFound || error || running || !v || !graph) {
     return (
@@ -47,12 +47,21 @@ export default function VerdictPage() {
             <button
               type="button"
               className="btn btn-light"
-              onClick={() => {
-                void navigator.clipboard?.writeText(window.location.href);
-                setCopied(true);
+              onClick={async () => {
+                const url = window.location.href;
+                // The system share sheet where there is one; otherwise the clipboard. Either way, say what happened.
+                if (typeof navigator.share === "function") {
+                  try {
+                    await navigator.share({ title: `Skein verdict ${v.id}`, url });
+                    return setShared("idle");
+                  } catch (e) {
+                    if ((e as Error).name === "AbortError") return;
+                  }
+                }
+                setShared((await copyText(url)) ? "copied" : "failed");
               }}
             >
-              {copied ? "Link copied" : "Share"}
+              <span aria-live="polite">{shared === "copied" ? "Link copied" : shared === "failed" ? "Copy failed: use the address bar" : "Share"}</span>
             </button>
           </div>
         </div>

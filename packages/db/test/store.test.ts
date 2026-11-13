@@ -5,11 +5,11 @@ import { catalogueFromSnapshot, runVerdict } from "@skein/pipeline";
 import { getPolicy } from "@skein/policies";
 import { TelegraphClient, TESTNET, viemSigner } from "@skein/telegraph";
 import { FakeNode } from "@skein/telegraph/testing";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, describe, expect, it } from "vitest";
-import { claimRun, finishRun, getRun, loadStoredVerdict, MIGRATIONS_DIR, saveVerdictRun, schema, spendGate, spentToday, sweepLostRuns, type Db } from "../src";
+import { claimRun, finishRun, getAttestation, getRun, loadStoredVerdict, MIGRATIONS_DIR, saveAttestation, savePurchase, saveVerdictRun, schema, spendGate, spentToday, sweepLostRuns, type Db } from "../src";
 
 const SEASON = Date.parse("2026-11-03T10:00:00Z");
 const subject = { chainId: 8453, token: "0x4200000000000000000000000000000000000006" };
@@ -105,11 +105,60 @@ describe("verdict store", () => {
     await expect(saveVerdictRun(db, run, meta)).rejects.toThrow();
   });
 
+  it("a purchase saved as it is paid with a receipt already on record is kept, without the receipt, and does not throw", async () => {
+    const run = await aRun();
+    const first = run.purchases.find((p) => p.receiptHash)!;
+    await claimRun(db, { id: "run_dup_a", channel: "api", subjectChainId: 8453, subjectToken: subject.token, policyId: "dex-list", policyVersion: "0.1.0", contextHash: "c" });
+    await claimRun(db, { id: "run_dup_b", channel: "api", subjectChainId: 8453, subjectToken: subject.token, policyId: "dex-list", policyVersion: "0.1.0", contextHash: "c" });
+    await savePurchase(db, "run_dup_a", first);
+    await expect(savePurchase(db, "run_dup_b", first)).resolves.toBeUndefined();
+    const [dup] = await db.select().from(schema.purchases).where(eq(schema.purchases.verdictId, "run_dup_b"));
+    expect(dup).toMatchObject({ receiptHash: null, amountUusdc: first.amountUusdc, error: expect.stringMatching(/^duplicate_receipt: /) });
+  });
+
+  it("keeps each receipt's timestamp, payer and settlement transaction on its purchase", async () => {
+    const run = await aRun();
+    const paid = run.purchases.find((p) => p.receiptHash)!;
+    await claimRun(db, { id: "run_receipt_fields", channel: "api", subjectChainId: 8453, subjectToken: subject.token, policyId: "dex-list", policyVersion: "0.1.0", contextHash: "c" });
+    await savePurchase(db, "run_receipt_fields", { ...paid, receiptHash: `0x${"ef".repeat(32)}`, txHash: `0x${"12".repeat(32)}` });
+    const [row] = await db.select().from(schema.purchases).where(eq(schema.purchases.verdictId, "run_receipt_fields"));
+    expect(row).toMatchObject({ receiptTimestamp: paid.receiptTimestamp, payer: paid.payer, txHash: `0x${"12".repeat(32)}` });
+    expect(row!.receiptTimestamp).toEqual(expect.any(Number));
+    expect(row!.payer).toMatch(/^0x/);
+  });
+
+  it("each finding points at the purchase whose receipt it cites", async () => {
+    const run = await aRun();
+    const id = await saveVerdictRun(db, run, meta);
+    const fs = await db.select().from(schema.findings).where(eq(schema.findings.verdictId, id));
+    const ps = await db.select().from(schema.purchases).where(eq(schema.purchases.verdictId, id));
+    const cited = fs.filter((f) => (f.evidence as { receiptHash?: string } | null)?.receiptHash);
+    expect(cited.length).toBeGreaterThan(0);
+    for (const f of cited) expect(ps.find((p) => p.id === f.purchaseId)?.receiptHash).toBe((f.evidence as { receiptHash: string }).receiptHash);
+  });
+
+  it("a stored attestation is written once and cannot be changed", async () => {
+    const run = await aRun();
+    const id = await saveVerdictRun(db, run, meta);
+    const a = await saveAttestation(db, { verdictId: id, scheme: "eip191", signer: "0x1", message: "m", signature: "0xs", atSeal: true });
+    const b = await saveAttestation(db, { verdictId: id, scheme: "eip191", signer: "0x2", message: "other", signature: "0xt", atSeal: false });
+    expect(b).toEqual(a);
+    expect(await getAttestation(db, id)).toEqual(a);
+    await refused(db.execute(sql`update verdict_attestations set signature = '0x0'`), /append-only/);
+  });
+
+  it("a revoked key stays revoked", async () => {
+    const [c] = await db.insert(schema.consumers).values({ name: "gone", kind: "team", apiKeyHash: "h-revoked", revokedAt: new Date() }).returning();
+    await refused(db.update(schema.consumers).set({ revokedAt: null }).where(eq(schema.consumers.id, c!.id)), /cannot be restored/);
+    await refused(db.update(schema.consumers).set({ apiKeyHash: "h-new" }).where(eq(schema.consumers.id, c!.id)), /cannot be restored/);
+    await db.update(schema.consumers).set({ dailyCapUusdc: 1 }).where(eq(schema.consumers.id, c!.id));
+  });
+
   it("row level security is enabled on every table", async () => {
     const res = await pg.query<{ relname: string; relrowsecurity: boolean }>(
       "select relname, relrowsecurity from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r'",
     );
-    expect(res.rows.length).toBe(20);
+    expect(res.rows.length).toBe(23);
     expect(res.rows.filter((r) => !r.relrowsecurity)).toEqual([]);
   });
 });
@@ -127,6 +176,25 @@ describe("runs and spend", () => {
     expect(claims.filter((c) => c.claimed)).toHaveLength(1);
     const winner = claims.findIndex((c) => c.claimed);
     for (const c of claims) if (!c.claimed) expect(c.existing.id).toBe(`run_claim_${winner}`);
+  });
+
+  it("a run that failed transiently is retired and claimed afresh, once, however many retries race", async () => {
+    const [consumer] = await db.insert(schema.consumers).values({ name: "r", kind: "team", apiKeyHash: "h-reclaim" }).returning();
+    const key = { consumerId: consumer!.id, idempotencyKey: "k-retry", requestHash: "rh" };
+    await claimRun(db, run("run_retry_0", key));
+    await finishRun(db, "run_retry_0", { status: "failed", outcome: { code: "VERDICT_FAILED" } });
+    const reclaimable = (r: { status: string }) => r.status === "failed" || r.status === "lost";
+    const claims = await Promise.all(Array.from({ length: 4 }, (_, i) => claimRun(db, run(`run_retry_${i + 1}`, key), { reclaimable })));
+    const won = claims.filter((c) => c.claimed);
+    expect(won).toHaveLength(1);
+    expect(won[0]).toMatchObject({ retired: { id: "run_retry_0" } });
+    const winner = `run_retry_${claims.findIndex((c) => c.claimed) + 1}`;
+    for (const c of claims) if (!c.claimed) expect(c.existing.id).toBe(winner);
+    // The old run stays on record under its retired key; a finished run is not reclaimed.
+    expect((await getRun(db, "run_retry_0"))?.idempotencyKey).toBe("k-retry#run_retry_0");
+    await finishRun(db, winner, { status: "done", verdictId: "v" });
+    const again = await claimRun(db, run("run_retry_9", key), { reclaimable });
+    expect(again).toMatchObject({ claimed: false, existing: { id: winner } });
   });
 
   it("holds spend atomically: concurrent reservations never pass the cap together", async () => {

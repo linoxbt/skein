@@ -8,7 +8,7 @@
 // run buys one live verdict per case (real Telegraph inputs, paid from the
 // purchaser's escrow) and stores it; it refuses without --live --yes and stops
 // before the total would pass --max-total-usdc. report scores Skein and the
-// baselines on stored runs, with bootstrap intervals, as Markdown.
+// baselines on stored runs, with Wilson score intervals, as Markdown.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -17,7 +17,7 @@ import { getPolicy } from "@skein/policies";
 import { dexScreenerResolver, loadCatalogue, runVerdict } from "@skein/pipeline";
 import { CHECK_INTENTS, networkFromEnv, TelegraphClient, viemSigner } from "@skein/telegraph";
 import { casesFileSchema, type Case } from "./cases";
-import { answerFor, bootstrap, metrics, SYSTEMS, type Run } from "./metrics";
+import { answerFor, metrics, SYSTEMS, wilson, type Run } from "./metrics";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -187,17 +187,26 @@ function report(kind: string, all: Case[], allRuns: Run[]): string {
       "",
       `${runs.length} of ${cs.length} cases have a run (good ${count("good")}, bad ${count("bad")}, ambiguous ${count("ambiguous")}). ${runs.length < 30 ? `A sample of ${runs.length} is small; read the intervals, not the point estimates.` : ""}`,
       "",
-      "| System | False APPROVE on bad | REJECT precision | REJECT recall | ESCALATE | ABSTAIN | Cost / verdict | p50 / p95 latency | Coverage |",
-      "|---|---|---|---|---|---|---|---|---|",
+      ...(count("good") === 0
+        ? ["**No case in this set is labelled good**, so a low false-APPROVE rate cannot be told apart from never approving: read it next to the APPROVE column.", ""]
+        : []),
+      "| System | APPROVE (all) | APPROVE on good | False APPROVE on bad | REJECT precision | REJECT recall | ESCALATE | ABSTAIN | Cost / verdict | Coverage |",
+      "|---|---|---|---|---|---|---|---|---|---|",
     );
     for (const sys of SYSTEMS) {
       const answers = runs.map((r) => answerFor(sys, r));
       const m = metrics(cs, answers);
       lines.push(
-        `| ${sys} | ${pct(m.falseApproveRate)}${ci(bootstrap(cs, answers, (x) => x.falseApproveRate))} | ${pct(m.rejectPrecision)} | ${pct(m.rejectRecall)}${ci(bootstrap(cs, answers, (x) => x.rejectRecall))} | ${pct(m.escalateRate)} | ${pct(m.abstainRate)} | $${m.costPerVerdictUsdc.toFixed(3)} | ${m.p50LatencyMs} / ${m.p95LatencyMs} ms | ${pct(m.meanCoverage)} |`,
+        `| ${sys} | ${pct(m.approveRate)} | ${pct(m.goodApproveRate)} | ${pct(m.falseApproveRate)}${ci(wilson(m.badApproved, m.bad))} | ${pct(m.rejectPrecision)} | ${pct(m.rejectRecall)}${ci(wilson(m.badRejected, m.bad))} | ${pct(m.escalateRate)} | ${pct(m.abstainRate)} | $${m.costPerVerdictUsdc.toFixed(3)} | ${pct(m.meanCoverage)} |`,
       );
     }
+    const skein = metrics(cs, runs.map((r) => answerFor("skein", r)));
+    lines.push("", `Latency (Skein's wall time; the baselines reuse the same runs): p50 ${skein.p50LatencyMs} ms, p95 ${skein.p95LatencyMs} ms.`);
   }
-  lines.push("", "Baselines reuse Skein's paid findings (no extra spend). The direct-API baseline needs its own data source and is not in this table.");
+  lines.push(
+    "",
+    "Baselines reuse Skein's paid findings (no extra spend). The direct-API baseline needs its own data source and is not in this table.",
+    "Intervals are 95% Wilson score intervals on the counts behind each rate.",
+  );
   return lines.join("\n");
 }

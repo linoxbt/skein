@@ -1,5 +1,25 @@
 # Demo films
 
+## skein-teaser.mp4: the 42-second teaser (no narration)
+
+[skein-teaser.mp4](skein-teaser.mp4) is a wordless intro for social posts
+(`video/src/teaser`). There are no screen recordings: it animates what Skein
+does, with real data throughout.
+
+- **The launches:** the day's Base launch count from the Sniper feed, and the
+  real launches, red where they went to zero.
+- **The purchases:** the five ranked miners and receipt hashes from
+  `vrd_mwcfyu0y04360z153f1b`.
+- **The verdicts:** the AERO approval and the Lazarus Group rejection.
+- **The proof:** the Merkle root and the verify checks.
+- **The results:** the prospective benchmark result and the ledger totals.
+
+It is cut to Mixkit's "No Warning" (Michael Ramir C.). The music is edited
+on bar lines so the logo lands on the drop and the end card on the track's
+final hit. The audio is mastered to −14 LUFS.
+
+The post to go with it is in [POST.md](POST.md).
+
 ## skein-motion.mp4: the narrated demo film (3 min 48 s)
 
 The main demo. It is a motion film built with Remotion from the live product

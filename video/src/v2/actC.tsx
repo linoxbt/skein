@@ -90,7 +90,7 @@ export const Sniper: React.FC = () => {
 export const Bench: React.FC = () => {
   const frame = useCurrentFrame();
   const s = scene("bench");
-  const t72 = at("bench", "72"), t40 = at("bench", "40"), t27 = at("bench", "27"), tNone = at("bench", "approved"), tSimpler = at("bench", "Simpler");
+  const t72 = at("bench", "72"), t40 = at("bench", "80"), t27 = at("bench", "49"), tNone = at("bench", "approved"), tSimpler = at("bench", "Simpler");
   const climax = frame >= tNone - 1;
   const gridOut = interpolate(frame, [tSimpler - 6, tSimpler + 8], [1, 0], clamp);
   return (
@@ -107,40 +107,40 @@ export const Bench: React.FC = () => {
           <div style={{ fontFamily: F.display, fontWeight: 300, fontSize: 80, color: C.thread, letterSpacing: "-0.04em" }}>{Math.round(interpolate(frame, [t72 - 6, t72 + 24], [0, 72], clamp))} h</div>
           <Mono size={22} color={C.text}>outcome</Mono>
         </div>
-        {/* the forty launches */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 92px)", gap: 14, marginTop: 50, opacity: gridOut }}>
-          {Array.from({ length: 40 }, (_, i) => {
-            const born = t40 - 10 + i * 0.6;
+        {/* the eighty launches of the Nov 12 run: 49 went bad, 31 ambiguous, none labelled good */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(16, 62px)", gap: 10, marginTop: 50, opacity: gridOut }}>
+          {Array.from({ length: 80 }, (_, i) => {
+            const born = t40 - 10 + i * 0.3;
             const o = interpolate(frame, [born, born + 5], [0, 1], clamp);
-            const bad = i < 27;
-            const red = bad && frame >= t27 + i * 0.5;
+            const bad = i < 49;
+            const red = bad && frame >= t27 + i * 0.3;
             const saved = climax && bad;
-            return <div key={i} style={{ height: 70, opacity: o, background: red ? (saved ? "rgba(255,93,93,0.12)" : "rgba(255,93,93,0.22)") : "rgba(138,150,163,0.12)", border: `1px solid ${red ? C.reject : C.edge}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 18, color: saved ? C.thread : red ? C.reject : C.muted }}>{saved ? "✕ skip" : red ? "bad" : "?"}</div>;
+            return <div key={i} style={{ height: 56, opacity: o, background: red ? (saved ? "rgba(255,93,93,0.12)" : "rgba(255,93,93,0.22)") : "rgba(138,150,163,0.12)", border: `1px solid ${red ? C.reject : C.edge}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 15, color: saved ? C.thread : red ? C.reject : C.muted }}>{saved ? "✕" : red ? "bad" : "?"}</div>;
           })}
         </div>
       </AbsoluteFill>
       {climax && frame < tSimpler && (
         <AbsoluteFill style={{ alignItems: "flex-end", justifyContent: "center", paddingRight: 150 }}>
           <div style={{ textAlign: "right", transform: `scale(${interpolate(frame - tNone, [0, 6], [1.3, 1], { ...clamp, easing: ease })})` }}>
-            <Mono size={22} color={C.text}>bad launches Skein approved</Mono>
+            <Mono size={22} color={C.text}>launches Skein approved</Mono>
             <div style={{ fontFamily: F.display, fontWeight: 300, fontSize: 330, letterSpacing: "-0.07em", color: C.thread, lineHeight: 0.95, textShadow: `0 0 80px ${C.thread}88` }}>0</div>
-            <Mono size={20}>of 27</Mono>
+            <Mono size={20}>of 80 · it rejected 19 of the 49 bad outright</Mono>
           </div>
         </AbsoluteFill>
       )}
       {frame >= tSimpler - 4 && (
         <AbsoluteFill style={{ padding: "330px 160px 0" }}>
-          <Mono size={20}>Bad launches approved · same paid findings, Nov 11, 2026 · 40 launches, 27 bad, 13 ambiguous</Mono>
+          <Mono size={20}>Bad launches approved · same paid findings, Nov 12, 2026 · 80 launches, 49 bad, 31 ambiguous, none labelled good</Mono>
           {[
-            ["Single best miner", 22.2, C.reject],
-            ["Weighted average", 22.2, C.reject],
+            ["Single best miner", 34.7, C.reject],
+            ["Weighted average", 16.3, C.reject],
             ["Skein", 0.0, C.thread],
           ].map(([name, v, col], i) => {
             const p = interpolate(frame - tSimpler - i * 6, [0, 22], [0, 1], { ...clamp, easing: ease });
             return (
               <div key={name as string} style={{ display: "flex", alignItems: "center", gap: 30, marginTop: 44 }}>
                 <div style={{ width: 420, fontFamily: F.display, fontSize: 48, color: i === 2 ? C.thread : C.text }}>{name}</div>
-                <div style={{ width: (v as number) * 40 * p + 6, height: 64, background: col as string, boxShadow: `0 0 26px ${col}66` }} />
+                <div style={{ width: (v as number) * 25 * p + 6, height: 64, background: col as string, boxShadow: `0 0 26px ${col}66` }} />
                 <div style={{ fontFamily: F.display, fontWeight: 300, fontSize: 72, color: col as string, letterSpacing: "-0.04em" }}>{((v as number) * p).toFixed(1)}%</div>
               </div>
             );

@@ -52,8 +52,9 @@ makes the sanctions miner hang (ABSTAIN).
 
 ```sh
 pnpm install
-pnpm repro eval/verdicts        # every stored verdict replays to the same hash
-pnpm test                       # 230+ tests: engine, client, pipeline, API, SDK, MCP, Desk
+pnpm repro eval/verdicts        # the stored fixtures replay to the same hash
+pnpm repro eval/runs            # and so do the 61 real evaluation runs (CI runs both)
+pnpm test                       # over 500 tests: engine, client, pipeline, API, SDK, MCP, Desk, web
 pnpm --filter @skein/e2e e2e    # the console flow, verify and axe checks in a browser
 ```
 
@@ -65,5 +66,5 @@ For a verdict served by the API: `POST /v1/verify {"id":"vrd_…"}`.
   Telegraph testnet (Sepolia, test USDC).
 - Simulated runs (local dev, tests, `eval/verdicts/`) say so on every screen
   and in every stored record. They are never evidence.
-- The miner registers on `FRAUD_RISK_GENERAL` (plan B) unless
-  `FRAUD_RISK_TOKEN_LISTING` becomes canonical first.
+- The miner is registered on `FRAUD_RISK_GENERAL` (plan B; registration 5137,
+  catalogue id 845301, Nov 7). `FRAUD_RISK_TOKEN_LISTING` is only a proposal.

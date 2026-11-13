@@ -28,9 +28,12 @@ export const VERDICT_COLOR: Record<Verdict, string> = {
   ABSTAIN: "var(--color-abstain)",
 };
 
-/** A square dark panel (the cards of the immersive sections). */
+/**
+ * The signature card (spec section 11): a 1 px line border with 10 px corner
+ * brackets in the thread colour at 60%, solid on hover.
+ */
 export function CornerCard({ children, className = "", as: As = "div" }: { children: ReactNode; className?: string; as?: "div" | "section" | "article" }) {
-  return <As className={`border border-edge bg-panel p-5 ${className}`}>{children}</As>;
+  return <As className={`corner-card border border-line bg-surface p-5 ${className}`}>{children}</As>;
 }
 
 export function VerdictBadge({ verdict, size = "md" }: { verdict: Verdict; size?: "md" | "lg" }) {
@@ -68,7 +71,7 @@ export function StatTile({ label, value, gold = false, light = false }: { label:
 }
 
 export function ReceiptChip({ hash, href }: { hash: string | null | undefined; href?: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"idle" | "ok" | "failed">("idle");
   if (!hash) return <span className="text-muted">—</span>;
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -78,14 +81,13 @@ export function ReceiptChip({ hash, href }: { hash: string | null | undefined; h
       <button
         type="button"
         className="text-[12px] text-muted hover:text-thread"
-        onClick={() => {
-          void navigator.clipboard?.writeText(hash);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
+        onClick={async () => {
+          setCopied((await copyText(hash)) ? "ok" : "failed");
+          setTimeout(() => setCopied("idle"), 1600);
         }}
         aria-label="Copy hash"
       >
-        {copied ? "copied" : "copy"}
+        <span aria-live="polite">{copied === "ok" ? "copied" : copied === "failed" ? "copy failed" : "copy"}</span>
       </button>
       {href ? (
         <a className="text-[12px] text-thread hover:underline" href={href}>
@@ -107,21 +109,64 @@ export function JsonPane({ value }: { value: unknown }) {
 /** The mark: three threads wound into an S, tied off in one gold knot. */
 export { Mark } from "@skein/ui";
 
-export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: readonly T[]; value: T; onChange: (t: T) => void }) {
+/** The ids a tab and its panel share (`tabIds("verdict", "json").panel` is "verdict-panel-json"). */
+export const tabIds = (prefix: string, tab: string) => {
+  const slug = tab.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return { tab: `${prefix}-tab-${slug}`, panel: `${prefix}-panel-${slug}` };
+};
+
+/**
+ * A tab list (WAI-ARIA tabs pattern): arrow keys, Home and End move between
+ * tabs, only the selected tab is in the tab order, and the selected tab names
+ * the panel it controls. The caller renders that one panel with
+ * role="tabpanel", id tabIds(prefix, value).panel and aria-labelledby
+ * tabIds(prefix, value).tab.
+ */
+export function Tabs<T extends string>({ tabs, value, onChange, idPrefix }: { tabs: readonly T[]; value: T; onChange: (t: T) => void; idPrefix: string }) {
+  const move = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const i = tabs.indexOf(value);
+    const next = e.key === "ArrowRight" ? (i + 1) % tabs.length : e.key === "ArrowLeft" ? (i - 1 + tabs.length) % tabs.length : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    onChange(tabs[next]!);
+    document.getElementById(tabIds(idPrefix, tabs[next]!).tab)?.focus();
+  };
   return (
-    <div role="tablist" className="flex gap-0 overflow-x-auto">
-      {tabs.map((t) => (
-        <button
-          key={t}
-          role="tab"
-          aria-selected={value === t}
-          type="button"
-          onClick={() => onChange(t)}
-          className={`h-11 shrink-0 px-5 font-mono text-[13px] uppercase tracking-wider transition-colors ${value === t ? "bg-thread text-[#001510]" : "bg-panel-2 text-muted hover:text-text"}`}
-        >
-          {t}
-        </button>
-      ))}
+    <div role="tablist" className="flex gap-0 overflow-x-auto" onKeyDown={move}>
+      {tabs.map((t) => {
+        const ids = tabIds(idPrefix, t);
+        return (
+          <button
+            key={t}
+            id={ids.tab}
+            role="tab"
+            aria-selected={value === t}
+            // Only the selected tab's panel is rendered, so only it is named.
+            {...(value === t ? { "aria-controls": ids.panel } : {})}
+            tabIndex={value === t ? 0 : -1}
+            type="button"
+            onClick={() => onChange(t)}
+            className={`h-11 shrink-0 px-5 font-mono text-[13px] uppercase tracking-wider transition-colors ${value === t ? "bg-thread text-[#001510]" : "bg-panel-2 text-muted hover:text-text"}`}
+          >
+            {t}
+          </button>
+        );
+      })}
     </div>
   );
+}
+
+/**
+ * Copies text and says what really happened: "copied" only when the
+ * clipboard accepted it, "copy failed" when it refused or does not exist
+ * (an insecure origin, a denied permission).
+ */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    if (!navigator.clipboard) return false;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }

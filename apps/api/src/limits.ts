@@ -13,17 +13,45 @@ const rows = <T>(r: unknown): T[] => ((r as { rows?: T[] }).rows ?? (r as T[]));
  * same requests. One statement per request: it refills the bucket for the
  * time since its last use, takes a token when there is one, and records
  * whether it did. `name` namespaces the limiter (read, quote, key, ...).
+ *
+ * An in-memory bucket of the same size sits in front: a key this replica
+ * alone has already emptied is refused without a database write (the shared
+ * bucket, which counts this replica's requests too, would refuse it as well),
+ * so a flood costs no Postgres writes. When the store is unreachable, a
+ * limiter fails open (reads: the request meets the same database anyway) or,
+ * with failClosed (paid POSTs), refuses for a few seconds.
  */
 export class SharedRateLimiter implements Limiter {
+  private readonly local = new Map<string, { tokens: number; at: number }>();
+  private readonly failClosed: boolean;
   constructor(
     private readonly db: Db,
     private readonly name: string,
     private readonly perMinute: number,
-  ) {}
+    opts: { failClosed?: boolean } = {},
+  ) {
+    this.failClosed = opts.failClosed ?? false;
+  }
+
+  /** The local bucket's answer: seconds to wait, or null (and a token taken). */
+  private takeLocal(key: string, now = Date.now()): number | null {
+    const cap = this.perMinute;
+    const b = this.local.get(key) ?? { tokens: cap, at: now };
+    b.tokens = Math.min(cap, b.tokens + ((now - b.at) / 60_000) * cap);
+    b.at = now;
+    this.local.delete(key);
+    this.local.set(key, b);
+    if (this.local.size > 10_000) this.local.delete(this.local.keys().next().value!);
+    if (b.tokens < 1) return Math.max(1, Math.ceil(((1 - b.tokens) / cap) * 60));
+    b.tokens -= 1;
+    return null;
+  }
 
   async take(key: string): Promise<number | null> {
     const k = `${this.name}:${key}`.slice(0, 300);
     const cap = this.perMinute;
+    const local = this.takeLocal(k);
+    if (local !== null) return local;
     try {
       const r = await this.db.execute(sql`
         INSERT INTO rate_limits (key, tokens, allowed, at) VALUES (${k}, ${cap - 1}, true, now())
@@ -40,10 +68,11 @@ export class SharedRateLimiter implements Limiter {
       if (!row || row.allowed) return null;
       return Math.max(1, Math.ceil(((1 - Number(row.tokens)) / cap) * 60));
     } catch (e) {
-      // A limiter that cannot reach its store lets the request through: the
+      // A read limiter that cannot reach its store lets the request through: the
       // request itself will meet the same database, and spend caps are separate.
-      console.error(JSON.stringify({ level: "error", msg: "rate limiter unavailable", limiter: this.name, error: (e as Error).message }));
-      return null;
+      // A paid POST is refused instead: its abuse costs money, not just a read.
+      console.error(JSON.stringify({ level: "error", msg: "rate limiter unavailable", limiter: this.name, failClosed: this.failClosed, error: (e as Error).message }));
+      return this.failClosed ? 5 : null;
     }
   }
 }
@@ -52,6 +81,7 @@ export class SharedRateLimiter implements Limiter {
 export async function pruneShared(db: Db): Promise<void> {
   await db.execute(sql`DELETE FROM rate_limits WHERE at < now() - interval '1 hour'`);
   await db.execute(sql`DELETE FROM flights WHERE expires_at < now()`);
+  await db.execute(sql`DELETE FROM miner_requests WHERE answered_at < now() - interval '30 days'`);
   await db.execute(sql`DELETE FROM error_log WHERE at < now() - interval '30 days'`);
 }
 

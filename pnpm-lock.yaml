@@ -192,6 +192,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@skein/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@skein/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -204,6 +207,12 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      viem:
+        specifier: 2.57.5
+        version: 2.57.5(typescript@5.9.3)(zod@4.6.7)
+      yaml:
+        specifier: 2.8.4
+        version: 2.8.4
     devDependencies:
       '@netlify/plugin-nextjs':
         specifier: 5.16.2

@@ -8,14 +8,14 @@ Deadline: **December 1, 2026, 23:59 UTC**.
 | Field | Answer |
 |---|---|
 | Project name | Skein |
-| Track | Apps & Agents (Skein is also a registered miner) |
+| Track | Providers (Skein, registered miner 5137) and Apps & Agents (Skein Desk), disclosed as the same team (spec §1) |
 | Missions | Mission 01 Exchange (listing decisions, signed risk memo); Mission 14 Web3 Native & DeFi (Skein Sniper) |
 | Intents bought | SMART_CONTRACT_AUDIT_GENERAL, SANCTIONS_SCREENING_MATCH_GENERAL, TOKEN_HOLDER_COUNT_GENERAL, LIQUIDITY_DEPTH_VERIFY_GENERAL, WASH_TRADING_DETECTION_GENERAL, SOCIAL_BOT_DETECTION_GENERAL, CODE_REVIEW_GENERAL |
 | Intent sold | FRAUD_RISK_GENERAL: miner registration 5137, catalogue id 845301, slug `skein-listing-verdict`, 0.25 USDC an answer |
 | Working link | https://skeinlabs.site (web app), https://desk.skeinlabs.site (listing desk agent), https://api.skeinlabs.site (API) |
 | Repository | https://github.com/linoxbt/skein |
 | GitHub username that starred the bounties repo | `linoxbt` |
-| Team / contact | *(your name and email)* |
+| Team / contact | **TODO (owner): your name and contact before submitting** |
 | Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 48 s, narrated; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`) |
 
 ## Short public summary
@@ -37,9 +37,11 @@ Anyone can recompute a verdict from the raw answers Skein paid for
 (`/verify`).
 
 Three things run on it today:
-- **Skein Desk**, a listing queue for an exchange. An agent buys a verdict for
-  every application and shortlists it, declines it, or sends it to an analyst,
-  with no human in the loop.
+- **Skein Desk**, a listing queue for an exchange. An agent finds fresh
+  launches itself, buys a verdict for each through Telegraph from its own
+  escrow wallet (a paid ask to Skein's miner 845301), and shortlists, declines
+  or sends to an analyst, with no human in the loop. Its decision log shows
+  each ask's receipt and cost.
 - **Skein Sniper** watches new Base launches. It buys a verdict before every
   simulated trade and dodges the rest.
 - **Skein as a miner** sells the verdict back to the network. Any Telegraph
@@ -76,7 +78,7 @@ The answer is a verdict object: `verdict`, `reasons`, `openRisks`, `riskBps`,
 **Run it locally, with no accounts:**
 ```sh
 pnpm install
-pnpm dev:api        # simulated Telegraph node and in-memory Postgres on :8080
+pnpm dev:api        # simulated Telegraph node and in-memory Postgres on :8787
 pnpm dev:web        # web app on :3000
 pnpm test           # the whole test suite
 ```
@@ -102,16 +104,19 @@ x402 payments use Base Sepolia.
   refuses with 503 and `dex-list` is the default.
 - Some upstream miners time out at times. A required check that fails gives
   ABSTAIN, which says which check failed.
-- The prospective benchmark has no launch labelled good yet (27 bad, 13
-  ambiguous). It can show that Skein avoids bad launches, but it cannot yet
-  measure false REJECTs.
+- The prospective benchmark has no launch labelled good yet (49 bad, 31
+  ambiguous on Nov 12), and Skein approved none of its launches. It shows how
+  often Skein stops a bad launch outright, but it cannot measure false
+  APPROVEs or false REJECTs until good launches appear.
 
 ## Evidence
 
-- **Real purchases.** 797 upstream receipts from 10 miners and 307 verdicts so
-  far. The demo's own verdict, bought live during the recording, is
-  https://skeinlabs.site/v/vrd_mw8c7dkh4a1d465l3u5f: APPROVE for AERO on
-  Base, 5.9 s, 0.05 USDC across five receipts. Live totals are at https://skeinlabs.site/ledger and
+- **Real purchases.** 1,017 upstream receipts from 10 miners and 353 verdicts
+  by Nov 12 (live totals below). The demo film's own verdicts, bought live during the recording
+  on Nov 11, are https://skeinlabs.site/v/vrd_mwcfyu0y04360z153f1b (APPROVE
+  for AERO on Base, a Desk application, five paid receipts) and
+  https://skeinlabs.site/v/vrd_mwcfy2nj685b1z0e264a (REJECT for a Lazarus
+  Group address, with the OFAC SDN entry as evidence). Live totals are at https://skeinlabs.site/ledger and
   https://api.skeinlabs.site/v1/ledger.
 - **Per-verdict receipts.** Every verdict page (`/v/{id}`) has an Evidence tab:
   miner, amount, receipt hash, signal hash, and whether the node knows that
@@ -123,16 +128,21 @@ x402 payments use Base Sepolia.
   (https://devnode.telegraphprotocol.com/api/miners/5137). The first paid ask
   to it was on Nov 7.
 - **Benchmark.** 61 labelled cases, and a holdout of 20 tokens run once after
-  the rules were frozen. Skein approved none of the 7 documented scams and
-  rejected none of the 13 long-listed tokens. It abstained on 8 of the 20.
-  Two simpler rules applied to the same paid findings each let one scam
-  through. See `eval/FINDINGS-holdout.md`.
+  the rules were frozen. Skein approved none of the 7 documented scams (95%
+  Wilson interval 0–35%: the sample is small) and rejected none of the 13
+  long-listed tokens; it abstained on 8 of the 20. The weighted average and the
+  best single check, on the same paid findings, each let one scam through. The
+  same rules on the required checks alone did as well at 22% lower cost and
+  approved more good tokens, so the optional checks have not earned their
+  place yet. See `eval/REPORT-holdout.md` and `eval/FINDINGS-holdout.md`.
 - **Prospective benchmark (out of sample).** Each verdict was bought before
   the outcome was known, and each launch is labelled 72 hours later. The
-  first run covers 40 sniper launches: 27 went bad and 13 are ambiguous.
-  Skein approved none of the bad ones; the single-best-miner and
-  weighted-average rules, applied to the same findings, approved 22% of
-  them. REJECT precision was 88.9%. Updated daily: https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md.
+  Nov 12 run covers 80 sniper launches: 49 went bad, 31 are ambiguous and
+  none is labelled good. Skein approved none of the 80, so its 0% false
+  APPROVE there cannot be told apart from never approving. It rejected 38.8%
+  of the bad launches outright (82.6% precision); the weighted-average rule on
+  the same findings rejected 40.8% but also approved 16% of them. Updated
+  daily: https://github.com/linoxbt/skein/blob/data/prospective/REPORT.md.
 - **Sniper.** Live feed: https://sniper-production-bea6.up.railway.app/feed.json.
   It buys a verdict for every launch it considers, and has bought no token.
   On launches minutes old, its policy's holder floor fails almost everything,
@@ -143,10 +153,13 @@ x402 payments use Base Sepolia.
   - status: https://api.skeinlabs.site/v1/status (per-intent miners, p50 and
     p95 latency, error rate, spend against caps);
   - OpenAPI: https://api.skeinlabs.site/v1/openapi.json.
-- **Tests.** More than 340 automated tests: engine property tests (20,000 runs in
-  CI), the payment client, the pipeline, the API (replicas, x402, idempotency),
-  the SDK, MCP and Desk, plus browser and accessibility tests. All run in CI on
-  every change, and Railway deploys only green builds.
+- **Tests.** More than 500 automated tests: engine property tests (20,000 runs
+  in CI), the payment client, the pipeline, the API (replicas, settle-first
+  x402, idempotency, webhooks, SSRF), the SDK as an outside developer installs
+  it, MCP, Desk, the web app's in-browser verification, plus browser and
+  accessibility tests. All run in CI on every change, including a replay of
+  every stored and evaluation verdict. Railway deploys only green builds;
+  Netlify deploys on merge, and CI builds both sites first.
 - **Operations:**
   - two API replicas, querying as a least-privilege database role;
   - nightly backups;

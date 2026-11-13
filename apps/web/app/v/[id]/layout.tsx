@@ -1,16 +1,34 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { API } from "@/lib/api";
 
 type Params = Promise<{ id: string }>;
 
+type Meta = { verdict: string; summary: string; subject: { chainId: number; token: string } };
+
+/** What middleware.ts already read from the API for this request, if it could. */
+async function fromMiddleware(): Promise<Meta | null> {
+  const raw = (await headers()).get("x-skein-verdict-meta");
+  if (!raw) return null;
+  try {
+    const m = JSON.parse(decodeURIComponent(raw)) as Partial<Meta>;
+    return typeof m.verdict === "string" && m.subject ? { verdict: m.verdict, summary: m.summary ?? "", subject: m.subject } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * What the API says about a verdict id: its summary, "missing", or null when
- * it cannot tell. One lookup per request, shared by the metadata and the layout.
+ * it cannot tell. One lookup per request, shared by the metadata and the
+ * layout, and none at all when the middleware has already looked.
  */
-const lookup = cache(async (id: string): Promise<{ verdict: string; summary: string; subject: { chainId: number; token: string } } | "missing" | null> => {
+const lookup = cache(async (id: string): Promise<Meta | "missing" | null> => {
   if (!/^vrd_[a-z0-9]{6,40}$/.test(id)) return "missing";
+  const seen = await fromMiddleware();
+  if (seen) return seen;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const r = await Promise.race([

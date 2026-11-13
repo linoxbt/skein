@@ -1,20 +1,21 @@
 /*
- * Skein design tokens. Layout language: black heroes and immersive bands
- * alternating with paper and mist sections; square corners; huge light
- * display type; monospace tags. Teal is the thread, gold is reserved for the
- * verdict knot and its cost.
+ * Skein design tokens (spec section 11). Layout language: dark heroes and
+ * immersive bands alternating with paper and mist sections; square corners;
+ * big display type in Space Grotesk; monospace tags and data. Teal is the
+ * thread, gold is reserved for the verdict knot and its cost.
  */
 @theme {
-  /* dark surfaces */
-  --color-bg: #000000;
-  --color-panel: #131518;
-  --color-panel-2: #1b1e22;
-  --color-edge: #2a2f35;
-  --color-line: #2a2f35;
-  --color-surface: #131518;
-  --color-surface-2: #1b1e22;
-  --color-text: #f2f4f5;
-  --color-muted: #8b979f;
+  /* dark surfaces: the spec's six core tokens */
+  --color-bg: #07090b;
+  --color-surface: #0d1114;
+  --color-surface-2: #131a1f;
+  --color-line: #1e282f;
+  --color-text: #e6edf0;
+  --color-muted: #7c8b94;
+  /* the names the components use, as aliases of the spec's */
+  --color-panel: #0d1114;
+  --color-panel-2: #131a1f;
+  --color-edge: #1e282f;
   /* light surfaces */
   --color-paper: #ffffff;
   --color-mist: #f3f4f6;
@@ -36,7 +37,8 @@
   --color-reject-deep: #c62828;
   --color-abstain-deep: #5c6670;
 
-  --font-display: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  /* Headings in Space Grotesk; body copy stays in Inter Tight. */
+  --font-display: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
   --font-brand: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -66,18 +68,48 @@ body {
   outline-offset: 2px;
 }
 
-/* Display type: thin, tight, big. */
+/* Display type: tight and big. */
 .display {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.04em;
   line-height: 0.98;
 }
 .statement {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   line-height: 1.04;
+}
+
+/*
+ * The signature card: a 1 px line border with 10 px corner brackets in the
+ * thread colour at 60% opacity, solid on hover.
+ */
+.corner-card {
+  position: relative;
+  --bracket: color-mix(in srgb, var(--color-thread) 60%, transparent);
+  background-image:
+    linear-gradient(var(--bracket), var(--bracket)), linear-gradient(var(--bracket), var(--bracket)),
+    linear-gradient(var(--bracket), var(--bracket)), linear-gradient(var(--bracket), var(--bracket)),
+    linear-gradient(var(--bracket), var(--bracket)), linear-gradient(var(--bracket), var(--bracket)),
+    linear-gradient(var(--bracket), var(--bracket)), linear-gradient(var(--bracket), var(--bracket));
+  background-size:
+    10px 1px, 1px 10px,
+    10px 1px, 1px 10px,
+    10px 1px, 1px 10px,
+    10px 1px, 1px 10px;
+  background-position:
+    0 0, 0 0,
+    100% 0, 100% 0,
+    0 100%, 0 100%,
+    100% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+}
+.corner-card:hover,
+.corner-card:focus-within {
+  --bracket: var(--color-thread);
 }
 
 /* Monospace tag chip. */

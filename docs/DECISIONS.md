@@ -237,6 +237,112 @@ the money path unsafe; these are the decisions behind the fixes.
   where they exist and does nothing for the table owner the API connects as;
   the append-only and TRUNCATE triggers are what protect the evidence.
 
+**D15. The audit of 2026-11-12: engine 0.4.0 and the decision path.**
+- **Engine 0.4.0, monotone** (0.3.0 frozen under `src/frozen/v0_3_0`). Under
+  0.3.0 a blocker matched one status exactly, so `agent-pretrade@0.3.0`
+  rejected a mintable token (audit WARN) but only escalated one whose owner
+  can also rewrite balances (audit FAIL, severity 1, `owner_powers`). Policy
+  contradictions had the same flaw: `dex-list@0.2.0` escalated "audit PASS,
+  wash trading FAIL" and approved "audit WARN, wash trading FAIL".
+  - A blocker or a contradiction now fires on an answer at its status *or
+    worse*. Worse is the engine's own order, status first (FAIL over WARN over
+    PASS), then severity: the order it already uses to pick a check's deciding
+    answer. So `minSeverity` grades answers at the blocker's own status only;
+    a FAIL meets a `WARN, minSeverity: 2` blocker whatever its severity. The
+    shipped FAIL blockers (`minSeverity` 2 or 3) behave exactly as before.
+  - A contradiction met by a worse answer keeps its code; its detail says
+    which answer was worse.
+  - The policy schema refuses scoring tables that would score a worse answer
+    lower (a WARN above a FAIL, or a lower severity above a higher one). Every
+    published policy uses the default tables.
+  - What is claimed, and tested at 20,000 runs on three policies: adding a
+    strictly worse answer to an answered check (from its deciding provider
+    group, no more confident than the check), or turning its deciding answer
+    into a strictly worse one, never moves the verdict down APPROVE <
+    ESCALATE < REJECT. ABSTAIN is off that scale: the same checks stay
+    answered, so an ABSTAIN stays ABSTAIN or becomes a blocker REJECT, and
+    nothing else becomes ABSTAIN. A first answer to a missing check is new
+    evidence and may move an ABSTAIN anywhere. A more confident answer, or
+    one from another family that re-balances independence groups, is not
+    claimed (as in D8 and L28).
+- **Mode in the hash.** 0.4.0 seals `mode` (`live` unless the run says
+  `simulated`) into the verdict hash, so a simulated verdict file cannot be
+  relabelled live: changing or dropping its mode breaks the hash. `pnpm
+  verdict` passes it. This was chosen over a repro-time refusal because a
+  copied file can simply drop the label; the hash cannot be edited.
+- **Frozen policy schema.** A policy's defaults (`minConfidence`,
+  `agreement_penalty`, the scoring tables) are part of what an engine decided
+  with. The schema engines 0.1.0 to 0.4.0 parse with is frozen
+  (`src/frozen/policy_v1.ts`); the live schema is that schema plus the
+  scoring-order rule, and a test checks both read every published policy
+  identically. `reproduce()` takes the policy file's source
+  (`PolicyRecord.source`) and lets each engine parse it with its own schema,
+  so a future change of a default cannot change a replay.
+- **What `reproduce()` accepts without a purchase.** Only non-answers
+  (UNAVAILABLE, UNKNOWN, ERROR, carrying no receipt) and the OFAC SDN list
+  screen (a sanctions FAIL that names its list and snapshot sha256), checked
+  against the snapshots Skein has shipped when the caller passes `knownLists`
+  (the pipeline's `knownLists()`; `pnpm repro` does). A record with no
+  purchase list at all has every answered finding refused. Before this a
+  stored PASS with no purchase reproduced "ok".
+- **The raw answer is not hashed into the BOM leaf.** The spec defines
+  `bom_root` as the Merkle root of the receipt hashes, so anyone holding the
+  receipts can rebuild it, and it is the value an on-chain consumer reads.
+  A leaf of receipt-plus-answer would break that, every verifier that rebuilds
+  it (the SDK, `/verify`), and stored roots. The answer is already bound where
+  it matters: the findings derived from it are in the verdict hash, and
+  `reproduce()` re-derives them from the stored raw answer, so any edit to an
+  answer that changes a finding breaks the hash; an edit that changes no
+  finding changes no decision. Binding the answer to the node's own record
+  would need the node's `signal_hash` recipe, which is not documented.
+- **The network's record of an answer.** A paid answer that the node
+  attributes to another miner (`signal mismatch`), or that carries no signal
+  hash, is recorded with its receipt and adapts to ERROR. A 404 for the
+  signal (`missing`) is kept with its status: the payment's receipt checks
+  out on its own and the node may not have indexed the signal yet. The
+  lookup stays on the path (it decides whether the answer is evidence), but
+  checks run in parallel and each lookup is bounded by the verdict deadline
+  and 5 s.
+- **A paid sanctions match still escalates, it does not reject.** Spec §5
+  makes a sanctions FAIL a blocker, and it is: the OFAC address screen's exact
+  match rejects at confidence 1. The paid intent screens *names*, and Skein
+  can only send it an address; a "match" from it is unverified (D14), so its
+  confidence stays capped at 0.3, below the blocker's 0.5, and it escalates
+  to a person (never an APPROVE). Every EVM address on the SDN list is in the
+  local snapshot, so a true address match that the paid screen sees and the
+  snapshot misses means the snapshot is stale. The pipeline exports
+  `sdnSnapshotStatus()` (age in days against `SDN_SNAPSHOT_MAX_AGE_DAYS` =
+  14, OFAC amends the list several times a month) for `/v1/status` and the
+  probe to alert on, and `SHIPPED_SDN_SNAPSHOTS`, to which a refresh appends.
+- **Nothing is bought for a verdict that can only abstain.** Availability
+  counts only the miners Skein would buy from (allowlisted, live, priced, not
+  itself), and every request, the DexScreener pool among them, is built
+  before the first payment. A required check that cannot be bought refuses
+  the verdict with UPSTREAM_UNAVAILABLE and no purchase (spec §5). The one
+  exception: a deployer, treasury or token on the SDN list is a REJECT
+  whatever is missing, so that verdict is still sealed.
+- **Money path.** A 402 that refuses a payment already sent is counted as
+  possibly billed (`billing: "unknown"`) and is no longer retried: its signed
+  authorization stays valid for about 105 s, and a retry would leave two
+  (this replaces D14's "an explicit 402 refusal is retried"; spec §5 says no
+  retry on a 4xx). One absolute deadline goes through every ask (probe, paid
+  POST, retry, identity lookups), and no payment is signed with under a
+  second of it left. A settlement that fails is logged and the purchase is
+  still recorded. Second-round retries stop at ten paid asks per verdict.
+- **Adapters (new versions; old ones kept).** A miner's stated confidence
+  counts only up to the adapter's default, so it cannot buy its answer more
+  weight or a blocker's `minConfidence` (a lower stated confidence still
+  counts). Wash-trading and holder-count answers that name a token must name
+  the one asked about. Pinned answers are grouped by the miner Skein chose,
+  not the id the node reports.
+- **Configuration.** `TELEGRAPH_CHAIN_ID` must be a positive integer that
+  agrees with `TELEGRAPH_CAIP2`, and a chain that is not a known testnet is
+  refused unless `TELEGRAPH_ALLOW_MAINNET=1`. A miner floor price that is not
+  whole micro-USDC is not planned on.
+- **BOM line.** Each purchase records its receipt's timestamp, payer and any
+  `tx_hash` (spec §4). Replay does not read them, so stored verdicts are
+  unaffected; the database columns are a separate migration.
+
 
 
 ## What the live node said (2026-10-30)
@@ -568,3 +674,108 @@ then pays with an `X-PAYMENT` header, a signed EIP-3009 USDC authorization.
 Tested with a fake facilitator and real EIP-712 signatures
 (`apps/api/test/x402.test.ts`). It has not been settled end to end on Base
 Sepolia: that needs a wallet holding Base Sepolia USDC.
+
+## The 2026-11-12 audit fixes (outside the decision path; D15 covers that)
+
+**L31. x402 settles before buying (supersedes L30's "settled after").** L30
+let one wallet sign many authorizations that each passed the facilitator's
+balance check, so Skein bought many verdicts and only one settled. Now:
+- **Order.** Decode and check locally (exact amount, expiry, EOA signature),
+  apply the per-payer limits (`X402_PAYER_PER_MINUTE`, `X402_PAYER_DAILY_MAX`),
+  have the facilitator verify, refuse anything that would be refused anyway
+  ("nothing was charged"), claim the payment in `x402_payments` (one request
+  per payment can claim it), settle, and only then buy. A verdict therefore
+  exists only for a settled payment.
+- **Replays.** A payment is looked up by payer and nonce before any check, so a
+  retry with the same `X-PAYMENT` after settlement replays its run instead of
+  being refused for a used nonce.
+- **Refunds.** An ABSTAIN is owed back the price minus its upstream spend
+  (spec §6: ABSTAIN is charged at upstream cost); a refusal or failure after
+  settlement is owed back in full, unless a retry with the same payment
+  succeeds. The API holds no key for the payTo address, so refunds are sent by
+  hand and recorded (`pnpm --filter @skein/api x402:refunds`, RUNBOOK).
+- **Price.** One price: `X402_PRICE_USDC`, if set, must equal
+  `SKEIN_PRICE_USDC`. The 402's resource comes from config, never the Host
+  header. Smart-contract wallets (ERC-1271) are not accepted.
+
+**L32. Attestations are signed at seal time and stored.** Signing on read
+attested to whatever row was in the database. Now the signature is made when
+the verdict is sealed and kept in the append-only `verdict_attestations`.
+Verdicts sealed before this were signed once on first read and say so
+(`atSeal: false`, with the later `signedAt`). `/verify` recomputes the hash,
+the BOM root and the decision in the browser and checks the signature against
+the published attester, so it no longer trusts the API.
+
+**L33. Webhooks carry a signed timestamp; the event is `verdict.completed`.**
+`X-Skein-Signature: sha256=HMAC(secret, "<X-Skein-Timestamp>.<body>")`, and
+SDK 0.3.1's `verifyWebhook` refuses deliveries older than 300 seconds, so a
+captured delivery can no longer be replayed (spec §9). Each retry is re-signed.
+Secrets are encrypted at rest with `WEBHOOK_SECRET_KEY`.
+
+**L34. Idempotency keys expire after 24 hours and free themselves after a
+transient failure.** A key that hit `UPSTREAM_UNAVAILABLE`, a daily cap, the
+margin guard, a lost run or a failure can be retried with the same body (the
+old run is kept under a renamed key). Never charged twice still holds: partner
+keys are free and an x402 payment settles once. A sync request that runs past
+`SYNC_TIMEOUT_MS` now answers 202 with the id, as spec §6 says (was 504).
+
+**L35. Loop guard.** Every intent ask Skein makes carries `skein-depth: 1` in
+its context; `/miner/verdict` answers a request at depth 1 or more from cache,
+or ABSTAIN `LOOP_GUARD` with nothing bought. In production the API refuses to
+start without `SKEIN_SELF_REGISTRATION_IDS`, so self-exclusion cannot be
+silently off.
+
+**L36. Spend stops at 80% of the daily cap and when the wallet runs dry.**
+Spec §8 says the purchaser "stops and alerts at 80%". Purchases now stop at
+`GLOBAL_CAP_STOP_PCT` (80) of `DAILY_CAP_USDC`, which production raised to 12.5
+to keep a 10 USDC working day. Below `HOT_WALLET_PAUSE_USDC` of escrow, verdicts
+pause with 503 `WALLET_EMPTY` and `/v1/status` shows `paused`.
+
+**L37. The catalogue tables are written; the ledger reads a 30-day window.**
+`miner_catalog` and `intent_status` are snapshotted on each 5-minute catalogue
+refresh and `policies` once per file, so the tables spec §7 names hold data.
+`/v1/ledger` computes stability and causes over 30 days, so it cannot grow
+into the 15-second statement timeout.
+
+**L38. Skein Desk buys on Telegraph in production, and finds its own work
+(supersedes D12's partner-key default).** The Apps track asks for an
+autonomous machine-to-machine purchase. Desk now asks `FRAUD_RISK_GENERAL` on
+Skein's miner 845301 from its own escrow wallet
+(0x4d8dc7083f1edA89bec38070E8dAb5630a3e75f3), and an intake files a few fresh
+launches a day by itself (`DESK_AUTO_DAILY`), from DEX Screener and the Skein
+Sniper feed. The ask runs in a Netlify background function (15 minutes), its
+outcome is saved before the verdict is read, and a paid failure is recorded
+with what it cost and never asked again. An ask is treated as lost after 15
+minutes (was 3).
+
+**L39. Skein Sniper trades (on paper) only on a signed APPROVE about the token
+it asked.** Its caps count failures and USDC (`SNIPER_DAILY_USDC`), an
+interrupted Telegraph check is never asked again, its liquidity floor is never
+below the policy's FAIL threshold, and it refuses to start without a pinned or
+readable attester.
+
+**L40. Monitors never mark main red; the benchmark reports exact intervals.**
+Railway's "wait for CI" counts every check suite on main's head commit, so the
+uptime probe and the prospective benchmark now alert through an issue and the
+run summary instead of failing. Benchmark intervals are 95% Wilson intervals,
+and every table shows the APPROVE rate next to false APPROVE.
+
+## Spec deviations recorded by the audit
+
+- **No OpenTelemetry traces (spec §15).** Errors go to Sentry and `error_log`,
+  request logs are structured JSON with a request id, and the probe alerts on
+  p95 latency. Traces were not worth a collector at this scale.
+- **No wagmi, RainbowKit or `@x402/*` in the console (spec §11, §13).** The
+  console runs a verdict with a partner key; programmatic x402 payment is in
+  the SDK (`payer: { kind: "x402" }`), which implements EIP-3009 itself (L30).
+- **No Foundry contracts or IPFS mirror (spec §13).** Skein deploys no
+  contract; the miner YAML is served from the repository at the hash
+  registered on chain (L25).
+- **Partner keys are hashed with SHA-256, not Argon2 (spec §9).** The keys are
+  256 random bits, so a slow hash adds nothing against guessing, and a fast
+  constant-time lookup keeps every request cheap.
+- **The BOM root is domain-separated, not OpenZeppelin `MerkleProof`
+  compatible (spec §5).** Leaves and nodes are prefixed 0x00 and 0x01 against
+  second-preimage attacks; the SDK and `/verify` rebuild it.
+- **Palette and type now follow spec §11** (bg #07090B, Space Grotesk headings,
+  outlined wordmark); the earlier lighter palette is gone.

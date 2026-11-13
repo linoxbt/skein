@@ -1,7 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { decide, evaluate, type Check, type Finding, type FindingStatus, type Severity } from "../src";
-import { cex } from "./helpers";
+import { decide as decide030 } from "../src/frozen/v0_3_0/decide";
+import { cex, loadPolicy } from "./helpers";
 
 fc.configureGlobal({ numRuns: Number(process.env.FC_RUNS ?? 200) });
 
@@ -173,5 +174,68 @@ describe("engine properties (spec section 14)", () => {
         }
       }),
     );
+  });
+});
+
+/**
+ * Engine 0.4.0 (audit H7): adding a strictly worse answer never lowers the
+ * verdict on APPROVE < ESCALATE < REJECT. "Worse" is the engine's own order:
+ * a higher status, or the same status at a higher severity, than the check's
+ * deciding answer. The new answer joins that answer's provider group and is no
+ * more confident than the check already is: a more confident answer, or one
+ * from another family that re-balances the independence groups, is more (or
+ * different) evidence, not worse evidence (D8). ABSTAIN is off the scale: a
+ * worse answer leaves the answered checks as they were, so an ABSTAIN stays
+ * ABSTAIN or becomes a blocker REJECT, and no other verdict becomes ABSTAIN.
+ */
+describe("monotonicity (engine 0.4.0)", () => {
+  const SEVERITY: Record<string, number> = { APPROVE: 0, ESCALATE: 1, REJECT: 2 };
+  const RANK: Record<string, number> = { PASS: 0, WARN: 1, FAIL: 2 };
+  const worseThan = (s: { status: string; severity: number }) =>
+    (["PASS", "WARN", "FAIL"] as const).flatMap((st) => ([0, 1, 2, 3] as const).filter((sev) => RANK[st]! > RANK[s.status]! || (st === s.status && sev > s.severity)).map((sev) => ({ status: st, severity: sev })));
+
+  const scenario = (p: ReturnType<typeof loadPolicy>) => {
+    const checks: Check[] = [...p.required, ...p.optional];
+    const pool = fc
+      .subarray(checks)
+      .chain((cs) => fc.tuple(...cs.map((c) => fc.array(finding(c), { minLength: 1, maxLength: 3 }))))
+      .map((xs) => xs.flat() as Finding[]);
+    return fc.tuple(pool, fc.nat(), fc.nat(), fc.double({ min: 0, max: 1, noNaN: true }));
+  };
+
+  /**
+   * Runs one case; false where the property is broken. "add" puts the worse
+   * answer beside the check's deciding one (no more confident than the check);
+   * "replace" puts it in the deciding answer's place, at that answer's
+   * confidence: one miner's answer turning worse, as in the audit's repro.
+   */
+  const holds = (how: "add" | "replace", decideFn: typeof decide, p: ReturnType<typeof loadPolicy>, [fs, at, pickWorse, conf]: [Finding[], number, number, number]): boolean => {
+    const { states, decision: before } = decideFn(p, fs);
+    const answeredStates = states.filter((s) => s.answered);
+    if (answeredStates.length === 0) return true;
+    const st = answeredStates[at % answeredStates.length]!;
+    const options = worseThan(st);
+    if (options.length === 0) return true;
+    const w = options[pickWorse % options.length]!;
+    const deciding = fs.find((x) => x.check === st.check && x.status === st.status && x.severity === st.severity && x.sourceGroup === st.sourceGroup)!;
+    const x: Finding = { check: st.check, status: w.status, severity: w.severity as Severity, confidence: how === "add" ? conf * st.confidence : deciding.confidence, sourceGroup: st.sourceGroup!, notes: [] };
+    const next = how === "add" ? [...fs, x] : [...fs.filter((y) => y !== deciding), x];
+    const after = decideFn(p, next).decision;
+    if (before.verdict === "ABSTAIN") return after.verdict === "ABSTAIN" || after.verdict === "REJECT";
+    return after.verdict !== "ABSTAIN" && SEVERITY[after.verdict]! >= SEVERITY[before.verdict]!;
+  };
+
+  for (const ref of ["cex-standard@0.1.0", "dex-list@0.2.0", "agent-pretrade@0.3.0"]) {
+    for (const how of ["add", "replace"] as const) {
+      it(`${how === "add" ? "adding" : "turning an answer into"} a strictly worse finding never lowers the verdict (${ref})`, () => {
+        const p = loadPolicy(ref);
+        fc.assert(fc.property(scenario(p), (c) => holds(how, decide, p, c)));
+      });
+    }
+  }
+
+  it("engine 0.3.0 broke it (frozen as it was): a worse audit answer could soften the verdict", () => {
+    const p = loadPolicy("agent-pretrade@0.3.0");
+    expect(fc.check(fc.property(scenario(p), (c) => holds("replace", decide030, p, c)), { numRuns: 5000, seed: 7 }).failed).toBe(true);
   });
 });

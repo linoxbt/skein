@@ -27,8 +27,9 @@ export function parseSeedConsumers(raw: string | undefined): SeedConsumer[] {
 
 /**
  * Reconciles seeded consumers with SEED_CONSUMERS on every start: a new entry
- * is inserted, an existing one gets the env's name and cap (and is un-revoked),
- * and a seeded consumer whose hash left the env is revoked. Only rows created
+ * is inserted, an existing one gets the env's name and cap, and a seeded
+ * consumer whose hash left the env is revoked. A revoked key is never
+ * restored, even if its hash returns to the env. Only rows created
  * by seeding are ever revoked here; with no SEED_CONSUMERS set, nothing is.
  * Returns what changed.
  */
@@ -40,8 +41,11 @@ export async function seedConsumers(db: Db, seeds: SeedConsumer[], now = new Dat
     if (!have) {
       await db.insert(schema.consumers).values({ ...s, seeded: true }).onConflictDoNothing({ target: schema.consumers.apiKeyHash });
       added.push(s.name);
-    } else if (have.name !== s.name || have.dailyCapUusdc !== s.dailyCapUusdc || have.kind !== s.kind || have.revokedAt) {
-      await db.update(schema.consumers).set({ name: s.name, kind: s.kind, dailyCapUusdc: s.dailyCapUusdc, revokedAt: null, seeded: true }).where(eq(schema.consumers.id, have.id));
+    } else if (have.revokedAt) {
+      // Revocation is final (a database trigger enforces it): a key that may have leaked stays dead.
+      console.warn(JSON.stringify({ level: "warn", msg: "SEED_CONSUMERS lists a revoked key; it stays revoked: issue a new key", name: s.name }));
+    } else if (have.name !== s.name || have.dailyCapUusdc !== s.dailyCapUusdc || have.kind !== s.kind) {
+      await db.update(schema.consumers).set({ name: s.name, kind: s.kind, dailyCapUusdc: s.dailyCapUusdc, seeded: true }).where(eq(schema.consumers.id, have.id));
       updated.push(s.name);
     }
   }

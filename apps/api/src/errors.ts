@@ -25,6 +25,8 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "PRECONDITION_REQUIRED"
   | "PRECONDITION_FAILED"
+  | "WALLET_EMPTY"
+  | "PAYMENT_PENDING"
   | "INTERNAL";
 
 /** Every error body is { error: { code, message, details } }. */

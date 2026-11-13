@@ -635,8 +635,57 @@ export const washTrading: Adapter = {
   },
 };
 
+/** The token an answer says it is about, when it names one (a bare 20-byte address). */
+function answeredToken(raw: unknown): string | undefined {
+  for (const name of ["token", "token_address", "contract_address", "subject"]) {
+    const v = pick(raw, name);
+    if (typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v.trim())) return v.trim().toLowerCase();
+  }
+  return undefined;
+}
+
+/**
+ * The next version of an adapter, with two rules every check now shares:
+ *  - a miner's own confidence counts only up to the adapter's default. The
+ *    default is what Skein knows about the source; a miner that calls itself
+ *    certain cannot buy its answer more weight, or a blocker's minConfidence.
+ *    (A lower stated confidence still counts: a miner may know it is unsure.)
+ *  - with `sameToken`, an answer that names a token must name the one asked
+ *    about; an answer about another token is UNKNOWN, not evidence.
+ */
+function capped(prev: Adapter, version: string, opts: { sameToken?: boolean } = {}): Adapter {
+  return {
+    ...prev,
+    version,
+    adapt(raw, ctx) {
+      if (opts.sameToken && ctx.subject && !ctx.error && isObject(raw)) {
+        const named = answeredToken(raw);
+        if (named && named !== ctx.subject.token.toLowerCase()) return unknown({ check: prev.check, version, ctx }, "answer_for_other_token");
+      }
+      const f = prev.adapt(raw, ctx);
+      return { ...f, adapterVersion: version, confidence: Math.min(f.confidence, prev.defaultConfidence) };
+    },
+  };
+}
+
+/** 2026-11-12 (audit L6, L8): miner confidence capped at the default; wash trading and holder count check the token. */
+export const contractAuditV6 = capped(contractAudit, "0.6.0");
+export const holderConcentrationV2 = capped(holderConcentration, "0.2.0");
+export const holderCountV2 = capped(holderCount, "0.2.0", { sameToken: true });
+export const washTradingV4 = capped(washTrading, "0.4.0", { sameToken: true });
+export const liquidityDepthV5 = capped(liquidityDepth, "0.5.0");
+export const socialBotsV2 = capped(socialBots, "0.2.0");
+export const codeReviewV2 = capped(codeReview, "0.2.0");
+
 /** Superseded versions stay registered so verdicts stored with them still replay. */
 const SUPERSEDED: readonly Adapter[] = [
+  contractAudit,
+  holderConcentration,
+  holderCount,
+  washTrading,
+  liquidityDepth,
+  socialBots,
+  codeReview,
   contractAuditV4,
   contractAuditV3,
   washTradingV2,
@@ -652,14 +701,15 @@ const SUPERSEDED: readonly Adapter[] = [
 
 /** Current adapters, one per check. Never edit a published version: add a new one. */
 export const ADAPTERS: readonly Adapter[] = [
-  contractAudit,
-  holderConcentration,
-  holderCount,
+  contractAuditV6,
+  holderConcentrationV2,
+  holderCountV2,
+  // 0.3.0 already caps a name screen's confidence at 0.3, below its default.
   sanctions,
-  washTrading,
-  liquidityDepth,
-  socialBots,
-  codeReview,
+  washTradingV4,
+  liquidityDepthV5,
+  socialBotsV2,
+  codeReviewV2,
 ];
 
 export const ALL_ADAPTER_VERSIONS: readonly Adapter[] = [...ADAPTERS, ...SUPERSEDED];

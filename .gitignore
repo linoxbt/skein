@@ -12,3 +12,12 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 .netlify/
+
+# Secrets: never commit keys, passwords or the operator's secrets notes.
+*.key
+*.pem
+*.pass
+*.keyhash
+desk.cron
+*secrets*.md
+.env*.local

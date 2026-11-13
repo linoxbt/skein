@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parsePolicyV1 } from "@skein/engine";
 import { getPolicy, listAllPolicyFiles, listPolicies, readLock } from "../src/index";
 
 describe("policies", () => {
@@ -21,6 +22,17 @@ describe("policies", () => {
 
   it("every policy file is published (in the lock), so none is silently ignored", () => {
     expect(listAllPolicyFiles().map((p) => p.ref)).toEqual(listPolicies().map((p) => p.ref));
+  });
+
+  it("the live schema reads every published policy exactly as the frozen v1 schema does (audit L3)", () => {
+    // Engines 0.1.0 to 0.4.0 decided with v1's defaults; a live schema that reads a
+    // published file differently needs a new schema version, not an edit.
+    for (const p of listPolicies()) expect(p.policy, p.ref).toEqual(parsePolicyV1(p.source));
+  });
+
+  it("reuses the checked list while nothing on disk changed", () => {
+    expect(listPolicies()).toEqual(listPolicies());
+    expect(listPolicies()).not.toBe(listPolicies()); // a copy: callers cannot edit the cache
   });
 
   it("resolves a bare id to its highest version", () => {

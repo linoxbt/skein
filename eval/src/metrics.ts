@@ -72,6 +72,14 @@ export function answerFor(system: System, run: Run): Answer {
 
 export interface Metrics {
   n: number;
+  /** Cases labelled bad, and how many of them were answered APPROVE and REJECT (for exact intervals). */
+  bad: number;
+  badApproved: number;
+  badRejected: number;
+  /** Of every case, the share answered APPROVE. A false-APPROVE rate of 0 means little when this is 0 too. */
+  approveRate: number;
+  /** Of tokens labelled good, the share answered APPROVE (null when the sample has no good tokens). */
+  goodApproveRate: number | null;
   /** Of tokens labelled bad, the share answered APPROVE: the number that matters most. */
   falseApproveRate: number | null;
   rejectPrecision: number | null;
@@ -95,9 +103,15 @@ export function metrics(cases: readonly Case[], answers: readonly Answer[]): Met
   const byId = new Map(cases.map((c) => [c.id, c]));
   const rows = answers.map((a) => ({ a, label: byId.get(a.caseId)!.label }));
   const bad = rows.filter((r) => r.label === "bad");
+  const good = rows.filter((r) => r.label === "good");
   const rejected = rows.filter((r) => r.a.verdict === "REJECT");
   return {
     n: rows.length,
+    bad: bad.length,
+    badApproved: bad.filter((r) => r.a.verdict === "APPROVE").length,
+    badRejected: bad.filter((r) => r.a.verdict === "REJECT").length,
+    approveRate: ratio(rows.filter((r) => r.a.verdict === "APPROVE").length, rows.length) ?? 0,
+    goodApproveRate: ratio(good.filter((r) => r.a.verdict === "APPROVE").length, good.length),
     falseApproveRate: ratio(bad.filter((r) => r.a.verdict === "APPROVE").length, bad.length),
     rejectPrecision: ratio(rejected.filter((r) => r.label === "bad").length, rejected.length),
     rejectRecall: ratio(bad.filter((r) => r.a.verdict === "REJECT").length, bad.length),
@@ -108,6 +122,19 @@ export function metrics(cases: readonly Case[], answers: readonly Answer[]): Met
     p95LatencyMs: quantile(rows.map((r) => r.a.latencyMs), 0.95),
     meanCoverage: rows.length ? sum(rows.map((r) => r.a.coverage)) / rows.length : 0,
   };
+}
+
+/**
+ * 95% Wilson score interval for k successes in n trials. Unlike a percentile
+ * bootstrap it stays honest at the edges: 0 of 7 gives 0%-35.4%, not 0%-0%.
+ */
+export function wilson(k: number, n: number, z = 1.959964): [number, number] | null {
+  if (n === 0) return null;
+  const p = k / n;
+  const z2 = z * z;
+  const centre = (p + z2 / (2 * n)) / (1 + z2 / n);
+  const half = (z / (1 + z2 / n)) * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n));
+  return [Math.max(0, centre - half), Math.min(1, centre + half)];
 }
 
 /** A seeded generator, so a report's intervals are reproducible. */

@@ -23,7 +23,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { networkFromEnv } from "@skein/telegraph";
-import { createPublicClient, createWalletClient, erc20Abi, http, keccak256, parseAbi, toBytes, type Hex } from "viem";
+import { createPublicClient, createWalletClient, erc20Abi, http, keccak256, parseAbi, parseEventLogs, toBytes, type Hex, type Log } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
@@ -33,7 +33,15 @@ const DIAMOND_ABI = parseAbi([
   "function agentDebt(address account) view returns (uint256)",
   "function isCanonicalIntent(string intent) view returns (bool)",
   "function registerMiner(string yamlUrl, bytes32 yamlHash, address feeAddress, uint256 minPrice, string[] intents)",
+  // Telegraph docs, Miner registration, step 5 (topic 0x7305b0d0…, matched against the 2026-11-07 registration).
+  "event MinerRegistered(uint256 indexed registrationId, address indexed miner, string yamlUrl, bytes32 yamlHash, address feeAddress, uint256 minPriceUsdc, string[] supportedIntents)",
 ]);
+
+/** The registration id from a registerMiner receipt's MinerRegistered event, or null. */
+export function registrationIdFrom(logs: Log[], diamondAddress: string): bigint | null {
+  const events = parseEventLogs({ abi: DIAMOND_ABI, eventName: "MinerRegistered", logs: logs.filter((l) => l.address.toLowerCase() === diamondAddress.toLowerCase()) });
+  return events[0]?.args.registrationId ?? null;
+}
 const TOKEN_ABI = parseAbi([
   "function mint(address to, uint256 amount)",
   "function approve(address spender, uint256 amount) returns (bool)",
@@ -194,9 +202,15 @@ switch (cmd) {
       args: [yamlUrl, yamlHash, fee, usdcUnits(values["min-price-usdc"]), [intent]],
     });
     if (receipt) {
-      // The MinerRegistered event layout is not in the docs we have: print the logs; the registration ID is in them.
-      for (const l of receipt.logs.filter((x) => x.address.toLowerCase() === diamond.toLowerCase())) console.log(JSON.stringify({ topics: l.topics, data: l.data }));
-      console.log("then poll https://devnode.telegraphprotocol.com/api/miners/<registrationId> until active, and set SKEIN_SELF_REGISTRATION_IDS");
+      const id = registrationIdFrom(receipt.logs, diamond);
+      if (id === null) {
+        // No MinerRegistered event from the Diamond: print its logs so the id can still be found.
+        console.error("no MinerRegistered event in the receipt; the Diamond's logs:");
+        for (const l of receipt.logs.filter((x) => x.address.toLowerCase() === diamond.toLowerCase())) console.error(JSON.stringify({ topics: l.topics, data: l.data }));
+      } else {
+        console.log(`registrationId ${id}`);
+        console.log(`then poll https://devnode.telegraphprotocol.com/api/miners/${id} until active, and add ${id} (and the YAML id) to SKEIN_SELF_REGISTRATION_IDS`);
+      }
     }
     break;
   }

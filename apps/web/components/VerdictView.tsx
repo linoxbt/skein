@@ -4,7 +4,7 @@ import { short, usd } from "@/lib/api";
 import type { GraphNode, GraphState } from "@/lib/graph";
 import type { Bom, VerdictObject } from "@/lib/types";
 import { ThreadGraph } from "./ThreadGraph";
-import { CornerCard, JsonPane, ReceiptChip, StatusDot, Tabs } from "./ui";
+import { CornerCard, JsonPane, ReceiptChip, StatusDot, tabIds, Tabs } from "./ui";
 
 const label = (c: string) => c.replace(/_/g, " ");
 
@@ -31,6 +31,7 @@ export function NodePanel({ node, verdictId }: { node: GraphNode | null; verdict
     ["weight", node.weight.toFixed(2)],
     ...(node.metric ? ([[node.metric, value(node)]] as [string, React.ReactNode][]) : []),
     ["miner", node.miner ?? "—"],
+    ["rank", typeof node.rank === "number" ? `#${node.rank}` : <span key="rk" className="text-muted">not reported</span>],
     ["source group", node.sourceGroup ?? "—"],
     ["price", typeof node.priceUsdc === "number" ? <span key="p" className="text-knot">{usd(node.priceUsdc)}</span> : "—"],
     ["latency", typeof node.durationMs === "number" ? `${node.durationMs} ms` : "—"],
@@ -40,6 +41,7 @@ export function NodePanel({ node, verdictId }: { node: GraphNode | null; verdict
     ...(node.notes?.length ? ([["notes", node.notes.join(", ")]] as [string, React.ReactNode][]) : []),
     ...(node.error ? ([["error", <span key="e" className="text-reject">{node.error}</span>]] as [string, React.ReactNode][]) : []),
   ];
+  const raw = node.raw === undefined ? null : typeof node.raw === "string" ? node.raw : JSON.stringify(node.raw, null, 2);
   return (
     <CornerCard>
       <div className="mb-4 font-mono text-[14px] uppercase tracking-wider text-thread">{label(node.check)}</div>
@@ -51,6 +53,16 @@ export function NodePanel({ node, verdictId }: { node: GraphNode | null; verdict
           </div>
         ))}
       </dl>
+      <details className="mt-4 font-mono text-[12px]">
+        <summary className="cursor-pointer text-muted hover:text-text">raw answer</summary>
+        {raw !== null ? (
+          <pre tabIndex={0} className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all border border-edge bg-bg p-3 text-muted">
+            {raw.length > 6000 ? `${raw.slice(0, 6000)}\n… (${raw.length - 6000} more characters)` : raw}
+          </pre>
+        ) : (
+          <p className="mt-2 text-muted">Not published for a sealed verdict. The API keeps it, and re-reads it on <a className="underline" href={verdictId ? `/verify?id=${verdictId}` : "/verify"}>verify</a>.</p>
+        )}
+      </details>
     </CornerCard>
   );
 }
@@ -101,8 +113,8 @@ export function VerdictTabs({ v, bom }: { v: VerdictObject; bom: Bom | null }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("findings");
   return (
     <div>
-      <Tabs tabs={TABS} value={tab} onChange={setTab} />
-      <div className="pt-4">
+      <Tabs tabs={TABS} value={tab} onChange={setTab} idPrefix="verdict" />
+      <div className="pt-4" role="tabpanel" id={tabIds("verdict", tab).panel} aria-labelledby={tabIds("verdict", tab).tab} tabIndex={0}>
         {tab === "findings" ? (
           <div className="space-y-4">
             <ul className="space-y-2 font-mono text-[13px]">

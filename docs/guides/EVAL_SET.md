@@ -3,8 +3,9 @@
 > **Status, 2026-11-08: done.** `eval/cases.json` holds 61 current-state cases
 > (34 good, 27 bad; 41 tune, 20 holdout). Labels were reviewed: the five
 > detector-only honeypots are excluded (DECISIONS L27). The rules were frozen,
-> then the holdout ran once: Skein approved 0 of 7 bad and rejected 0 of 13
-> good (`eval/FINDINGS-holdout.md`). The prospective set grows from Nov 11 with
+> then the holdout ran once: Skein approved 0 of 7 bad (95% interval 0–35%)
+> and rejected 0 of 13 good; the required checks alone did as well for less
+> (`eval/REPORT-holdout.md`, `eval/FINDINGS-holdout.md`). The prospective set grows from Nov 11 with
 > `eval-tools prospective`. One correction to the steps below: the miners read
 > only current state, so step 5's "as of a block" check is not possible (L26).
 
