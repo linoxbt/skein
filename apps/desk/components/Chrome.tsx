@@ -32,7 +32,13 @@ export function Nav() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <span className="hidden font-mono text-[12px] text-muted lg:inline">Halyard Exchange · fictional</span>
+            {/* Always visible (spec section 2: every screen labels the network): short below 640px, in full above. */}
+            <span className="tag tag-dark !text-[12px]" title="The Desk pays for verdicts on the Telegraph testnet (test USDC); the tokens it reviews are on mainnet chains">
+              <span className="h-1.5 w-1.5 bg-thread" aria-hidden />
+              <span className="sm:hidden">Testnet</span>
+              <span className="hidden sm:inline">Telegraph testnet</span>
+            </span>
+            <span className="hidden font-mono text-[12px] text-muted xl:inline">Halyard Exchange · fictional</span>
             <Link href="/apply" className="btn btn-primary !hidden !h-10 !px-5 !text-[15px] md:!inline-flex">File an application</Link>
             <button type="button" className="grid h-10 w-10 place-items-center bg-panel-2 md:hidden" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
               {open ? <IconClose size={20} /> : <IconMenu size={20} />}
@@ -80,7 +86,7 @@ export function Footer() {
         </div>
         <Wordmark word="desk" className="mt-20 block w-full max-w-[1100px]" />
         <div className="mt-8 flex flex-col justify-between gap-3 border-t border-edge pt-6 text-[13px] text-muted md:flex-row">
-          <span>Risk evidence, not investment advice.</span>
+          <span>Risk evidence, not investment advice. Payments on the Telegraph testnet.</span>
           <span className="font-mono">Applications in. Decisions out.</span>
         </div>
       </div>

@@ -5,7 +5,7 @@ import type { Stats, Store, TokenRecord } from "./store";
 
 export interface Feed {
   generatedAt: string;
-  config: Pick<SniperConfig, "policy" | "minLiquidityUsd" | "minAgeMin" | "maxAgeMin" | "dailyChecks" | "ticketUsd">;
+  config: Pick<SniperConfig, "policy" | "minLiquidityUsd" | "minAgeMin" | "maxAgeMin" | "dailyChecks" | "ticketUsd"> & { dailyUsdc?: number };
   rail: string;
   attester: string | null;
   watching: number;
@@ -28,7 +28,7 @@ export async function buildFeed(store: Store, cfg: SniperConfig, meta: { rail: s
   const [last24h, allTime, watching, decisions] = await Promise.all([
     store.stats(day),
     store.stats(new Date(0)),
-    store.byStatus("watching", 10_000).then((r) => r.length),
+    store.count("watching"),
     store.checkedSince(new Date(now.getTime() - 7 * 86_400_000), 100),
   ]);
   const withChange = decisions.map((r) => ({ ...r, change: changeSinceCheck(r) }));
@@ -36,7 +36,7 @@ export async function buildFeed(store: Store, cfg: SniperConfig, meta: { rail: s
   const skipped = withChange.filter((r) => r.action === "skip" && r.status === "decided" && r.change !== null);
   return {
     generatedAt: now.toISOString(),
-    config: { policy: cfg.policy, minLiquidityUsd: cfg.minLiquidityUsd, minAgeMin: cfg.minAgeMin, maxAgeMin: cfg.maxAgeMin, dailyChecks: cfg.dailyChecks, ticketUsd: cfg.ticketUsd },
+    config: { policy: cfg.policy, minLiquidityUsd: cfg.minLiquidityUsd, minAgeMin: cfg.minAgeMin, maxAgeMin: cfg.maxAgeMin, dailyChecks: cfg.dailyChecks, ticketUsd: cfg.ticketUsd, dailyUsdc: cfg.dailyUsdc },
     rail: meta.rail,
     attester: meta.attester,
     watching,
@@ -69,7 +69,24 @@ export function rateLimiter(perMinute: number, now: () => number = Date.now) {
   };
 }
 
-export function createServer(store: Store, cfg: SniperConfig, meta: { rail: string; attester: string | null; skeinWeb: string }) {
+/**
+ * The feed, built at most once per ttlMs and shared by every request in that
+ * window (and by concurrent requests while it is being built).
+ */
+export function cachedFeed(build: () => Promise<Feed>, ttlMs = 10_000, now: () => number = Date.now) {
+  let hit: { at: number; feed: Promise<Feed> } | null = null;
+  return (): Promise<Feed> => {
+    if (hit && now() - hit.at < ttlMs) return hit.feed;
+    const feed = build();
+    hit = { at: now(), feed };
+    feed.catch(() => {
+      if (hit?.feed === feed) hit = null;
+    });
+    return feed;
+  };
+}
+
+export function createServer(store: Store, cfg: SniperConfig, meta: { rail: string; attester: string | null; skeinWeb: string }, opts: { feedTtlMs?: number } = {}) {
   const app = new Hono();
   // The dashboard is one page with inline script and style, reading feed.json from this origin only.
   app.use(
@@ -89,12 +106,19 @@ export function createServer(store: Store, cfg: SniperConfig, meta: { rail: stri
     }),
   );
   const exportLimit = rateLimiter(20);
+  // The dashboard polls every 15 s: 60 a minute per address leaves room for several tabs.
+  const feedLimit = rateLimiter(60);
+  const feed = cachedFeed(() => buildFeed(store, cfg, meta), opts.feedTtlMs ?? 10_000);
   const clientIp = (h: (n: string) => string | undefined) => h("x-forwarded-for")?.split(",")[0]?.trim() || h("x-real-ip") || "unknown";
   app.get("/healthz", (c) => c.json({ ok: true }));
   app.get("/feed.json", async (c) => {
     c.header("access-control-allow-origin", "*");
-    c.header("cache-control", "no-store");
-    return c.json(await buildFeed(store, cfg, meta));
+    if (!feedLimit(clientIp((n) => c.req.header(n)))) {
+      c.header("retry-after", "5");
+      return c.json({ error: { code: "RATE_LIMITED", message: "at most 60 feed reads a minute" } }, 429);
+    }
+    c.header("cache-control", "public, max-age=10");
+    return c.json(await feed());
   });
   // Every decided token since a time, for the evaluation's prospective set
   // (eval-tools prospective): the feed keeps only the latest 100.

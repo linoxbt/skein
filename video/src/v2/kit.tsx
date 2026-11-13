@@ -221,7 +221,7 @@ export const CodeCard: React.FC<{ title: string; code: string; delay: number; wi
 };
 
 /** Burned-in captions: the narration in short phrases, word-timed. */
-const FIX: Record<string, string> = { scane: "Skein", skane: "Skein", skein: "Skein", scan: "Skein", minor: "miner", merkel: "Merkle", route: "root", claud: "Claude", x402: "x402", "-drome": "drome", base: "Base", arbitrum: "Arbitrum", telegraph: "Telegraph", exchanges: "exchange's", rest: "REST", api: "API", sdk: "SDK", mcp: "MCP" };
+const FIX: Record<string, string> = { scane: "Skein", skane: "Skein", skein: "Skein", scan: "Skein", minor: "miner", merkel: "Merkle", route: "root", claud: "Claude", x402: "x402", "-drome": "drome", base: "Base", arbitrum: "Arbitrum", telegraph: "Telegraph", exchanges: "exchange's", api: "API", sdk: "SDK", mcp: "MCP" };
 type Line = { from: number; to: number; text: string };
 const LINES: Line[] = (() => {
   const out: Line[] = [];
@@ -230,7 +230,7 @@ const LINES: Line[] = (() => {
     const flush = () => {
       if (!cur.length) return;
       let text = cur.map((w) => w.w).join(" ");
-      text = text.replace(/\baero -drome\b/i, "Aerodrome").replace(/U \.S\./g, "US").replace(/addressed by address/i, "address by address").replace(/skeinlabs \.site/i, "skeinlabs.site").replace(/Merkel route/i, "Merkle root").replace(/best -ranked/i, "best-ranked");
+      text = text.replace(/\baero -drome\b/i, "Aerodrome").replace(/U \.S\./g, "US").replace(/addressed by address/i, "address by address").replace(/skeinlabs \.site/i, "skeinlabs.site").replace(/Merkel route/i, "Merkle root").replace(/best -ranked/i, "best-ranked").replace(/\brest call\b/i, "REST call");
       text = text.split(" ").map((w) => { const k = w.toLowerCase().replace(/[^a-z0-9-]/g, ""); const fix = FIX[k]; return fix ? w.replace(new RegExp(k, "i"), fix) : w; }).join(" ");
       out.push({ from: s.from + s.voFrom + Math.round(cur[0]!.s * FPS), to: s.from + s.voFrom + Math.round(cur[cur.length - 1]!.e * FPS) + 6, text });
       cur = [];

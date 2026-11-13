@@ -1,8 +1,15 @@
 # Skein Desk on Netlify, built from the repository (pnpm workspace).
 # In the Netlify UI: Base directory = apps/desk. The build runs from the repo
 # root so the workspace packages resolve. Set SKEIN_API_URL, DESK_SKEIN_KEY
-# and DESK_CRON_SECRET in the Netlify UI (never here). docs/RUNBOOK.md has the
-# deploy steps.
+# and DESK_CRON_SECRET in the Netlify UI (never here), and for the Telegraph
+# rail DESK_PAYER=telegraph and DESK_PAYER_KEY (the other settings are listed
+# in lib/desk.ts). docs/RUNBOOK.md has the deploy steps.
+#
+# Functions (netlify/functions, found by convention, no settings needed here):
+#   desk-tick              scheduled every minute; starts the background agent
+#   desk-agent-background  the agent's run: intake, then every open application
+#                          (a background function, up to 15 minutes, so a paid
+#                          Telegraph ask is never cut off)
 [build]
   command = "cd ../.. && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @skein/desk... build"
   publish = ".next"

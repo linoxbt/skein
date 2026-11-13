@@ -1,6 +1,7 @@
 // A listing gate: check each token with Skein before it goes live.
 //
 //   SKEIN_API_KEY=sk_part_… npx tsx gate.ts base:0x4200000000000000000000000000000000000006 ethereum:0x…
+//   … gate.ts --allow review,retry base:0x…    also pass on those decisions
 //
 // Each token gets one of four decisions, straight from its verdict:
 //   APPROVE  → list      REJECT  → block
@@ -8,10 +9,12 @@
 //
 // Pays with a partner key (SKEIN_API_KEY) or, with SKEIN_PAYER_KEY set, per
 // verdict through Telegraph escrow. Spend is capped per verdict and per run,
-// and every verdict is re-verified. Decisions go to stdout and decisions.json;
-// the exit code is 1 when any token is blocked, so CI can fail on it.
+// and every verdict is re-verified. Decisions go to stdout and decisions.json.
+// Exit codes, so CI fails closed: 0 only when every token gets "list" (or a
+// decision named in --allow); 1 when any token is blocked; 2 when any token
+// got anything else (review, retry, refused, error: Skein being down is not a pass).
 import { writeFileSync } from "node:fs";
-import { Skein, SkeinError, SpendCapError, type Payer, type VerdictResult } from "@skeinlabs/sdk";
+import { Skein, SkeinError, SpendCapError, type Payer, type Rail, type VerdictResult } from "@skeinlabs/sdk";
 
 const CHAINS: Record<string, number> = { ethereum: 1, eth: 1, base: 8453, bsc: 56, bnb: 56, arbitrum: 42161 };
 const DECISION = { APPROVE: "list", REJECT: "block", ESCALATE: "review", ABSTAIN: "retry" } as const;
@@ -19,9 +22,21 @@ type Decision = (typeof DECISION)[keyof typeof DECISION] | "refused" | "error";
 
 const env = process.env;
 const apiUrl = env.SKEIN_API_URL ?? "https://api.skeinlabs.site";
-const policy = env.SKEIN_POLICY ?? "dex-list@0.1.0";
-const maxUsdcPerCall = Number(env.SKEIN_MAX_USDC_PER_CALL ?? 0.3);
-const runCapUsdc = Number(env.SKEIN_RUN_CAP_USDC ?? 2);
+const policy = env.SKEIN_POLICY || "dex-list@0.2.0";
+
+/** A USDC amount: a finite number above 0. A typo must not turn a cap off (NaN compares false). */
+function usdc(name: string, fallback: number): number {
+  const raw = env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v <= 0) {
+    console.error(`${name} must be a positive number of USDC (got ${JSON.stringify(raw)})`);
+    process.exit(64);
+  }
+  return v;
+}
+const maxUsdcPerCall = usdc("SKEIN_MAX_USDC_PER_CALL", 0.3);
+const runCapUsdc = usdc("SKEIN_RUN_CAP_USDC", 2);
 
 async function payer(): Promise<Payer> {
   if (env.SKEIN_PAYER_KEY) {
@@ -32,7 +47,8 @@ async function payer(): Promise<Payer> {
       signer: viemSigner(env.SKEIN_PAYER_KEY as `0x${string}`),
       maxUusdcPerCall: Math.round(maxUsdcPerCall * 1e6),
     });
-    return { kind: "telegraph", client, ...(env.SKEIN_MINER_ID ? { minerId: env.SKEIN_MINER_ID } : {}) };
+    // Skein's miner (845301) on FRAUD_RISK_GENERAL unless overridden; answers about another token, or from another miner, are refused.
+    return { kind: "telegraph", client, ...(env.SKEIN_INTENT ? { intent: env.SKEIN_INTENT } : {}), ...(env.SKEIN_MINER_ID ? { minerId: env.SKEIN_MINER_ID } : {}) };
   }
   if (env.SKEIN_API_KEY) return { kind: "apiKey", key: env.SKEIN_API_KEY };
   throw new Error("set SKEIN_API_KEY (a partner key) or SKEIN_PAYER_KEY (a funded Telegraph burner)");
@@ -45,13 +61,23 @@ function parse(arg: string) {
   return { chainId, token: token! };
 }
 
-/** What this verdict cost us: nothing for a cache hit or a replay. */
-const costOf = (v: VerdictResult) => (v.cached || v.replayed ? 0 : v.payment.rail === "telegraph" ? v.payment.amountUsdc : v.cost.priceUsdc);
+/** What this verdict cost us: a paid ask costs what it cost; a partner-key cache hit or replay costs nothing. */
+const costOf = (v: VerdictResult<Rail>) => (v.payment.rail !== "apiKey" ? v.payment.amountUsdc : v.cached || v.replayed ? 0 : v.cost.priceUsdc);
 
-const USAGE = "usage: npx tsx gate.ts <chain:0xtoken>…   e.g. base:0x4200000000000000000000000000000000000006";
+const USAGE = "usage: npx tsx gate.ts [--allow review,retry] <chain:0xtoken>…   e.g. base:0x4200000000000000000000000000000000000006";
 let subjects: { chainId: number; token: string }[];
+const allowed = new Set<Decision>(["list"]);
 try {
-  subjects = process.argv.slice(2).map(parse);
+  const argv = process.argv.slice(2);
+  const at = argv.indexOf("--allow");
+  if (at >= 0) {
+    for (const d of (argv[at + 1] ?? "").split(",").filter(Boolean)) {
+      if (!["review", "retry", "refused", "error"].includes(d)) throw new Error(`--allow takes review, retry, refused or error (not ${d}); block never passes`);
+      allowed.add(d as Decision);
+    }
+    argv.splice(at, 2);
+  }
+  subjects = argv.map(parse);
 } catch (e) {
   console.error(`${(e as Error).message}\n${USAGE}`);
   process.exit(64);
@@ -116,4 +142,5 @@ for (const r of rows) {
 }
 console.log(`\n${rows.length} tokens · spent ${spent.toFixed(2)} USDC (cap ${runCapUsdc})`);
 writeFileSync("decisions.json", JSON.stringify({ at: new Date().toISOString(), policy, spentUsdc: spent, rows }, null, 2));
-process.exit(rows.some((r) => r.decision === "block") ? 1 : 0);
+// Fail closed: only "list" (and what --allow names) passes.
+process.exit(rows.some((r) => r.decision === "block") ? 1 : rows.every((r) => allowed.has(r.decision)) ? 0 : 2);

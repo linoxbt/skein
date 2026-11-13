@@ -5,6 +5,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { reproduce, type StoredVerdict } from "@skein/engine";
 import { getPolicy } from "@skein/policies";
+import { knownLists } from "../src";
 
 const args = process.argv.slice(2).map((f) => resolve(process.env.INIT_CWD ?? process.cwd(), f));
 if (args.length === 0) {
@@ -20,7 +21,7 @@ let failed = 0;
 for (const file of files) {
   const { stored } = JSON.parse(readFileSync(file, "utf8")) as { stored: StoredVerdict };
   const record = getPolicy(`${stored.policy.id}@${stored.policy.version}`);
-  const report = reproduce(stored, record.policy, { policySha256: record.sha256 });
+  const report = reproduce(stored, record.policy, { policySha256: record.sha256, policySource: record.source, knownLists: knownLists() });
   console.log(`${report.ok ? "ok  " : "FAIL"} ${file} ${report.verdictHash}${report.ok ? "" : `\n     ${report.problems.join("\n     ")}`}`);
   if (!report.ok) failed++;
 }

@@ -40,7 +40,7 @@ export default function Apply() {
       <PageHero
         compact
         tag="Apply"
-        title={<>Apply to list.<br />Hear back in seconds.</>}
+        title={<>Apply to list.<br />Hear back within a minute.</>}
         sub="File a token the way a project would. The agent picks it up the moment it lands; nobody reads it unless Skein escalates."
         background={<Stripes seed={12} className="opacity-30" />}
       />

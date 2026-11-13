@@ -1,6 +1,6 @@
 {
   "name": "@skeinlabs/mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Skein as an MCP server for LLM agents (Claude, Cursor, any MCP client): skein_verdict, skein_quote and skein_verify, with a per-call and per-session spend cap.",
   "exports": {
@@ -14,7 +14,8 @@
     "test": "vitest run --hookTimeout=120000 --testTimeout=120000",
     "start": "tsx bin/skein-mcp.ts",
     "build": "tsup",
-    "prepublishOnly": "tsup"
+    "prepublishOnly": "node ../sdk/scripts/require-pnpm.mjs && tsup",
+    "check:published": "node ../sdk/scripts/check-published.mjs ."
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -36,13 +37,16 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "access": "public",
     "bin": {
       "skein-mcp": "./dist/skein-mcp.js"
     },
+    "main": "./dist/server.js",
+    "types": "./dist/server.d.ts",
     "exports": {
       ".": {
         "types": "./dist/server.d.ts",

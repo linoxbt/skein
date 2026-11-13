@@ -5,7 +5,7 @@ name: Uptime
 # Probes every public service. A failure opens a GitHub issue
 # labelled "alert" (or comments on the open one when the failures change) and
 # mentions the repository owner, so it reaches the GitHub app and email; the
-# issue closes itself on recovery. The failed run also emails the owner.
+# issue closes itself on recovery. The run stays green (see the Probe step).
 # Free, no monitoring account or webhook needed.
 # docs/RUNBOOK.md says what to do for each failing check.
 on:
@@ -24,6 +24,10 @@ jobs:
     steps:
       - name: Probe
         id: probe
+        # The alert is the issue below, not a red run: Railway's "wait for CI"
+        # counts every check suite on main's head commit, so a failing monitor
+        # would hold back the very deploy that fixes the outage.
+        continue-on-error: true
         shell: bash
         run: |
           set -u

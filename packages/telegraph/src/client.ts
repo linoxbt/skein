@@ -94,6 +94,10 @@ export interface ClientOptions {
   allowPreSeason?: boolean;
 }
 
+/**
+ * Not thrown by the client (a pre-season ask comes back as kind "preseason");
+ * kept because @skeinlabs/sdk/telegraph re-exports it as public API.
+ */
 export class PreSeasonError extends Error {
   readonly code = "PRE_SEASON";
 }
@@ -103,7 +107,25 @@ export function viemSigner(privateKey: `0x${string}`): MessageSigner {
   return { address: account.address, signMessage: (message) => account.signMessage({ message }) };
 }
 
-const RETRYABLE: ReadonlySet<AskFailureKind> = new Set(["timeout", "network", "server_error", "refused"]);
+/** Failures before payment that a fresh challenge may fix. A 402 refusal of a sent payment is not one (see attempt). */
+const RETRYABLE: ReadonlySet<AskFailureKind> = new Set(["timeout", "network", "server_error"]);
+
+export interface AskOptions {
+  minerId?: string;
+  /** Per request (the unpaid probe, then the paid POST). */
+  timeoutMs: number;
+  maxUusdc?: number;
+  /**
+   * One absolute deadline for the whole ask, in wall-clock epoch ms
+   * (Date.now()): the probe, the paid POST, a retry and the miner identity
+   * lookups all fit inside it, and nothing is paid for once too little of it
+   * is left to receive the answer.
+   */
+  deadline?: number;
+}
+
+/** Below this much time left (or the call's own timeout, if shorter), the client does not sign a payment. */
+export const MIN_PAID_WINDOW_MS = 1_000;
 
 export class TelegraphClient {
   private readonly fetch: typeof fetch;
@@ -120,8 +142,9 @@ export class TelegraphClient {
     return `${this.opts.network.nodeUrl.replace(/\/$/, "")}${path}`;
   }
 
-  private async getJson<T>(path: string): Promise<T> {
-    const r = await this.send(path, { method: "GET" }, 15_000);
+  private async getJson<T>(path: string, timeoutMs = 15_000): Promise<T> {
+    if (timeoutMs <= 0) throw new Error(`GET ${path}: no time left`);
+    const r = await this.send(path, { method: "GET" }, timeoutMs);
     if (typeof r === "string") throw new Error(`GET ${path}: ${r}`);
     if (r.status < 200 || r.status >= 300) throw new Error(`GET ${path}: HTTP ${r.status}`);
     return JSON.parse(r.text) as T;
@@ -158,11 +181,14 @@ export class TelegraphClient {
    * full catalogue is over the body cap), cached; any failure means "not shown
    * to be the same", so the receipt stays flagged.
    */
-  async sameMiner(id: string, pinnedYamlId: string): Promise<boolean> {
+  async sameMiner(id: string, pinnedYamlId: string, deadline = Infinity): Promise<boolean> {
+    const budget = () => Math.min(15_000, deadline - Date.now());
     try {
       if (!this.registrations.has(id)) {
         type Reg = { slug?: string; supported_intents?: string[] };
-        const r = await this.getJson<Reg & { miner?: Reg }>(`/api/miners/${encodeURIComponent(id)}`).catch(() => null);
+        const r = await this.getJson<Reg & { miner?: Reg }>(`/api/miners/${encodeURIComponent(id)}`, budget()).catch(() => undefined);
+        // Out of time is not an answer: leave it unknown so a later ask can look again.
+        if (r === undefined && budget() <= 0) return false;
         const m = r?.miner ?? r; // the node wraps the record in { miner }
         this.registrations.set(id, m?.slug ? { slug: m.slug, intents: m.supported_intents ?? [] } : null);
       }
@@ -171,10 +197,11 @@ export class TelegraphClient {
       for (const intent of reg.intents) {
         let cached = this.intentMiners.get(intent);
         if (!cached || this.now() - cached.at > 10 * 60_000) {
-          const d = await this.getIntent(intent).catch(() => null);
+          const d = await this.getIntent(intent, budget()).catch(() => null);
           const miners = ((d as { miners?: { id: string | number; slug: string }[] } | null)?.miners ?? []);
           cached = { at: this.now(), slugById: new Map(miners.map((m) => [String(m.id), m.slug])) };
-          this.intentMiners.set(intent, cached);
+          // A lookup that failed (or ran out of time) is not cached as "no miners".
+          if (d) this.intentMiners.set(intent, cached);
         }
         const slug = cached.slugById.get(pinnedYamlId);
         if (slug !== undefined) return slug === reg.slug;
@@ -193,16 +220,8 @@ export class TelegraphClient {
     return this.getJson(`/api/miners${p.size ? `?${p}` : ""}`);
   }
 
-  getIntents(): Promise<{ count: number; intents: { intent_id: string; miner_count: number; canonical: boolean }[] }> {
-    return this.getJson("/engine/v1/intents");
-  }
-
-  getIntent(intent: string): Promise<Record<string, unknown>> {
-    return this.getJson(`/engine/v1/intents/${encodeURIComponent(intent)}`);
-  }
-
-  getSignal(signalHash: string): Promise<Record<string, unknown>> {
-    return this.getJson(`/engine/v1/signal/${encodeURIComponent(signalHash)}`);
+  getIntent(intent: string, timeoutMs = 15_000): Promise<Record<string, unknown>> {
+    return this.getJson(`/engine/v1/intents/${encodeURIComponent(intent)}`, timeoutMs);
   }
 
   /**
@@ -211,9 +230,11 @@ export class TelegraphClient {
    * that miner is the one paid); "missing": the node has no such signal;
    * "mismatch": it does, from another miner; "unchecked": the node did not answer.
    */
-  async verifySignal(signalHash: string | undefined, expect: { minerId?: string } = {}): Promise<SignalStatus> {
+  async verifySignal(signalHash: string | undefined, expect: { minerId?: string; deadline?: number; timeoutMs?: number } = {}): Promise<SignalStatus> {
     if (!signalHash || !/^0x[0-9a-fA-F]{64}$/.test(signalHash)) return "missing";
-    const r = await this.send(`/engine/v1/signal/${encodeURIComponent(signalHash)}`, { method: "GET" }, 10_000);
+    const timeoutMs = Math.min(expect.timeoutMs ?? 10_000, (expect.deadline ?? Infinity) - Date.now());
+    if (timeoutMs <= 0) return "unchecked";
+    const r = await this.send(`/engine/v1/signal/${encodeURIComponent(signalHash)}`, { method: "GET" }, timeoutMs);
     if (typeof r === "string" || r.status >= 500) return "unchecked";
     if (r.status === 404) return "missing";
     if (r.status < 200 || r.status >= 300) return "unchecked";
@@ -225,16 +246,20 @@ export class TelegraphClient {
 
   /**
    * Buys one answer on the escrow rail. Failures before payment (no answer to
-   * the unpaid probe, a 5xx) and an explicit 402 refusal of the payment are
-   * retried once with a fresh challenge and nonce: nothing was billed. A
-   * failure after X-PAYMENT was sent is never retried, because the node may
-   * have billed it; it comes back with paidUusdc set and billing "unknown".
-   * maxUusdc lowers the client-wide cap for this one call.
+   * the unpaid probe, a 5xx) are retried once with a fresh challenge and
+   * nonce: nothing was billed. Once X-PAYMENT was sent the call is never
+   * retried, because the node may have billed it; it comes back with
+   * paidUusdc set and billing "unknown". That includes a 402 refusing the
+   * payment: the signed authorization stays valid for its window (about
+   * 105 s), so it is counted as possibly spent, and a second one is never
+   * signed beside it. maxUusdc lowers the client-wide cap for this one call;
+   * deadline bounds all of it (AskOptions).
    */
-  async ask(req: AskRequest, opts: { minerId?: string; timeoutMs: number; maxUusdc?: number }): Promise<AskOutcome> {
+  async ask(req: AskRequest, opts: AskOptions): Promise<AskOutcome> {
     const started = this.now();
     let last: AskOutcome | null = null;
     for (let attempt = 1; attempt <= 2; attempt++) {
+      if (attempt > 1 && (opts.deadline ?? Infinity) - Date.now() <= 0) break;
       const out = await this.attempt(req, opts, started, attempt);
       if (out.ok || out.billing === "unknown" || !RETRYABLE.has(out.kind)) return out;
       last = out;
@@ -242,16 +267,19 @@ export class TelegraphClient {
     return last!;
   }
 
-  private async attempt(req: AskRequest, opts: { minerId?: string; timeoutMs: number; maxUusdc?: number }, started: number, attempts: number): Promise<AskOutcome> {
+  private async attempt(req: AskRequest, opts: AskOptions, started: number, attempts: number): Promise<AskOutcome> {
     const path = opts.minerId ? `/engine/v1/ask/${encodeURIComponent(opts.minerId)}` : "/engine/v1/ask";
     const body = JSON.stringify(req);
     const fail = (kind: AskFailureKind, error: string, httpStatus?: number, paidUusdc = 0): AskOutcome => ({
       ok: false, kind, error, durationMs: this.now() - started, attempts, paidUusdc, billing: paidUusdc > 0 ? "unknown" : "none",
       ...(httpStatus !== undefined ? { httpStatus } : {}),
     });
+    const deadline = opts.deadline ?? Infinity;
+    const left = () => deadline - Date.now();
     const post = (headers: Record<string, string>) =>
-      this.send(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body }, opts.timeoutMs);
+      this.send(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body }, Math.max(0, Math.min(opts.timeoutMs, left())));
 
+    if (left() <= 0) return fail("timeout", "deadline reached before asking");
     const challenge = await post({});
     if (typeof challenge === "string") return fail(challenge, `unpaid request: ${challenge}`);
     if (challenge.status !== 402) {
@@ -277,6 +305,8 @@ export class TelegraphClient {
     }
     if (!this.opts.signer) return fail("mismatch", "no signer configured");
 
+    // Paying with no time left to hear the answer would buy a billed timeout.
+    if (left() < Math.min(opts.timeoutMs, MIN_PAID_WINDOW_MS)) return fail("timeout", "deadline too close to pay for an answer");
     const maxUusdc = Math.min(this.opts.maxUusdcPerCall, opts.maxUusdc ?? Infinity);
     let signed;
     try {
@@ -304,9 +334,11 @@ export class TelegraphClient {
     const sent = signed.amountUusdc;
     if (typeof paid === "string") return fail(paid, `paid request: ${paid}`, undefined, sent);
     if (paid.status === 402) {
-      // An explicit refusal of the payment (nonce, window, amount, balance): not billed.
+      // An explicit refusal of the payment (nonce, window, amount, balance). The
+      // signed authorization is still valid until validBefore, so for spend it
+      // counts as possibly billed (billing "unknown"), and it is not retried.
       const reason = parseJson(paid.text) as { reason?: string; error?: string } | null;
-      return fail("refused", `payment refused: ${reason?.reason ?? reason?.error ?? "no reason given"}`, 402);
+      return fail("refused", `payment refused: ${String(reason?.reason ?? reason?.error ?? "no reason given").slice(0, 200)}`, 402, sent);
     }
     if (paid.status < 200 || paid.status >= 300) {
       return fail(paid.status >= 500 ? "server_error" : "client_error", `HTTP ${paid.status}: ${paid.text.slice(0, 2000)}`, paid.status, sent);
@@ -320,7 +352,7 @@ export class TelegraphClient {
     if (opts.minerId) {
       for (const [what, id] of [["receipt miner", receipt?.miner], ["answered by miner", response.miner_id]] as const) {
         if (id === undefined || id === null || String(id) === opts.minerId) continue;
-        if (!(await this.sameMiner(String(id), opts.minerId))) problems.push(`${what} ${id}, pinned ${opts.minerId}`);
+        if (!(await this.sameMiner(String(id), opts.minerId, deadline))) problems.push(`${what} ${id}, pinned ${opts.minerId}`);
       }
     }
     return {

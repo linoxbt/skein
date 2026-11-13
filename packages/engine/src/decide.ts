@@ -10,16 +10,43 @@ export interface Conflict {
   checks: string[];
 }
 
-/** Contradictions are escalated, never averaged. */
+/** How bad an answer is, in the engine's own order: status first (FAIL over WARN over PASS), then severity. */
+const RANK: Readonly<Record<string, number>> = { PASS: 0, WARN: 1, FAIL: 2 };
+
+/**
+ * Whether an answer is at a status or worse (engine 0.4.0). Rules name the
+ * least bad answer they fire on: a FAIL meets a WARN rule, so a strictly
+ * worse answer can never stop a blocker or a contradiction from firing.
+ * minSeverity grades answers at the rule's own status only; every answer at
+ * a worse status is already worse than all of those (it is how the engine
+ * picks a check's deciding answer, and the policy's scoring tables must
+ * agree: policy.ts).
+ */
+function atOrWorse(status: string, severity: number, rule: { status: string; minSeverity?: number }): boolean {
+  const have = RANK[status];
+  const want = RANK[rule.status];
+  if (have === undefined || want === undefined) return false;
+  return have > want || (have === want && severity >= (rule.minSeverity ?? 0));
+}
+
+/**
+ * Contradictions are escalated, never averaged. A policy contradiction fires
+ * when each of its checks is answered at its status or worse (0.4.0): "audit
+ * PASS but wash trading FAIL" escalates, so "audit WARN and wash trading
+ * FAIL" must too, or a worse audit would let the same token be approved.
+ */
 export function reconcile(policy: Policy, states: readonly CheckState[]): Conflict[] {
   const byCheck = new Map(states.map((s) => [s.check, s]));
   const out: Conflict[] = [];
   for (const k of policy.conflicts) {
     const hit = k.when.every((w) => {
       const s = byCheck.get(w.check);
-      return !!s && s.answered && s.status === w.status;
+      return !!s && s.answered && atOrWorse(s.status, s.severity, w);
     });
-    if (hit) out.push({ code: k.code, detail: k.detail, checks: k.when.map((w) => w.check) });
+    if (!hit) continue;
+    const worse = k.when.filter((w) => byCheck.get(w.check)!.status !== w.status).map((w) => `${w.check} ${byCheck.get(w.check)!.status}`);
+    const detail = worse.length === 0 ? k.detail : `${k.detail}; met by a worse answer (${worse.join(", ")})`;
+    out.push({ code: k.code, detail, checks: k.when.map((w) => w.check) });
   }
   for (const s of states) {
     if (s.disagreement) {
@@ -43,14 +70,14 @@ function blockerHits(policy: Policy, states: readonly CheckState[]): BlockerHit[
   for (const b of policy.blockers) {
     const s = states.find((x) => x.check === b.check);
     const hits = (s?.findings ?? []).filter(
-      (f) => ANSWERED.has(f.status) && f.status === b.status && f.severity >= (b.minSeverity ?? 0) && f.confidence >= b.minConfidence,
+      (f) => ANSWERED.has(f.status) && atOrWorse(f.status, f.severity, b) && f.confidence >= b.minConfidence,
     );
     if (hits.length > 0) {
       const sev = b.minSeverity !== undefined ? ` (severity >= ${b.minSeverity})` : "";
       out.push({
         code: `BLOCKER_${upper(b.check)}_${b.status}`,
         check: b.check,
-        detail: `${b.check} ${b.status}${sev} is a hard blocker`,
+        detail: `${b.check} ${b.status}${sev} or worse is a hard blocker`,
         confidence: Math.max(...hits.map((f) => f.confidence)),
       });
     }
@@ -78,14 +105,23 @@ export interface Evaluation {
 
 /**
  * The decision table, evaluated in order:
- *  1. any blocker hit                                   -> REJECT (confidence of the blocking finding)
- *  2. a required check has no real answer               -> ABSTAIN (names it; confidence 0)
- *  3. coverage below min_coverage                       -> ABSTAIN
- *  4. risk_bps >= reject threshold                      -> REJECT
- *  5. a contradiction fires                             -> ESCALATE
- *  6. a required check is at FAIL                       -> ESCALATE (never APPROVE)
- *  7. risk_bps < approve threshold, confidence >= min   -> APPROVE
- *  8. anything else                                     -> ESCALATE
+ *  1. any blocker hit, at its status or worse            -> REJECT (confidence of the blocking finding)
+ *  2. a required check has no real answer                -> ABSTAIN (names it; confidence 0)
+ *  3. coverage below min_coverage                        -> ABSTAIN
+ *  4. risk_bps >= reject threshold                       -> REJECT
+ *  5. a contradiction fires, at its statuses or worse    -> ESCALATE
+ *  6. a required check is at FAIL                        -> ESCALATE (never APPROVE)
+ *  7. risk_bps < approve threshold, confidence >= min    -> APPROVE
+ *  8. anything else                                      -> ESCALATE
+ *
+ * Monotone (0.4.0): adding an answer to an answered check that is worse than
+ * its deciding answer, from the same provider group and no more confident,
+ * never moves the verdict down APPROVE < ESCALATE < REJECT. Rows 1, 4, 5 and
+ * 6 can only start to hold, row 7 can only stop holding, and rows 2 and 3 do
+ * not move (the same checks are answered), so an ABSTAIN stays ABSTAIN or
+ * becomes a blocker REJECT, and nothing else becomes ABSTAIN. A first answer
+ * to an unanswered check is new evidence, not a worse answer: it can move an
+ * ABSTAIN anywhere, which is the point of buying it.
  */
 export function decide(policy: Policy, findings: readonly Finding[]): Evaluation {
   const d = policy.decision;

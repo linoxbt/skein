@@ -1,19 +1,24 @@
 # Evaluation
 
-Skein only wins if it shows, on tokens it has never seen, that the fused
-verdict beats each simpler alternative. Thresholds are frozen (policy 1.0.0)
-before the held-out run, and every number is reported, including the bad ones.
+The question is whether, on tokens it has never seen, the fused verdict does
+better than each simpler alternative. The rules were frozen (dex-list@0.2.0,
+engine 0.2.0; FINDINGS-holdout.md lists the adapter versions) before the
+held-out run, and every number is reported, including where a simpler rule did
+as well (the required-checks-only configuration matched Skein on the holdout
+at lower cost; README, Results).
 
 ## Labelled set
 
-About 90 real mainnet tokens on Ethereum, Base and BNB, about 30 in each group:
+61 real mainnet tokens (the spec asked for about 90, 30 per group): 34 good and
+27 bad. No ambiguous tokens made it into the current-state set; the
+prospective set (below) has ambiguous launches instead.
 
 - **good**: listed on two or more major exchanges for at least 6 months
 - **bad**: documented honeypots, rugs and drainers, each with a public source
 - **ambiguous**: new tokens with mixed signals
 
-The set is split 60/30: thresholds are tuned on the first 60, and results are
-reported on the held-out 30.
+The set is split by `sha256(id) % 3` (eval/src/label.ts): 41 tune cases and
+20 held out, run once.
 
 ## Two bases, never pooled (docs/DECISIONS.md L26, replacing D7)
 
@@ -54,13 +59,14 @@ case was collected.
 All baselines run on the same held-out set:
 - **best single input**: the strongest check alone, using its own pass/fail
 - **weighted average**: the same inputs, with no blockers, conflict rules or abstain
-- **direct APIs**: the same checks wired straight to public APIs, outside Telegraph
+- **direct APIs**: the same checks wired straight to public APIs, outside Telegraph (not computed yet: it needs its own data source)
 - **cheapest config**: required checks only
 
 Metrics: precision and recall on REJECT; the false-APPROVE rate on bad tokens
 (the number that matters most); ESCALATE and ABSTAIN rates; cost per verdict;
-p50 and p95 latency; coverage. Results carry bootstrap confidence intervals and
-say plainly that 30 tokens is a small sample.
+p50 and p95 latency; coverage; the APPROVE rate overall and on good tokens.
+Results carry 95% Wilson score intervals and say plainly that 20 held-out
+tokens is a small sample.
 
 ## Harness
 

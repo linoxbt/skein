@@ -96,6 +96,8 @@ const run = await runVerdict(
     },
     ...(budgetUsdc !== undefined ? { budgetUusdc: Math.round(budgetUsdc * 1e6) } : {}),
     policySha256,
+    // Sealed into the verdict hash: a simulated run cannot be relabelled live.
+    mode: values.live ? "live" : "simulated",
   },
   { client: d.client, catalogue: d.catalogue, resolver: d.resolver, priceUusdc: 250_000, onEvent: log },
 );
@@ -106,8 +108,8 @@ if (!run.ok) {
   process.exit(2);
 }
 const v = run.verdict;
-// "simulated" travels inside the stored verdict too, so a copied file can't pass for evidence.
-const record = { mode: d.mode, verdict: v, purchases: run.purchases, stored: { ...run.stored, mode: values.live ? "live" : "simulated" } };
+// "simulated" is in the stored verdict and its hash (engine 0.4.0), so a copied file can't pass for evidence.
+const record = { mode: d.mode, verdict: v, purchases: run.purchases, stored: run.stored };
 const dir = resolve(process.env.INIT_CWD ?? process.cwd(), values.out!);
 mkdirSync(dir, { recursive: true });
 const file = `${dir}/${v.verdictHash.slice(2, 14)}.json`;

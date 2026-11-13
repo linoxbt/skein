@@ -27,6 +27,48 @@ export function sdnSnapshot(): SdnSnapshot {
   return cached;
 }
 
+/**
+ * How old the shipped snapshot may get before it is reported stale. OFAC
+ * amends the SDN list several times a month and adds addresses with some of
+ * those amendments; a month-old list misses them. A paid name-screen "match"
+ * escalates rather than rejects (adapters.ts, sanctions 0.3.0), so an address
+ * the snapshot misses is caught only by a person, which is why the probe and
+ * /v1/status should alert on this.
+ */
+export const SDN_SNAPSHOT_MAX_AGE_DAYS = 14;
+
+export interface SnapshotStatus {
+  list: string;
+  /** The day the list was fetched from Treasury (YYYY-MM-DD). */
+  fetched: string;
+  sourceSha256: string;
+  /** Whole days since it was fetched; NaN-free (an unreadable date reports Infinity). */
+  ageDays: number;
+  maxAgeDays: number;
+  stale: boolean;
+}
+
+/** The snapshot's age against SDN_SNAPSHOT_MAX_AGE_DAYS, for /v1/status and the probe. */
+export function sdnSnapshotStatus(now: Date = new Date(), snap: SdnSnapshot = sdnSnapshot(), maxAgeDays = SDN_SNAPSHOT_MAX_AGE_DAYS): SnapshotStatus {
+  const fetched = Date.parse(`${snap.fetched}T00:00:00Z`);
+  const ageDays = Number.isFinite(fetched) ? Math.max(0, Math.floor((now.getTime() - fetched) / 86_400_000)) : Infinity;
+  return { list: snap.list, fetched: snap.fetched, sourceSha256: snap.sourceSha256, ageDays, maxAgeDays, stale: ageDays > maxAgeDays };
+}
+
+/**
+ * The source sha256 of every SDN snapshot Skein has shipped. Verdicts sealed
+ * with an older snapshot cite it, so when data/ofac-sdn-evm.json is refreshed
+ * the previous sha256 is appended here, never replaced.
+ */
+export const SHIPPED_SDN_SNAPSHOTS: readonly string[] = [
+  "7f43332dae0d1b78ce44c31692d87a3c66e4075bcd97e36d3f18585572ff55b8", // 2026-11-11
+];
+
+/** The list snapshots Skein ships, for reproduce(): a list finding must cite one of them. */
+export function knownLists(snap: SdnSnapshot = sdnSnapshot()): Record<string, string[]> {
+  return { [snap.list]: [...new Set([...SHIPPED_SDN_SNAPSHOTS, snap.sourceSha256])] };
+}
+
 export interface SdnMatch extends SdnEntry {
   /** Which of the verdict's addresses matched: the token itself, or a context field such as the deployer. */
   field: string;

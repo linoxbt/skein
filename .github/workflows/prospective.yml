@@ -10,8 +10,8 @@ on:
     - cron: "41 6 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: write
+# Jobs set their own permissions; nothing by default.
+permissions: {}
 
 concurrency:
   group: prospective
@@ -19,12 +19,21 @@ concurrency:
 
 jobs:
   label-and-score:
+    # Installs and runs repository code, so it gets a read-only token. Its
+    # output goes to the publish job as an artifact; only that job, which
+    # installs nothing, can write.
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # A failed benchmark must not mark main's head commit red: Railway's "wait
+    # for CI" counts every check suite there and would skip the next deploy.
+    # The failure still shows on the run and in the job summary.
+    continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -56,17 +65,45 @@ jobs:
             printf '# Prospective benchmark\n\nNo launch has reached its 72-hour outcome yet.\n' > ../report.md
           fi
           cat ../report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Stage the data branch content
+        run: |
+          set -eu
+          mkdir -p ../out/runs
+          cp eval/sources/prospective.json ../out/prospective.json 2>/dev/null || true
+          cp -r eval/runs-prospective/. ../out/runs/ 2>/dev/null || true
+          cp ../report.md ../out/REPORT.md
+          printf '# Skein prospective benchmark data\n\nWritten daily by .github/workflows/prospective.yml on main. See REPORT.md.\n' > ../out/README.md
+          mv ../out ./prospective-out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: prospective
+          path: prospective-out
+          retention-days: 3
+
+  publish:
+    needs: label-and-score
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The only job with write access: it checks out nothing, installs nothing
+    # and runs no repository code; it commits the artifact to data/prospective.
+    permissions:
+      contents: write
+    continue-on-error: true
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: prospective
+          path: out
       - name: Publish to data/prospective
         run: |
           set -eu
-          cp eval/sources/prospective.json ../data/prospective.json 2>/dev/null || true
-          rm -rf ../data/runs && mkdir -p ../data/runs && cp -r eval/runs-prospective/. ../data/runs/ 2>/dev/null || true
-          cp ../report.md ../data/REPORT.md
-          printf '# Skein prospective benchmark data\n\nWritten daily by .github/workflows/prospective.yml on main. See REPORT.md.\n' > ../data/README.md
-          cd ../data
+          git init -q data && cd data
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          if git fetch -q --depth=1 origin data/prospective 2>/dev/null; then git checkout -q -B data FETCH_HEAD; else git checkout -q --orphan data; fi
+          rm -rf runs && cp -r ../out/. .
           git config user.name "skein-prospective"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git commit -q -m "Prospective benchmark: $(date -u +%F)"
-          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/data/prospective
+          git push origin HEAD:refs/heads/data/prospective

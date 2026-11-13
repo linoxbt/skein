@@ -1,136 +1,42 @@
 import { z } from "zod";
-import { CHECKS, STATUSES, type Check } from "./types";
-
-const check = z.enum(CHECKS);
-const status = z.enum(STATUSES);
-const severity = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
-const fraction = z.number().min(0).max(1);
+import { policySchemaV1 } from "./frozen/policy_v1";
+import type { Check } from "./types";
 
 /**
- * A hard blocker. It fires on an answer (WARN or FAIL) at or above
- * minSeverity, and only when that answer's confidence reaches minConfidence:
- * a low-confidence hit is not allowed to REJECT on its own, and is left to
- * risk, required-check and contradiction rules instead.
+ * The live policy schema: the frozen v1 schema (its fields and defaults are
+ * what every engine so far decided with), plus one rule added with engine
+ * 0.4.0: the scoring tables must rank answers the way the engine does. The
+ * engine picks a check's deciding answer by status first (FAIL over WARN over
+ * PASS), then severity, and matches blockers and contradictions at a status
+ * or worse; a table that scored a WARN above a FAIL, or a lower severity
+ * above a higher one, would let a worse answer lower the risk. Every
+ * published policy uses the default tables, which satisfy it.
+ *
+ * Changing a default is a new schema version, never an edit here or in
+ * frozen/policy_v1.ts: engines.ts names the schema each engine parses with.
  */
-const blocker = z
-  .object({ check, status: z.enum(["WARN", "FAIL"]), minSeverity: severity.optional(), minConfidence: fraction.default(0.5) })
-  .strict();
-
-/**
- * A threshold on one numeric field. Direction is inferred: fail > warn means
- * higher is worse, fail < warn means lower is worse. Comparisons are strict,
- * so a value exactly on a threshold stays on the better side.
- */
-const threshold = z
-  .object({ warn: z.number(), fail: z.number(), field: z.string().min(1) })
-  .strict()
-  .refine((t) => t.warn !== t.fail, "warn and fail must differ");
-
-const conflict = z
-  .object({
-    code: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
-    detail: z.string().min(1),
-    when: z.array(z.object({ check, status }).strict()).min(2),
-  })
-  .strict();
-
-const decision = z
-  .object({
-    approve_below_risk_bps: z.number().int().min(0).max(10_000),
-    reject_above_risk_bps: z.number().int().min(0).max(10_000),
-    /** Share of the policy's total weight that has a real answer. */
-    min_coverage: fraction,
-    min_confidence: fraction,
-    conflict_escalates: z.boolean().default(true),
-    /** Any required check without a real answer forces ABSTAIN, whatever its weight. */
-    abstain_on_missing_required: z.boolean().default(true),
-    /** Any required check at FAIL rules out APPROVE (the verdict becomes at least ESCALATE). */
-    required_fail_blocks_approve: z.boolean().default(true),
-    /** Confidence is multiplied by (1 - penalty x contradictions), floored at 0. */
-    agreement_penalty: fraction.default(0.25),
-  })
-  .strict();
-
-const scoring = z
-  .object({
-    status_risk: z
-      .object({ PASS: fraction, WARN: fraction, FAIL: fraction })
-      .strict()
-      .default({ PASS: 0, WARN: 0.5, FAIL: 1 }),
-    /** Multiplier on status risk, indexed by severity 0..3. */
-    severity_multiplier: z.tuple([fraction, fraction, fraction, fraction]).default([0.6, 0.8, 1, 1]),
-  })
-  .strict()
-  .prefault({});
-
-const budget = z
-  .object({
-    max_usdc: z.number().positive(),
-    per_check_timeout_ms: z
-      .object({ default: z.number().int().positive() })
-      .catchall(z.number().int().positive()),
-  })
-  .strict();
-
-export const policySchema = z
-  .object({
-    id: z.string().regex(/^[a-z][a-z0-9-]*$/),
-    version: z.string().regex(/^\d+\.\d+\.\d+$/),
-    description: z.string().optional(),
-    blockers: z.array(blocker).default([]),
-    required: z.array(check).min(1),
-    optional: z.array(check).default([]),
-    thresholds: z.partialRecord(check, threshold).default({}),
-    weights: z.partialRecord(check, z.number().min(0)),
-    conflicts: z.array(conflict).default([]),
-    decision,
-    scoring,
-    budget,
-  })
-  .strict()
-  .superRefine((p, ctx) => {
-    const issue = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
-    const inPolicy = new Set<Check>([...p.required, ...p.optional]);
-    if (inPolicy.size !== p.required.length + p.optional.length) {
-      issue("a check is listed twice across required and optional");
-    }
-    const blockerChecks = new Set(p.blockers.map((b) => b.check));
-    for (const c of p.required) {
-      if (p.weights[c] === undefined && !blockerChecks.has(c)) {
-        issue(`required check ${c} has neither a weight nor a blocker, so it could never affect a verdict`);
-      }
-    }
-    for (const c of Object.keys(p.weights) as Check[]) {
-      if (!inPolicy.has(c)) issue(`weight for ${c}, which is not in required or optional`);
-    }
-    for (const c of Object.keys(p.thresholds) as Check[]) {
-      if (!inPolicy.has(c)) issue(`threshold for ${c}, which is not in required or optional`);
-    }
-    for (const b of p.blockers) {
-      if (!inPolicy.has(b.check)) issue(`blocker on ${b.check}, which is not in required or optional`);
-    }
-    for (const k of p.conflicts) {
-      for (const w of k.when) {
-        if (!inPolicy.has(w.check)) issue(`conflict ${k.code} uses ${w.check}, which is not in the policy`);
-      }
-    }
-    if (p.decision.approve_below_risk_bps > p.decision.reject_above_risk_bps) {
-      issue("approve_below_risk_bps must not exceed reject_above_risk_bps");
-    }
-  });
+export const policySchema = policySchemaV1.superRefine((p, ctx) => {
+  const r = p.scoring.status_risk;
+  const m = p.scoring.severity_multiplier;
+  const sorted = (xs: readonly number[]) => xs.every((x, i) => i === 0 || xs[i - 1]! <= x);
+  if (!sorted([r.PASS, r.WARN, r.FAIL])) {
+    ctx.addIssue({ code: "custom", message: "scoring.status_risk must not decrease from PASS to WARN to FAIL" });
+  }
+  if (!sorted(m)) ctx.addIssue({ code: "custom", message: "scoring.severity_multiplier must not decrease with severity" });
+  // The least risky FAIL must weigh at least the riskiest WARN (and WARN against PASS).
+  if (r.FAIL * m[0] < r.WARN * m[3] || r.WARN * m[0] < r.PASS * m[3]) {
+    ctx.addIssue({ code: "custom", message: "scoring: every FAIL must score at least every WARN, and every WARN at least every PASS" });
+  }
+});
 
 export type Policy = z.output<typeof policySchema>;
 export type PolicyInput = z.input<typeof policySchema>;
-export type Threshold = z.output<typeof threshold>;
+export type Threshold = Policy["thresholds"][Check] & {};
 
 export function parsePolicy(input: unknown): Policy {
   return policySchema.parse(input);
 }
 
-export function policyRef(p: Pick<Policy, "id" | "version">): string {
-  return `${p.id}@${p.version}`;
-}
-
-export function policyChecks(p: Policy): Check[] {
+export function policyChecks(p: Pick<Policy, "required" | "optional">): Check[] {
   return [...p.required, ...p.optional];
 }

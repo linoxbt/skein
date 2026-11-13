@@ -13,7 +13,42 @@ describe("public addresses", () => {
     }
   });
   it("allows public ones", () => {
-    for (const ip of ["8.8.8.8", "172.32.0.1", "100.128.0.1", "1.1.1.1", "2606:4700:4700::1111", "::ffff:8.8.8.8"]) expect(isPublicAddress(ip), ip).toBe(true);
+    for (const ip of ["8.8.8.8", "172.32.0.1", "100.128.0.1", "1.1.1.1", "2606:4700:4700::1111", "::ffff:8.8.8.8", "::ffff:808:808", "2a00:1450:4001:80b::200e"]) expect(isPublicAddress(ip), ip).toBe(true);
+  });
+  // Each of these reached loopback or cloud metadata before 2026-11-12 (audit M5).
+  it("refuses IPv6 spellings of inward IPv4 addresses", () => {
+    for (const [ip, what] of [
+      ["::ffff:7f00:1", "IPv4-mapped loopback in hex"],
+      ["::ffff:a9fe:a9fe", "IPv4-mapped 169.254.169.254 in hex"],
+      ["0:0:0:0:0:ffff:7f00:1", "IPv4-mapped, uncompressed"],
+      ["::ffff:0:a9fe:a9fe", "IPv4-translated (::ffff:0:0:0/96)"],
+      ["::127.0.0.1", "IPv4-compatible"],
+      ["::7f00:1", "IPv4-compatible in hex"],
+      ["::a9fe:a9fe", "IPv4-compatible metadata"],
+      ["64:ff9b::a9fe:a9fe", "NAT64"],
+      ["64:ff9b::169.254.169.254", "NAT64 dotted"],
+      ["64:ff9b:1::a00:1", "local-use NAT64"],
+      ["2002:7f00:1::", "6to4 of loopback"],
+      ["2002:a9fe:a9fe::1", "6to4 of metadata"],
+      ["2002:808:808::1", "6to4 of a public address: refused all the same"],
+      ["2001:0:4136:e378:8000:63bf:80ff:fffe", "Teredo (client 127.0.0.1)"],
+      ["2001:db8::1", "documentation"],
+      ["fec0::1", "site-local"],
+      ["100::1", "discard"],
+      ["fe80::1%eth0", "zone id"],
+      ["::ffff:7f00:1:2", "malformed"],
+    ] as const) {
+      expect(isPublicAddress(ip), `${ip} (${what})`).toBe(false);
+    }
+  });
+  it("refuses them in a URL too, as the URL parser rewrites them", async () => {
+    const lookup = dns({});
+    for (const url of ["https://[::ffff:169.254.169.254]/", "https://[::ffff:127.0.0.1]:8443/", "https://[::127.0.0.1]/", "https://[2002:7f00:1::]/", "https://[64:ff9b::7f00:1]/"]) {
+      expect(await refuseUnsafeUrl(url, lookup), url).toMatch(/not public/);
+    }
+  });
+  it("refuses a name that resolves to a mapped address", async () => {
+    expect(await refuseUnsafeUrl("https://sneaky.example.com/", dns({ "sneaky.example.com": ["::ffff:a9fe:a9fe"] }))).toMatch(/not public/);
   });
 });
 

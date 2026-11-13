@@ -1,6 +1,18 @@
 import { Alerter, beat, type Queryable } from "@skein/alerts";
 import { CHECKS, confirm, resetStatusCache, type Check, type Ctx } from "./checks";
 
+/**
+ * TLS for the probe's database connection, as the API decides it (apps/api/src/db.ts):
+ * Railway's private network and a local Postgres are plain TCP; any other
+ * host gets TLS with full certificate verification, against DATABASE_CA_CERT
+ * (PEM) when the provider signs with its own root.
+ */
+export function sslFor(url: string, caCert = process.env.DATABASE_CA_CERT): { ssl?: true | { ca: string } } {
+  const host = new URL(url).hostname;
+  const internal = host.endsWith(".railway.internal") || host === "localhost" || host === "127.0.0.1";
+  return internal ? {} : { ssl: caCert ? { ca: caCert } : true };
+}
+
 export interface RunReport {
   ok: string[];
   failing: { key: string; reason: string }[];

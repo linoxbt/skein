@@ -18,10 +18,14 @@ export const PRIVILEGES: Record<string, Priv[]> = {
   purchases: ["SELECT", "INSERT"],
   findings: ["SELECT", "INSERT"],
   spend_ledger: ["SELECT", "INSERT"],
-  // Runs and holds move through states; never deleted.
+  verdict_attestations: ["SELECT", "INSERT"],
+  // Published policies: written once (each file, as it is first served), never changed.
+  policies: ["SELECT", "INSERT"],
+  // Runs, holds and x402 payments move through states; never deleted.
   verdict_runs: ["SELECT", "INSERT", "UPDATE"],
   spend_holds: ["SELECT", "INSERT", "UPDATE"],
-  // Partner keys: provisioned and revoked by hash; never deleted.
+  x402_payments: ["SELECT", "INSERT", "UPDATE"],
+  // Partner keys: provisioned and revoked by hash; never deleted, and a trigger keeps a revocation final.
   consumers: ["SELECT", "INSERT", "UPDATE"],
   webhooks: ["SELECT", "INSERT", "UPDATE"],
   kv: ["SELECT", "INSERT", "UPDATE"],
@@ -32,10 +36,11 @@ export const PRIVILEGES: Record<string, Priv[]> = {
   error_log: ["SELECT", "INSERT", "DELETE"],
   rate_limits: ["SELECT", "INSERT", "UPDATE", "DELETE"],
   flights: ["SELECT", "INSERT", "UPDATE", "DELETE"],
-  // Reference and offline-evaluation data: read only at runtime.
-  policies: ["SELECT"],
-  miner_catalog: ["SELECT"],
-  intent_status: ["SELECT"],
+  miner_requests: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+  // Snapshots of the live catalogue and intent health, upserted every 5 minutes.
+  miner_catalog: ["SELECT", "INSERT", "UPDATE"],
+  intent_status: ["SELECT", "INSERT", "UPDATE"],
+  // Offline-evaluation data: read only at runtime.
   eval_cases: ["SELECT"],
   eval_runs: ["SELECT"],
 };

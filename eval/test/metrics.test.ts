@@ -1,7 +1,7 @@
 import { getPolicy } from "@skein/policies";
 import { describe, expect, it } from "vitest";
 import { casesFileSchema, type Case } from "../src/cases";
-import { answerFor, bootstrap, metrics, type Run } from "../src/metrics";
+import { answerFor, bootstrap, metrics, wilson, type Run } from "../src/metrics";
 
 // Synthetic: these cases and findings exercise the arithmetic; they are not evaluation data.
 const policy = getPolicy("dex-list@0.1.0").policy;
@@ -31,6 +31,24 @@ describe("eval harness", () => {
   it("gives a reproducible bootstrap interval", () => {
     const answers = runs.map((r) => answerFor("skein", r));
     expect(bootstrap(cases, answers, (m) => m.rejectRecall)).toEqual(bootstrap(cases, answers, (m) => m.rejectRecall));
+  });
+
+  it("gives Wilson intervals that stay honest at 0 of n", () => {
+    // 0 of 7 is not "0%-0%": the plausible rate reaches about a third.
+    const [lo, hi] = wilson(0, 7)!;
+    expect(lo).toBe(0);
+    expect(hi).toBeCloseTo(0.354, 3);
+    const [lo2, hi2] = wilson(3, 7)!;
+    expect(lo2).toBeCloseTo(0.158, 3);
+    expect(hi2).toBeCloseTo(0.75, 2);
+    expect(wilson(0, 0)).toBeNull();
+  });
+
+  it("reports the APPROVE rate next to false APPROVE", () => {
+    const m = metrics(cases, runs.map((r) => answerFor("skein", r)));
+    expect(m.bad).toBe(cases.filter((c) => c.label === "bad").length);
+    expect(m.approveRate).toBeGreaterThanOrEqual(0);
+    expect(m.badApproved).toBe(Math.round((m.falseApproveRate ?? 0) * m.bad));
   });
 
   it("refuses cases without a public https source or with duplicate ids", () => {

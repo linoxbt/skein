@@ -295,3 +295,93 @@ database.
   restore can be checked.
 - **Desk store:** the `kv` table in the same Postgres, so it is covered by the
   database's backups. The old Netlify Blobs store (`site:desk`) is kept, read-only.
+- **Encryption.** With `BACKUP_AGE_RECIPIENT` set on the backup service (it
+  is), each dump is encrypted to that age public key before upload and stored
+  as `.dump.age`. The matching identity is kept offline by the owner; it never
+  goes into Railway. A dump that `pg_restore` cannot list, or that lacks the
+  evidence tables, fails the job instead of being uploaded.
+- **Restore drill.** `apps/backup/restore-drill.sh` (same image, other
+  entrypoint) restores the newest dump into an empty `RESTORE_DATABASE_URL`,
+  decrypting with `BACKUP_AGE_IDENTITY` given only for the drill, counts the
+  evidence tables and, with `DATABASE_URL`, checks production has not lost
+  rows. Run it monthly and after any change to the backup job.
+
+## x402 refunds
+
+An x402 payment is settled before anything is bought (DECISIONS L31), so a
+refusal or failure after settlement, and the unused part of an ABSTAIN, is owed
+back. The API holds no key for `X402_PAY_TO`, so a person sends refunds:
+
+```sh
+pnpm --filter @skein/api x402:refunds                 # what is owed, to whom, why
+pnpm --filter @skein/api x402:refunds mark <key> <tx> # after sending it: records the refund
+```
+
+- **Settle crash window.** If a replica dies between a successful settle and
+  recording it, the payment is marked failed after 2 minutes. Look it up on
+  Base Sepolia by payer and nonce; if it settled, deliver the verdict (a retry
+  with the same `X-PAYMENT` re-runs it) or refund it.
+- **Limits.** `X402_PAYER_PER_MINUTE` (10) and `X402_PAYER_DAILY_MAX` (20) per
+  payer address; `X402_DAILY_CAP_USDC` (5) for all x402 upstream spend.
+
+## Spend stops and the loop guard
+
+- **80% stop.** Purchases stop at `GLOBAL_CAP_STOP_PCT` (80) of
+  `DAILY_CAP_USDC` (12.5 in production, so 10 USDC a day). Refusals then say
+  `DAILY_CAP_REACHED` with `Retry-After` at UTC midnight.
+- **Wallet pause.** Below `HOT_WALLET_PAUSE_USDC` (0.05) of escrow, verdicts
+  answer 503 `WALLET_EMPTY` and `/v1/status` shows `paused: true`. Top up the
+  escrow (Incidents, "walletAlert") and it resumes on the next status refresh.
+- **Loop guard.** The API will not start in production without
+  `SKEIN_SELF_REGISTRATION_IDS` (845301,5137). A request carrying
+  `skein-depth` 1 or more is answered from cache or ABSTAIN `LOOP_GUARD`.
+
+## Skein Desk on Telegraph
+
+- **Rail.** `DESK_PAYER=telegraph`, `DESK_PAYER_KEY` (the Desk wallet
+  0x4d8dc7083f1edA89bec38070E8dAb5630a3e75f3), `SKEIN_MINER_ID=845301` on the
+  Netlify site. `desk-tick` (every minute) starts `desk-agent-background`,
+  which files `DESK_AUTO_DAILY` launches a day and buys verdicts.
+- **Escrow.** Each ask costs Skein's floor (0.25 USDC). Check and top up with
+  the Desk key in the environment (never on the command line or in a file in
+  the repo):
+  ```sh
+  PURCHASER_PRIVATE_KEY=<desk key> npx tsx miner/tools.ts status
+  PURCHASER_PRIVATE_KEY=<desk key> npx tsx miner/tools.ts mint-usdc 10 --yes
+  PURCHASER_PRIVATE_KEY=<desk key> npx tsx miner/tools.ts deposit 10 --yes
+  ```
+  When the escrow is empty, asks are refused before payment and applications
+  fall back to the partner key; nothing is overspent.
+- **Lost ask.** An ask with no answer after 15 minutes is decided as
+  `LOST_ASK` with billing unknown and never retried. `GET
+  /v1/miner/requests/{id}` finds its verdict if Skein answered.
+
+## More incidents
+
+### Skein's miner is removed from routing, or its registration is rejected
+`/api/miners/5137` on the node shows `activation_status` other than `active`,
+or a `rejection_reason`. Routed asks stop reaching Skein; pinned asks (SDK,
+Desk, sniper) fail before payment. Read the reason, fix the YAML or the
+endpoint, and follow docs/guides/MINER_REGISTRATION.md ("Updating"). The
+direct API is unaffected.
+
+### The Telegraph node or the x402 facilitator is down
+Purchases fail before payment (no spend) and verdicts are refused with
+`UPSTREAM_UNAVAILABLE`; x402 callers get 402 "facilitator refused" and are not
+charged. Nothing to roll back: wait, and watch `/v1/status`. Desk retries asks
+that failed before payment on later ticks.
+
+### A key is compromised
+Rotate in this order, each in its host's secret store, and redeploy:
+1. **Payer keys** (`PURCHASER_PRIVATE_KEY`, Desk `DESK_PAYER_KEY`, sniper
+   `SNIPER_PAYER_KEY`): create a new burner, deposit, switch, then withdraw
+   what is left in the old escrow.
+2. **Partner keys**: issue a new one (`scripts/issue-partner-key.mjs`), add the
+   old hash to `REVOKED_KEY_HASHES`. Revocation is final.
+3. **`SKEIN_ATTESTATION_KEY`**: new key, publish the new attester address
+   (it appears in `/v1/status`), update `SKEIN_ATTESTER` on the sniper. Old
+   verdicts keep their stored signatures from the old key.
+4. **`MINER_AUTH_KEY`**: install the new key on the node with
+   `miner/tools.ts install-key`, then set it on the API.
+5. **`WEBHOOK_SECRET_KEY`**: changing it makes stored webhook secrets
+   unreadable; ask subscribers to re-register.

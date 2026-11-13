@@ -183,20 +183,34 @@ export async function take(kv: KV, key: string, limit: number): Promise<boolean>
   return granted;
 }
 
+/** Gives back one unit taken with take() (the work it was taken for did not happen). */
+export async function refund(kv: KV, key: string): Promise<void> {
+  await mutate<number>(kv, key, (n) => (n && n > 0 ? n - 1 : null));
+}
+
 /** The board's view of one application: no contact details, nothing beyond what the queue shows. */
 export type Summary = Pick<Application, "id" | "receivedAt" | "source" | "project" | "subject" | "status"> & {
-  decision?: Pick<NonNullable<Application["decision"]>, "at" | "action" | "verdict" | "verdictId" | "summary" | "rail" | "paidUsdc" | "listPriceUsdc" | "upstreamUsdc" | "receipts" | "seconds" | "verdictHash" | "refusal">;
+  origin?: NonNullable<Application["origin"]>["feed"];
+  decision?: Pick<
+    NonNullable<Application["decision"]>,
+    "at" | "action" | "verdict" | "verdictId" | "summary" | "rail" | "paidUsdc" | "billing" | "listPriceUsdc" | "upstreamUsdc" | "receipts" | "receiptHash" | "minerId" | "signalHash" | "seconds" | "verdictHash" | "refusal"
+  >;
 };
 
 export function summarise(a: Application): Summary {
   const d = a.decision;
   return {
     id: a.id, receivedAt: a.receivedAt, source: a.source, project: a.project, subject: a.subject, status: a.status,
+    ...(a.origin ? { origin: a.origin.feed } : {}),
     ...(d
       ? {
           decision: {
             at: d.at, action: d.action, verdict: d.verdict, verdictId: d.verdictId, summary: d.summary, rail: d.rail, paidUsdc: d.paidUsdc,
             listPriceUsdc: d.listPriceUsdc, upstreamUsdc: d.upstreamUsdc, receipts: d.receipts, seconds: d.seconds, verdictHash: d.verdictHash,
+            receiptHash: d.receiptHash,
+            ...(d.billing ? { billing: d.billing } : {}),
+            ...(d.minerId ? { minerId: d.minerId } : {}),
+            ...(d.signalHash ? { signalHash: d.signalHash } : {}),
             ...(d.refusal ? { refusal: d.refusal } : {}),
           },
         }
@@ -217,22 +231,50 @@ export class Store {
 
   async create(a: Application): Promise<boolean> {
     if (!(await this.kv.create(`app/${a.id}`, a))) return false;
-    await this.reindex(a);
+    await this.indexQuietly(a);
     return true;
   }
 
-  /** Compare-and-swap on one application; the index follows. */
+  /**
+   * Compare-and-swap on one application; the index follows. True once the
+   * application is written, even if the index write then fails: the caller
+   * must not mistake a write that happened for one that did not (a lease taken
+   * and marked "buying" would otherwise be left behind). A stale index is
+   * healed by the next tick (heal()).
+   */
   async update(a: Application, etag: string): Promise<boolean> {
     if (!(await this.kv.update(`app/${a.id}`, a, etag))) return false;
-    await this.reindex(a);
+    await this.indexQuietly(a);
     return true;
   }
 
-  private async reindex(a: Application): Promise<void> {
+  private async indexQuietly(a: Application): Promise<void> {
+    await this.reindex(a).catch((e) => console.error(`index write for ${a.id} failed (healed on a later tick): ${(e as Error).message}`));
+  }
+
+  /** Writes the application's summary into the index. A decided summary is never replaced by an older, undecided one. */
+  async reindex(a: Application): Promise<void> {
     await mutate<Summary[]>(this.kv, INDEX, (cur) => {
+      const old = cur?.find((s) => s.id === a.id);
+      if (old?.status === "decided" && a.status !== "decided") return null;
       const rest = (cur ?? []).filter((s) => s.id !== a.id);
       return [summarise(a), ...rest].sort((x, y) => y.receivedAt.localeCompare(x.receivedAt)).slice(0, INDEX_MAX);
     });
+  }
+
+  /** Drops an index entry whose application does not exist. */
+  async unindex(id: string): Promise<void> {
+    await mutate<Summary[]>(this.kv, INDEX, (cur) => (cur?.some((s) => s.id === id) ? cur.filter((s) => s.id !== id) : null));
+  }
+
+  /**
+   * Repairs the index entry for `a` when it disagrees with the application
+   * itself (a lost index write, or two writers' index updates landing out of
+   * order), so a card can never stay in the wrong column for good.
+   */
+  async heal(a: Application, indexed: Summary | undefined): Promise<void> {
+    if (indexed && indexed.status === a.status && !!indexed.decision === !!a.decision) return;
+    await this.reindex(a);
   }
 
   /** Newest first, the latest INDEX_MAX. One read. */
@@ -242,6 +284,15 @@ export class Store {
 
   take(counter: string, limit: number): Promise<boolean> {
     return take(this.kv, `count/${counter}`, limit);
+  }
+
+  refund(counter: string): Promise<void> {
+    return refund(this.kv, `count/${counter}`);
+  }
+
+  /** A counter's current value (0 when unset). One read. */
+  async count(counter: string): Promise<number> {
+    return (await this.kv.get<number>(`count/${counter}`))?.value ?? 0;
   }
 }
 

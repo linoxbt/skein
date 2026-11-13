@@ -5,8 +5,10 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { PageHero, Section } from "@skein/ui";
 import { VerdictBadge } from "@/components/ui";
 import { GraphWithPanel } from "@/components/VerdictView";
-import { API, CHAINS, createVerdict, getBom, getPolicy, getVerdict, listPolicies, short, SkeinError } from "@/lib/api";
+import { API, CHAINS, createVerdict, getBom, getPolicy, getQuote, getVerdict, listPolicies, short, SkeinError, usd, type Quote } from "@/lib/api";
+import { checkBudget } from "@/lib/budget";
 import { EMPTY, graphFromVerdict, liveReduce, type GraphState, type LiveEvent } from "@/lib/graph";
+import { watchEvents } from "@/lib/stream";
 import type { PolicyDoc, PolicySummary } from "@/lib/types";
 
 interface LogLine {
@@ -26,7 +28,10 @@ function ConsoleInner() {
   const [verdictId, setVerdictId] = useState<string | null>(null);
   const [phase, setPhase] = useState<"idle" | "running" | "done" | "refused" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const esRef = useRef<EventSource | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
+  // The quote for the form as it stands: what a run would buy and cost, read before Run.
+  const [quote, setQuote] = useState<{ key: string; q: Quote | null; error?: string } | null>(null);
+  const [policyDoc, setPolicyDoc] = useState<PolicyDoc | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const params = useSearchParams();
 
@@ -39,7 +44,7 @@ function ConsoleInner() {
       // storage unavailable: the key just isn't remembered
     }
     return () => {
-      esRef.current?.close();
+      stopRef.current?.();
       if (pollRef.current) clearTimeout(pollRef.current);
     };
   }, []);
@@ -76,65 +81,70 @@ function ConsoleInner() {
     [showSealed],
   );
 
-  const watch = useCallback((id: string, policy: PolicyDoc | null) => {
-    esRef.current?.close();
-    const es = new EventSource(`${API}/v1/verdicts/${encodeURIComponent(id)}/events`);
-    esRef.current = es;
-    // Event ids are the run's sequence numbers: a reconnect (which resends Last-Event-ID) can never apply an event twice.
-    const seen = new Set<string>();
-    let drops = 0;
-    const on = (type: LiveEvent["type"]) =>
-      es.addEventListener(type, (m) => {
-        const msg = m as MessageEvent;
-        if (typeof msg.data !== "string") {
-          // A connection error, not the server's "error" event: EventSource retries by itself, a few times.
-          if (++drops >= 3) {
-            es.close();
-            push("live stream lost; checking the verdict instead", "muted");
-            poll(id);
+  const watch = useCallback(
+    (id: string, policy: PolicyDoc | null) => {
+      stopRef.current?.();
+      stopRef.current = watchEvents(`${API}/v1/verdicts/${encodeURIComponent(id)}/events`, {
+        // Refused (429, 404, connection refused) or dropped for good: read the verdict instead.
+        onLost: (why) => {
+          push(`${why}; checking the verdict instead`, "muted");
+          poll(id);
+        },
+        onEvent: (e: LiveEvent) => {
+          setGraph((g) => liveReduce(g, e, policy));
+          if (e.type === "plan") push(`plan: ${e.payload.purchases?.length ?? 0} checks to buy${e.payload.dropped?.length ? `, ${e.payload.dropped.length} not bought` : ""}`, "muted");
+          if (e.type === "purchase")
+            push(
+              e.payload.error
+                ? `${label(e.payload.check)} · ${e.payload.minerName ?? e.payload.minerId ?? "routed"} · ${e.payload.error}`
+                : `${label(e.payload.check)} · ${e.payload.minerName ?? e.payload.minerId} · $${(e.payload.amountUusdc / 1e6).toFixed(2)} · receipt ${short(e.payload.receiptHash)}`,
+              e.payload.error ? "bad" : "gold",
+            );
+          if (e.type === "finding") push(`  ${label(e.payload.check)} → ${e.payload.status}${e.payload.metric ? ` (${e.payload.metric} ${e.payload.value})` : ""}`, "muted");
+          if (e.type === "decision") push(`decision: ${e.payload.decision.verdict} · risk ${e.payload.decision.riskBps} bps · hash ${short(e.payload.verdictHash)}`);
+          if (e.type === "done") setPhase("done");
+          if (e.type === "refused") {
+            setPhase("refused");
+            setError(`${e.payload.code}: ${e.payload.detail}`);
           }
-          return;
-        }
-        drops = 0;
-        if (msg.lastEventId) {
-          if (seen.has(msg.lastEventId)) return;
-          seen.add(msg.lastEventId);
-        }
-        let payload: unknown;
-        try {
-          payload = JSON.parse(msg.data);
-        } catch {
-          return;
-        }
-        const e = { type, payload } as LiveEvent;
-        setGraph((g) => liveReduce(g, e, policy));
-        if (e.type === "plan") push(`plan: ${e.payload.purchases?.length ?? 0} checks to buy${e.payload.dropped?.length ? `, ${e.payload.dropped.length} not bought` : ""}`, "muted");
-        if (e.type === "purchase")
-          push(
-            e.payload.error
-              ? `${label(e.payload.check)} · ${e.payload.minerName ?? e.payload.minerId ?? "routed"} · ${e.payload.error}`
-              : `${label(e.payload.check)} · ${e.payload.minerName ?? e.payload.minerId} · $${(e.payload.amountUusdc / 1e6).toFixed(2)} · receipt ${short(e.payload.receiptHash)}`,
-            e.payload.error ? "bad" : "gold",
-          );
-        if (e.type === "finding") push(`  ${label(e.payload.check)} → ${e.payload.status}${e.payload.metric ? ` (${e.payload.metric} ${e.payload.value})` : ""}`, "muted");
-        if (e.type === "decision") push(`decision: ${e.payload.decision.verdict} · risk ${e.payload.decision.riskBps} bps · hash ${short(e.payload.verdictHash)}`);
-        if (e.type === "done") {
-          setPhase("done");
-          es.close();
-        }
-        if (e.type === "refused") {
-          setPhase("refused");
-          setError(`${e.payload.code}: ${e.payload.detail}`);
-          es.close();
-        }
-        if (e.type === "error") {
-          setPhase("error");
-          setError(e.payload.message);
-          es.close();
-        }
+          if (e.type === "error") {
+            setPhase("error");
+            setError(e.payload.message);
+          }
+        },
       });
-    (["plan", "purchase", "finding", "decision", "done", "refused", "error"] as const).forEach(on);
-  }, [poll]);
+    },
+    [poll],
+  );
+
+  // The quote: re-read (debounced) whenever the token, chain or policy changes.
+  const token = form.token.trim();
+  const quoteKey = /^0x[0-9a-fA-F]{40}$/.test(token) ? `${form.chainId}:${token.toLowerCase()}:${form.policy}` : null;
+  useEffect(() => {
+    if (!quoteKey) return;
+    let stale = false;
+    const t = setTimeout(() => {
+      getQuote({ chainId: form.chainId, token, policy: form.policy })
+        .then((q) => !stale && setQuote({ key: quoteKey, q }))
+        .catch((e) => !stale && setQuote({ key: quoteKey, q: null, error: e instanceof SkeinError ? `${e.body.code}: ${e.body.message}` : "the quote did not load" }));
+    }, 500);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteKey]);
+  useEffect(() => {
+    let stale = false;
+    getPolicy(form.policy)
+      .then((d) => !stale && setPolicyDoc(d))
+      .catch(() => !stale && setPolicyDoc(null));
+    return () => {
+      stale = true;
+    };
+  }, [form.policy]);
+  const currentQuote = quote && quote.key === quoteKey ? quote : null;
+  const budget = checkBudget(form.budget, currentQuote?.q ?? null, policyDoc?.policy.required ?? []);
 
   // /console?id=vrd_…: attach to a verdict that is already running (or show it sealed).
   useEffect(() => {
@@ -161,6 +171,17 @@ function ConsoleInner() {
 
   async function run(ev: React.FormEvent) {
     ev.preventDefault();
+    // Refused here, before any request: a malformed budget, or one below what the required checks are quoted at.
+    if (!budget.ok) {
+      setError(budget.error);
+      setPhase("refused");
+      return;
+    }
+    if (currentQuote?.q && !currentQuote.q.ok && currentQuote.q.refusal) {
+      setError(`${currentQuote.q.refusal.code}: ${currentQuote.q.refusal.detail} (from the quote; nothing was bought)`);
+      setPhase("refused");
+      return;
+    }
     setError(null);
     setLog([]);
     setGraph(EMPTY);
@@ -172,7 +193,7 @@ function ConsoleInner() {
     }
     setPhase("running");
     try {
-      const policy = await getPolicy(form.policy).catch(() => null);
+      const policy = policyDoc?.ref === form.policy ? policyDoc : await getPolicy(form.policy).catch(() => null);
       const context: Record<string, unknown> = {};
       if (form.social) context.socialHandle = form.social;
       if (form.repo) context.repoUrl = form.repo;
@@ -180,7 +201,7 @@ function ConsoleInner() {
         subject: { chainId: form.chainId, token: form.token.trim() },
         policy: form.policy,
         ...(Object.keys(context).length ? { context } : {}),
-        ...(form.budget ? { budgetUsdcMax: Number(form.budget) } : {}),
+        ...(budget.value !== undefined ? { budgetUsdcMax: budget.value } : {}),
         mode: "async",
       });
       if ("verdict" in res) {
@@ -258,7 +279,15 @@ function ConsoleInner() {
               </label>
               <label className="block">
                 <span className={label2}>budget usdc</span>
-                <input className="field" inputMode="decimal" placeholder="0.20" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
+                <input
+                  className="field"
+                  inputMode="decimal"
+                  placeholder="0.20"
+                  value={form.budget}
+                  aria-invalid={!budget.ok}
+                  aria-describedby="budget-note"
+                  onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                />
               </label>
             </div>
             <label className="block">
@@ -269,7 +298,11 @@ function ConsoleInner() {
               <span className={label2}>partner key</span>
               <input className="field" type="password" required autoComplete="off" placeholder="sk_part_…" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} />
             </label>
-            <button type="submit" disabled={running} className="btn btn-primary w-full">
+            <QuoteBox quote={currentQuote} pending={!!quoteKey && !currentQuote} required={policyDoc?.policy.required ?? []} />
+            <p id="budget-note" className={`font-mono text-[12px] ${!budget.ok ? "text-reject" : budget.warning ? "text-knot" : "text-muted"}`} aria-live="polite">
+              {!budget.ok ? budget.error : (budget.warning ?? "Budget caps upstream spend. Leave it empty for the policy's own cap.")}
+            </p>
+            <button type="submit" disabled={running || !budget.ok} className="btn btn-primary w-full">
               {running ? `Buying… ${answered}/${graph.nodes.filter((n) => n.status !== "UNAVAILABLE").length || "…"}` : "Run verdict"}
             </button>
             <p className="font-mono text-[11px] leading-relaxed text-muted">
@@ -318,6 +351,53 @@ function ConsoleInner() {
         ) : null}
       </Section>
     </>
+  );
+}
+
+/** The quote for the token in the form: cost, and which checks can be bought right now. */
+function QuoteBox({ quote, pending, required }: { quote: { q: Quote | null; error?: string } | null; pending: boolean; required: readonly string[] }) {
+  const head = "mb-2 block font-mono text-[12px] uppercase tracking-wider text-muted";
+  if (!quote && !pending) return null;
+  return (
+    <div className="border border-line bg-bg p-4 font-mono text-[12px]" aria-live="polite" data-testid="quote">
+      <span className={head}>quote</span>
+      {!quote ? (
+        <p className="text-muted">Pricing every check from live floors…</p>
+      ) : !quote.q ? (
+        <p className="text-reject">{quote.error}</p>
+      ) : (
+        <>
+          {quote.q.ok ? (
+            <p>
+              Estimated upstream <span className="text-knot">{usd(quote.q.upstreamUsdc ?? 0)}</span>
+              <span className="text-muted"> · verdict price {usd(quote.q.priceUsdc)}</span>
+            </p>
+          ) : (
+            <p className="text-reject">Would be refused: {quote.q.refusal?.code} · {quote.q.refusal?.detail}</p>
+          )}
+          <ul className="mt-3 space-y-1">
+            {(quote.q.checks ?? []).map((c) => (
+              <li key={c.check} className="flex justify-between gap-3">
+                <span>
+                  <span className="text-thread">●</span> {label(c.check)}
+                  <span className="text-muted">{required.includes(c.check) ? " · required" : " · optional"}</span>
+                </span>
+                <span className="text-knot">{usd(c.quoteUsdc)}</span>
+              </li>
+            ))}
+            {(quote.q.dropped ?? []).map((d) => (
+              <li key={d.check} className="flex justify-between gap-3 text-muted">
+                <span>
+                  <span className="text-reject">○</span> {label(d.check)}
+                  {required.includes(d.check) ? " · required" : ""}
+                </span>
+                <span>not available: {d.reason.toLowerCase().replace(/_/g, " ")}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }
 

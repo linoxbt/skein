@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import { Lead, PageHero, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
-import { getPolicy, listPolicies } from "@/lib/api";
+import { PolicyDiff } from "@/components/PolicyDiff";
+import { getPolicy, listPolicies, SkeinError } from "@/lib/api";
+import { compareVersions } from "@/lib/diff";
 import type { PolicyDoc, PolicySummary } from "@/lib/types";
 
 const label = (c: string) => c.replace(/_/g, " ");
@@ -12,18 +14,34 @@ export default function PoliciesPage() {
   const [list, setList] = useState<PolicySummary[]>([]);
   const [docs, setDocs] = useState<Record<string, PolicyDoc>>({});
   const [open, setOpen] = useState<string | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string[]>([]);
+  const [against, setAgainst] = useState<string | null>(null);
 
   useEffect(() => {
     listPolicies()
       .then(async (l) => {
         setList(l);
-        const all = await Promise.all(l.map((p) => getPolicy(p.ref)));
-        setDocs(Object.fromEntries(all.map((d) => [d.ref, d])));
         setOpen((o) => o ?? l.find((p) => p.id === "dex-list")?.ref ?? l[0]?.ref ?? null);
+        setState("ready");
+        // One policy that does not load leaves the others readable.
+        const all = await Promise.allSettled(l.map((p) => getPolicy(p.ref)));
+        setDocs(Object.fromEntries(all.flatMap((r) => (r.status === "fulfilled" ? [[r.value.ref, r.value]] : []))));
+        setFailed(l.filter((_, i) => all[i]!.status === "rejected").map((p) => p.ref));
       })
-      .catch(() => {});
+      .catch((e) => {
+        setState("error");
+        setError(e instanceof SkeinError ? `${e.body.code}: ${e.body.message}` : "the Skein API did not answer");
+      });
   }, []);
   const doc = open ? docs[open] : undefined;
+  // The other versions of the open policy, newest first; the diff defaults to the one just before it.
+  const current = list.find((p) => p.ref === open);
+  const siblings = current ? list.filter((p) => p.id === current.id && p.ref !== current.ref).sort((a, b) => compareVersions(b.version, a.version)) : [];
+  const older = current ? siblings.find((p) => compareVersions(p.version, current.version) < 0) : undefined;
+  const base = siblings.find((p) => p.ref === against) ?? older ?? siblings[0];
+  const baseDoc = base ? docs[base.ref] : undefined;
   const maxW = doc ? Math.max(...Object.values(doc.policy.weights), 0.01) : 1;
 
   return (
@@ -37,6 +55,13 @@ export default function PoliciesPage() {
       />
 
       <Section tone="dark" inner="pb-20">
+        {state === "loading" ? <p className="font-mono text-[13px] text-muted" role="status">Reading the published policies…</p> : null}
+        {state === "error" ? (
+          <p role="alert" className="border border-reject/50 bg-reject/10 p-6 font-mono text-[14px] text-reject">
+            The policies could not be read: {error}. They are also in the repository, under packages/policies/policies.
+          </p>
+        ) : null}
+        {failed.length ? <p role="alert" className="mb-4 font-mono text-[13px] text-reject">Could not load {failed.join(", ")}.</p> : null}
         <div className="grid gap-px bg-edge md:grid-cols-3">
           {list.map((p) => {
             const d = docs[p.ref];
@@ -132,8 +157,34 @@ export default function PoliciesPage() {
               <span>{doc.ref}.yaml</span>
               <span className="break-all">sha256 {doc.sha256}</span>
             </div>
-            <pre tabIndex={0} aria-label="Policy YAML" className="mt-4 max-h-[560px] overflow-auto border border-edge bg-panel p-6 font-mono text-[13px] leading-relaxed text-[#c9d1d6]">{doc.yaml}</pre>
+            <pre tabIndex={0} aria-label="Policy YAML" className="mt-4 max-h-[560px] overflow-auto border border-edge bg-panel p-6 font-mono text-[13px] leading-relaxed text-text">{doc.yaml}</pre>
           </Section>
+          {siblings.length ? (
+            <Section tone="dark" inner="pb-20" id="diff">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <h3 className="font-mono text-[13px] uppercase tracking-wider text-muted">What changed between versions</h3>
+                <label className="font-mono text-[12px] text-muted">
+                  compare {doc.ref} with{" "}
+                  <select className="field !inline-block !h-9 !w-auto pr-8" value={base?.ref ?? ""} onChange={(e) => setAgainst(e.target.value)}>
+                    {siblings.map((p) => (
+                      <option key={p.ref} value={p.ref}>{p.ref}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="mt-4">
+                {base && baseDoc ? (
+                  compareVersions(base.version, doc.policy.version) < 0 ? (
+                    <PolicyDiff before={baseDoc.yaml} after={doc.yaml} fromRef={base.ref} toRef={doc.ref} />
+                  ) : (
+                    <PolicyDiff before={doc.yaml} after={baseDoc.yaml} fromRef={doc.ref} toRef={base.ref} />
+                  )
+                ) : (
+                  <p className="font-mono text-[13px] text-muted">{base && failed.includes(base.ref) ? `${base.ref} did not load.` : "Loading…"}</p>
+                )}
+              </div>
+            </Section>
+          ) : null}
         </>
       ) : null}
     </>

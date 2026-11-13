@@ -2,7 +2,7 @@
 
 The holdout split is 20 tokens that were set aside when the set was built (by a
 hash of each case id). They were never looked at while the rules were tuned.
-They were run **once**, after the rules were frozen in commit `4af3d04`
+They were run **once**, after the rules were frozen in commit `4af3d04` (squash-merged; the reachable commit is `7604719`, "Benchmark: rules frozen, holdout run once")
 (docs/DECISIONS.md L27): `dex-list@0.2.0` and `contract_audit@0.5.0`.
 The run cost 0.97 test USDC, about 5 cents a verdict.
 The generated numbers are in `REPORT-holdout.md`; the stored runs are in `runs/`.

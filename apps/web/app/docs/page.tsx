@@ -5,12 +5,13 @@ import { Lead, PageHero, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
 import { Code } from "@/components/Code";
 import { API } from "@/lib/api";
+import { MINER } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Integrate" };
 
 const WAYS: [string, string, string, typeof IconThreads][] = [
   ["Direct API", "One authenticated POST. Partner keys are free during the hackathon.", "live", IconTerminal],
-  ["Through Telegraph", "One paid /engine/v1/ask, routed to the Skein miner or pinned to its ID.", "Nov 1", IconThreads],
+  ["Through Telegraph", `One paid /engine/v1/ask for ${MINER.intent}, pinned to Skein's miner ${MINER.minerId}.`, "live", IconThreads],
   ["Verify anything", "POST any verdict id to /v1/verify and get each recomputed step back.", "live", IconReplay],
   ["SDK and MCP", "@skeinlabs/sdk for TypeScript agents; @skeinlabs/mcp gives Claude, Cursor or any MCP client three tools.", "live", IconPlug],
 ];
@@ -25,6 +26,7 @@ const ENDPOINTS: [string, string, string, string][] = [
   ["GET", "/v1/policies", "public", "Published policies. /v1/policies/{id@version} returns one."],
   ["GET", "/v1/status", "public", "Live intents, miners, spend and season state."],
   ["GET", "/v1/ledger", "public", "Verdicts served, upstream spend, recent ids."],
+  ["GET", "/v1/openapi.json", "public", "This API, described as OpenAPI 3.1 (rendered at /docs/api)."],
   ["POST", "/miner/verdict", "Telegraph", "The miner endpoint Telegraph routes paid asks to."],
 ];
 
@@ -83,12 +85,18 @@ const mcp = `{
 // Claude Code: claude mcp add skein --env SKEIN_API_KEY=sk_part_… -- npx -y @skeinlabs/mcp
 // tools: skein_verdict · skein_quote · skein_verify`;
 
-const ask = `POST /engine/v1/ask
+// The ask Skein's registration answers (miner/skein-miner.plan-b.yaml): one
+// string subject, chain:address, and an optional policy.
+const ask = `POST /engine/v1/ask/${MINER.minerId}
 {
-  "intent": "FRAUD_RISK_TOKEN_LISTING",
-  "params": { "token": "0x…", "chain": "base" }
+  "intent": "${MINER.intent}",
+  "params": {
+    "subject": "base:0x4200000000000000000000000000000000000006",
+    "policy": "dex-list@0.1.0"
+  }
 }
-→ 402 challenge → sign → X-PAYMENT → verdict + receipt`;
+→ 402 challenge → sign → X-PAYMENT
+→ { risk_level, risk_score, signals, summary, verdict, … } + receipt`;
 
 export default function DocsPage() {
   return (
@@ -104,6 +112,7 @@ export default function DocsPage() {
             <Link href="/tutorial" className="btn btn-primary">Tutorial</Link>
             <a href="#quickstart" className="btn btn-light">Quickstart</a>
             <a href="#endpoints" className="btn btn-ghost">Endpoints</a>
+            <Link href="/docs/api" className="btn btn-ghost">API reference</Link>
           </>
         }
       />
@@ -164,10 +173,16 @@ export default function DocsPage() {
         <Stripes seed={19} className="opacity-30" />
         <div className="relative mx-auto grid max-w-[1400px] gap-12 px-5 py-24 md:px-10 md:py-32 lg:grid-cols-2 lg:items-center">
           <div>
-            <span className="tag tag-dark">Through Telegraph · from Nov 1</span>
+            <span className="tag tag-dark">Through Telegraph · miner {MINER.minerId}</span>
             <h2 className="display mt-6 text-[44px] md:text-[72px]">No account. Pay per verdict.</h2>
             <p className="mt-6 max-w-xl text-[18px] text-muted">
-              Any Telegraph app reaches Skein with one paid ask. The call settles from your own escrow and counts as your own Telegraph purchase; Skein&apos;s upstream receipts ride along in the bill of materials.
+              Any Telegraph app reaches Skein with one paid ask under the canonical {MINER.intent} intent, pinned to Skein&apos;s miner{" "}
+              {MINER.minerId} (registration {MINER.registrationId}). The call settles from your own escrow and counts as your own Telegraph
+              purchase; Skein&apos;s upstream receipts ride along in the bill of materials.
+            </p>
+            <p className="mt-4 max-w-xl font-mono text-[13px] text-muted">
+              subject: chain:address, chain one of ethereum, base, bsc, arbitrum (or a CAIP-10 id); a bare 0x address means Ethereum. policy:
+              optional, e.g. dex-list@0.1.0. Its live registration is on the <Link href="/ledger" className="underline">ledger</Link>.
             </p>
           </div>
           <Code label="telegraph · /engine/v1/ask">{ask}</Code>

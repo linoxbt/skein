@@ -42,38 +42,55 @@ export function kindOf(url: string): Kind {
 
 const EMOJI: Record<Level, string> = { failing: "🔴", recovered: "✅", info: "ℹ️" };
 
+/** The longest alert text sent (an upstream error often quotes a whole response body). */
+export const MAX_ALERT_MESSAGE = 1_500;
+const clip = (s: string, max: number) => (s.length <= max ? s : `${s.slice(0, max)}… (${s.length - max} more chars)`);
+
 /** One request per destination; never throws, returns how many were delivered. */
 export async function deliver(destinations: string[], a: Alert, f: Fetch = fetch): Promise<number> {
   let ok = 0;
-  await Promise.all(
-    destinations.map(async (url) => {
-      const kind = kindOf(url);
-      const text = `${EMOJI[a.level]} ${a.title}: ${a.message}`;
-      const init: RequestInit =
-        kind === "ntfy"
-          ? {
-              method: "POST",
-              headers: {
-                Title: `${a.level === "failing" ? "Skein alert" : a.level === "recovered" ? "Skein recovered" : "Skein"}: ${a.title}`.slice(0, 200),
-                Priority: a.level === "failing" ? "high" : "default",
-                Tags: a.level === "failing" ? "rotating_light" : a.level === "recovered" ? "white_check_mark" : "information_source",
-              },
-              body: a.message,
-            }
-          : {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify(kind === "slack" ? { text } : kind === "discord" ? { content: text } : { text, content: text, key: a.key, level: a.level }),
-            };
-      try {
-        const res = await f(url, { ...init, signal: AbortSignal.timeout(5_000) });
-        if (res.ok) ok += 1;
-        else console.error(JSON.stringify({ level: "error", msg: "alert not delivered", key: a.key, kind, status: res.status }));
-      } catch (e) {
-        console.error(JSON.stringify({ level: "error", msg: "alert not delivered", key: a.key, kind, error: (e as Error).message }));
-      }
-    }),
-  );
+  const logFailure = (detail: Record<string, unknown>) => {
+    try {
+      console.error(JSON.stringify({ level: "error", msg: "alert not delivered", key: String(a?.key).slice(0, 200), ...detail }));
+    } catch {
+      // Logging must not throw either.
+    }
+  };
+  try {
+    const title = clip(String(a.title), 200);
+    const message = clip(String(a.message), MAX_ALERT_MESSAGE);
+    await Promise.all(
+      destinations.map(async (url) => {
+        try {
+          const kind = kindOf(url);
+          const text = `${EMOJI[a.level] ?? ""} ${title}: ${message}`;
+          const init: RequestInit =
+            kind === "ntfy"
+              ? {
+                  method: "POST",
+                  headers: {
+                    Title: `${a.level === "failing" ? "Skein alert" : a.level === "recovered" ? "Skein recovered" : "Skein"}: ${title}`.slice(0, 200),
+                    Priority: a.level === "failing" ? "high" : "default",
+                    Tags: a.level === "failing" ? "rotating_light" : a.level === "recovered" ? "white_check_mark" : "information_source",
+                  },
+                  body: message,
+                }
+              : {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify(kind === "slack" ? { text } : kind === "discord" ? { content: text } : { text, content: text, key: a.key, level: a.level }),
+                };
+          const res = await f(url, { ...init, signal: AbortSignal.timeout(5_000) });
+          if (res.ok) ok += 1;
+          else logFailure({ kind, status: res.status });
+        } catch (e) {
+          logFailure({ error: clip(String((e as Error)?.message ?? e), 300) });
+        }
+      }),
+    );
+  } catch (e) {
+    logFailure({ error: clip(String((e as Error)?.message ?? e), 300) });
+  }
   return ok;
 }
 

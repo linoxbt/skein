@@ -21,7 +21,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",
-  `connect-src 'self' ${apiOrigin}`,
+  // The API, and the Telegraph node's public miner registry (the ledger reads Skein's registration from it).
+  `connect-src 'self' ${apiOrigin} https://devnode.telegraphprotocol.com`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -30,7 +31,7 @@ const csp = [
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@skein/ui"],
+  transpilePackages: ["@skein/ui", "@skein/engine"],
   ...(standalone ? { output: "standalone", outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)) } : {}),
   async headers() {
     return [

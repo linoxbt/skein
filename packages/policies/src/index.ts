@@ -11,6 +11,12 @@ export interface PolicyRecord {
   ref: string;
   policy: Policy;
   yaml: string;
+  /**
+   * The YAML document as written, before the schema filled in defaults. Pass
+   * it to reproduce() (policySource) so each engine applies the schema it
+   * was sealed under (@skein/engine, engines.ts).
+   */
+  source: unknown;
   /** SHA-256 of the file's raw bytes. */
   sha256: string;
 }
@@ -40,10 +46,11 @@ function load(file: string): PolicyRecord {
 function loadUncached(file: string): PolicyRecord {
   const bytes = readFileSync(`${POLICY_DIR}${file}`);
   const yaml = bytes.toString("utf8");
-  const policy = parsePolicy(parse(yaml));
+  const source = parse(yaml) as unknown;
+  const policy = parsePolicy(source);
   const ref = `${policy.id}@${policy.version}`;
   if (file !== `${ref}.yaml`) throw new Error(`${file} declares ${ref}; the file must be named ${ref}.yaml`);
-  return { ref, policy, yaml, sha256: createHash("sha256").update(bytes).digest("hex") };
+  return { ref, policy, yaml, source, sha256: createHash("sha256").update(bytes).digest("hex") };
 }
 
 /** Every policy file, published or not, unchecked against the lock. For the lock script and tests. */
@@ -60,14 +67,23 @@ export function listAllPolicyFiles(): PolicyRecord[] {
  * a file with no entry is an unpublished draft that verdicts may not use.
  */
 export function listPolicies(): PolicyRecord[] {
+  // The lock and every file are still stat'ed on each call, so an edited file
+  // is caught at once; only the checking and filtering are reused while
+  // nothing on disk changed.
+  const files = listAllPolicyFiles();
+  const stamp = [stampOf(LOCK_FILE), ...files.map((p) => `${p.ref}:${cache.get(`${p.ref}.yaml`)?.stamp ?? ""}`)].join("|");
+  if (published?.stamp === stamp) return [...published.records];
   const lock = readLock();
-  return listAllPolicyFiles().filter((p) => {
+  const records = files.filter((p) => {
     const want = lock[p.ref];
     if (want === undefined) return false;
     if (want !== p.sha256) throw new Error(`POLICY_TAMPERED ${p.ref}: file sha256 ${p.sha256} is not the published ${want}`);
     return true;
   });
+  published = { stamp, records };
+  return [...records];
 }
+let published: { stamp: string; records: PolicyRecord[] } | null = null;
 
 /** Resolves "id@version", or "id" for the highest version. */
 export function getPolicy(ref: string): PolicyRecord {

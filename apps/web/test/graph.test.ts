@@ -56,4 +56,17 @@ describe("live graph reducer", () => {
     const g = graphFromVerdict(v, null, policy);
     expect(g.nodes.map((n) => [n.check, n.status])).toEqual([["contract_audit", "PASS"], ["sanctions", "UNAVAILABLE"], ["wash_trading", "WARN"]]);
   });
+
+  it("carries the miner's rank and raw answer to the thread, where the data has them", () => {
+    const v = {
+      verdict: "REJECT", riskBps: 1, confidenceBps: 1, coverage: 1, summary: "", conflicts: [],
+      cost: { upstreamUsdc: 0.01 },
+      findings: [{ check: "contract_audit", status: "FAIL", severity: 3, confidence: 1, sourceGroup: "c", notes: [], evidence: { receiptHash: "0xr", minerRank: 2 } }],
+    } as unknown as VerdictObject;
+    const bom = { id: "v", root: "0x", items: 1, verdictHash: "0x", lines: [{ check: "contract_audit", receiptHash: "0xr", rawResult: { is_honeypot: "1" }, amountUsdc: 0.01, durationMs: 5 }] } as never;
+    expect(graphFromVerdict(v, bom, policy).nodes[0]).toMatchObject({ rank: 2, raw: { is_honeypot: "1" }, receiptHash: "0xr" });
+    let g = liveReduce(EMPTY, ev({ type: "plan", payload: { ok: true, purchases: [{ check: "contract_audit", required: true, quoteUusdc: 1 }] } }), policy);
+    g = liveReduce(g, ev({ type: "purchase", payload: { check: "contract_audit", amountUusdc: 1, durationMs: 1, minerRank: 1, rawResult: "ok" } }), policy);
+    expect(g.nodes[0]).toMatchObject({ rank: 1, raw: "ok" });
+  });
 });

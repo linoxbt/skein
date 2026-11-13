@@ -32,6 +32,8 @@ describe("adapter versions", () => {
     "contract_audit@0.1.0", "contract_audit@0.2.0", "contract_audit@0.3.0", "contract_audit@0.4.0", "contract_audit@0.5.0", "holder_concentration@0.1.0", "holder_count@0.1.0",
     "sanctions@0.1.0", "sanctions@0.2.0", "sanctions@0.3.0", "wash_trading@0.1.0", "wash_trading@0.2.0", "wash_trading@0.3.0",
     "liquidity_depth@0.1.0", "liquidity_depth@0.2.0", "liquidity_depth@0.3.0", "liquidity_depth@0.4.0", "social_bots@0.1.0", "code_review@0.1.0",
+    // 2026-11-12: miner confidence capped at the default; wash trading and holder count check the token.
+    "contract_audit@0.6.0", "holder_concentration@0.2.0", "holder_count@0.2.0", "wash_trading@0.4.0", "liquidity_depth@0.5.0", "social_bots@0.2.0", "code_review@0.2.0",
   ];
   it("every published version is still registered, and each check has exactly one current adapter", () => {
     expect(ALL_ADAPTER_VERSIONS.map((a) => `${a.check}@${a.version}`).sort()).toEqual([...PUBLISHED].sort());
@@ -221,5 +223,29 @@ describe("liquidity on the pool asked about (0.3.0)", () => {
     const other = { ...gecko, data: { ...gecko.data, id: `base_0x${"ab".repeat(32)}` } };
     expect(liquidityDepth.adapt(other, { ...ctx, pool: v4 }).notes).toEqual(["answer_for_other_pool"]);
     expect(adapterFor("liquidity_depth", "0.3.0").adapt(other, { ...ctx, pool: v4 }).status).toBe("PASS"); // what 0.3.0 did
+  });
+});
+
+describe("miner confidence and the token asked about (2026-11-12, audit L6 and L8)", () => {
+  it("a miner's own confidence counts only up to the adapter's default", () => {
+    const boast = { verdict: "organic", wash_volume_pct: 2, confidence: 1 };
+    expect(adapterFor("wash_trading").adapt(boast, ctx)).toMatchObject({ status: "PASS", confidence: 0.6, adapterVersion: "0.4.0" });
+    expect(washTrading.adapt(boast, ctx).confidence).toBe(1); // what 0.3.0 did
+    // A lower stated confidence still counts.
+    expect(adapterFor("wash_trading").adapt({ ...boast, confidence: 0.2 }, ctx).confidence).toBe(0.2);
+    for (const a of ADAPTERS) {
+      const f = a.adapt({ verdict: "human", holders_count: 10, liquidity_usd: 10, top10_holders_pct: 0.1, matched: false, confidence: 1 }, ctx);
+      expect(f.confidence, `${a.check}@${a.version}`).toBeLessThanOrEqual(a.defaultConfidence);
+    }
+  });
+
+  it("wash trading and holder count refuse an answer that names another token", () => {
+    const other = "0x9999999999999999999999999999999999999999";
+    expect(adapterFor("holder_count").adapt({ token: other, holders_count: 95_566 }, ctx)).toMatchObject({ status: "UNKNOWN", notes: ["answer_for_other_token"] });
+    expect(adapterFor("holder_count").adapt({ token: TOKEN.toUpperCase().replace("0X", "0x"), holders_count: 95_566 }, ctx)).toMatchObject({ status: "PASS", value: 95_566 });
+    expect(adapterFor("holder_count").adapt({ holders_count: 95_566 }, ctx).status).toBe("PASS"); // names none: accepted
+    expect(adapterFor("wash_trading").adapt({ contract_address: other, risk_label: "LOW" }, ctx)).toMatchObject({ status: "UNKNOWN", notes: ["answer_for_other_token"] });
+    expect(adapterFor("wash_trading").adapt({ contract_address: TOKEN, risk_label: "LOW" }, ctx).status).toBe("PASS");
+    expect(holderCount.adapt({ token: other, holders_count: 95_566 }, ctx).status).toBe("PASS"); // what 0.1.0 did
   });
 });

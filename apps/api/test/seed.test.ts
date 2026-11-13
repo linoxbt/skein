@@ -36,5 +36,8 @@ describe("SEED_CONSUMERS", () => {
     expect(await revokeKeys(db, [h("other")])).toBe(1);
     const after = await db.select().from(schema.consumers);
     expect(after.every((r) => r.revokedAt !== null)).toBe(true);
+    // A revoked key that comes back to the env stays revoked: issue a new one.
+    expect(await seedConsumers(db, parseSeedConsumers(`Skein Desk|agent|${h("desk")}|5`))).toEqual({ added: [], updated: [], revoked: 0 });
+    expect((await db.select().from(schema.consumers)).every((r) => r.revokedAt !== null)).toBe(true);
   }, 30_000);
 });

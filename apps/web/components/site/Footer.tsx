@@ -4,7 +4,7 @@ import { REPO_URL, Wordmark } from "@skein/ui";
 const COLS: [string, [string, string][]][] = [
   ["Product/", [["How it works", "/how-it-works"], ["Console", "/console"], ["Verify", "/verify"], ["Policies", "/policies"]]],
   ["Network/", [["Status", "/status"], ["Ledger", "/ledger"], ["Telegraph", "https://docs.telegraphprotocol.com"]]],
-  ["Build/", [["Tutorial", "/tutorial"], ["Integrate", "/docs"], ["API reference", "/docs#endpoints"], ["Source", REPO_URL]]],
+  ["Build/", [["Tutorial", "/tutorial"], ["Integrate", "/docs"], ["API reference", "/docs/api"], ["Source", REPO_URL]]],
   ["Hackathon/", [["Telegraph S2", "https://hackathon.telegraphprotocol.com"], ["Mission 01: Exchange", "https://hackathon.telegraphprotocol.com/missions/exchange"], ["Mission 14: DeFi", "https://hackathon.telegraphprotocol.com/missions/web3-defi"]]],
 ];
 

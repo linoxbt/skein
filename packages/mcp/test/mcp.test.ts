@@ -1,9 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { simulatedApi } from "@skein/api/simulated";
-import { Skein } from "@skeinlabs/sdk";
+import { Skein, SKEIN_MINER_ID, type Payer } from "@skeinlabs/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createSkeinMcp } from "../src/server";
+import pkg from "../package.json" with { type: "json" };
+import { ConfigError, mcpConfigFromEnv } from "../src/config";
+import { createSkeinMcp, type SkeinMcpOptions } from "../src/server";
 
 let api: Awaited<ReturnType<typeof simulatedApi>>;
 let n = 0;
@@ -13,14 +15,10 @@ beforeAll(async () => {
   api = await simulatedApi({ fast: true, env: {} });
 });
 
-async function connect(sessionCapUsdc = 2) {
-  const skein = new Skein({
-    apiUrl: "http://skein.test",
-    payer: { kind: "apiKey", key: api.key },
-    maxUsdcPerCall: 0.3,
-    fetch: (i, init) => Promise.resolve(api.app.fetch(new Request(String(i), init))),
-  });
-  const mcp = createSkeinMcp({ skein, webUrl: "https://skein.test", sessionCapUsdc, maxUsdcPerCall: 0.3 });
+const inProcess: typeof fetch = (i, init) => Promise.resolve(api.app.fetch(new Request(String(i), init)));
+async function connect(sessionCapUsdc = 2, payer?: Payer, extra: Partial<SkeinMcpOptions> = {}) {
+  const skein = new Skein({ apiUrl: "http://skein.test", payer: payer ?? { kind: "apiKey", key: api.key }, maxUsdcPerCall: 0.3, fetch: inProcess });
+  const mcp = createSkeinMcp({ skein, webUrl: "https://skein.test", sessionCapUsdc, maxUsdcPerCall: 0.3, ...extra });
   const [a, b] = InMemoryTransport.createLinkedPair();
   await mcp.server.connect(a);
   const client = new Client({ name: "test", version: "0" });
@@ -102,6 +100,67 @@ describe("skein mcp", () => {
     expect(JSON.stringify(ps.content)).toContain("dex-list@0.2.0");
     const missing = (await client.callTool({ name: "skein_get", arguments: { id: "vrd_doesnotexist" } })) as Result;
     expect(missing.isError).toBe(true);
+  });
+});
+
+describe("skein mcp cost accounting", () => {
+  it("reports the package version", async () => {
+    const { client } = await connect();
+    expect(client.getServerVersion()).toMatchObject({ name: "skein", version: pkg.version });
+  });
+
+  it("counts a paid Telegraph ask at what it cost, even when Skein answered from cache", async () => {
+    const token = tok();
+    const first = await new Skein({ apiUrl: "http://skein.test", payer: { kind: "apiKey", key: api.key }, fetch: inProcess }).verdict({ subject: { chainId: 8453, token } });
+    // Skein's miner serves the stored verdict again: the ask was still paid.
+    const asker = { ask: async () => ({ ok: true as const, response: { miner_id: SKEIN_MINER_ID, result: { id: first.id, cached: true } }, receipt: null, amountUusdc: 270_000, durationMs: 1 }) };
+    const { client, mcp } = await connect(2, { kind: "telegraph", client: asker });
+    const r = (await client.callTool({ name: "skein_verdict", arguments: { chainId: 8453, token } })) as Result;
+    expect(r.isError).toBeFalsy();
+    expect(mcp.spentUsdc()).toBeCloseTo(0.27);
+    // A paid answer about another token is refused, and still counted.
+    const wrong = (await client.callTool({ name: "skein_verdict", arguments: { chainId: 8453, token: tok() } })) as Result;
+    expect(wrong.isError).toBe(true);
+    expect(wrong.content[0]!.text).toMatch(/^TELEGRAPH_MISMATCH/);
+    expect(mcp.spentUsdc()).toBeCloseTo(0.54);
+  });
+
+  it("counts a partner-key verdict at list price, or at nothing when the key is free", async () => {
+    const list = await connect(2);
+    await list.client.callTool({ name: "skein_verdict", arguments: { chainId: 8453, token: tok() } });
+    expect(list.mcp.spentUsdc()).toBe(0.25);
+    const free = await connect(0.1, undefined, { apiKeyBilling: "free" });
+    const r = (await free.client.callTool({ name: "skein_verdict", arguments: { chainId: 8453, token: tok() } })) as Result;
+    expect(r.isError).toBeFalsy();
+    expect(free.mcp.spentUsdc()).toBe(0);
+  });
+});
+
+describe("skein mcp configuration", () => {
+  it("refuses caps that are not positive numbers instead of turning them off", () => {
+    for (const [name, value] of [
+      ["SKEIN_MAX_USDC_PER_CALL", "0.3usdc"],
+      ["SKEIN_MAX_USDC_PER_CALL", "0"],
+      ["SKEIN_SESSION_CAP_USDC", "NaN"],
+      ["SKEIN_SESSION_CAP_USDC", "-1"],
+      ["SKEIN_SESSION_CAP_USDC", "Infinity"],
+      ["SKEIN_DAILY_CAP_USDC", "2usdc"],
+      ["SKEIN_API_KEY_BILLING", "sometimes"],
+      ["SKEIN_MINER_ID", "skein"],
+      ["SKEIN_INTENT", "fraud risk"],
+    ]) {
+      expect(() => mcpConfigFromEnv({ [name!]: value }), `${name}=${value}`).toThrow(ConfigError);
+    }
+  });
+
+  it("defaults to Skein's miner on FRAUD_RISK_GENERAL, and reads the deprecated daily-cap name as the session cap", () => {
+    const d = mcpConfigFromEnv({});
+    expect(d).toMatchObject({ maxUsdcPerCall: 0.3, sessionCapUsdc: 2, apiKeyBilling: "list", intent: "FRAUD_RISK_GENERAL", minerId: "845301", warnings: [] });
+    const alias = mcpConfigFromEnv({ SKEIN_DAILY_CAP_USDC: "5" });
+    expect(alias.sessionCapUsdc).toBe(5);
+    expect(alias.warnings[0]).toMatch(/deprecated/);
+    expect(mcpConfigFromEnv({ SKEIN_DAILY_CAP_USDC: "5", SKEIN_SESSION_CAP_USDC: "1" }).sessionCapUsdc).toBe(1);
+    expect(mcpConfigFromEnv({ SKEIN_INTENT: "FRAUD_RISK_TOKEN_LISTING", SKEIN_MINER_ID: "5137", SKEIN_API_KEY_BILLING: "free" })).toMatchObject({ intent: "FRAUD_RISK_TOKEN_LISTING", minerId: "5137", apiKeyBilling: "free" });
   });
 });
 

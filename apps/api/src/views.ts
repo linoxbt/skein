@@ -29,6 +29,8 @@ export async function verdictObject(db: Db, id: string) {
       sourceGroup: f.sourceGroup,
       ...(f.evidence ? { evidence: f.evidence } : {}),
       notes: f.notes,
+      // Part of the hashed finding: a verifier needs it to recompute the verdict hash without guessing.
+      ...(f.adapterVersion ? { adapterVersion: f.adapterVersion } : {}),
     })),
     // pricingRule says which rule set the price: standard, or abstain_upstream_only (ABSTAIN costs what it bought).
     cost: { upstreamUsdc: usdc(v.upstreamUusdc), priceUsdc: usdc(v.priceUusdc), pricingRule: v.pricingRule, currency: "USDC" },

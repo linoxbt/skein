@@ -4,10 +4,10 @@
 // ALERT_WEBHOOK_URL (ntfy, Slack or Discord). docs/RUNBOOK.md, "Alerts".
 import { Alerter } from "@skein/alerts";
 import pg from "pg";
-import { runOnce } from "./run";
+import { runOnce, sslFor } from "./run";
 
 const url = process.env.DATABASE_URL;
-const pool = url ? new pg.Pool({ connectionString: url, max: 2, connectionTimeoutMillis: 10_000, statement_timeout: 10_000 }) : undefined;
+const pool = url ? new pg.Pool({ connectionString: url, max: 2, connectionTimeoutMillis: 10_000, statement_timeout: 10_000, ...sslFor(url) }) : undefined;
 pool?.on("error", (e) => console.error(JSON.stringify({ level: "error", msg: "postgres pool error", error: e.message })));
 
 const alerter = new Alerter({ url: process.env.ALERT_WEBHOOK_URL, service: "skein-probe", repeatMs: 3 * 3_600_000, ...(pool ? { db: pool } : {}) });

@@ -2,7 +2,7 @@ import { simulatedApi } from "@skein/api/simulated";
 import { TelegraphClient, TESTNET, viemSigner } from "../src/telegraph";
 import { FakeNode } from "@skein/telegraph/testing";
 import { beforeAll, describe, expect, it } from "vitest";
-import { canonicalContext, parseSse, Skein, SKEIN_INTENT, SkeinError, SpendCapError, type VerdictEvent } from "../src";
+import { canonicalContext, parseSse, Skein, SKEIN_INTENT, SKEIN_MINER_ID, SkeinError, SpendCapError, subjectText, TelegraphMismatchError, type VerdictEvent } from "../src";
 
 const TOKEN = "0x4200000000000000000000000000000000000006";
 const CONFLICT = "0x420000000000000000000000000000000000000c";
@@ -98,40 +98,122 @@ describe("verdict() with a partner key", () => {
   });
 });
 
+/** A node that routes Skein's intent to the API's miner endpoint, as Telegraph does. */
+function skeinNode(asks: { minerId: string; body: Record<string, unknown> }[] = []) {
+  return new FakeNode({
+    priceUusdc: 150_000,
+    respond: async (minerId, body) => {
+      asks.push({ minerId, body });
+      const res = await api.app.request("/miner/verdict", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-skein-miner-key": MINER_KEY },
+        body: JSON.stringify(body.params),
+      });
+      return { kind: "answer", result: await res.json() };
+    },
+  });
+}
+const telegraphClient = (node: FakeNode, maxUusdcPerCall = 200_000) =>
+  new TelegraphClient({ network: TESTNET, signer: viemSigner(`0x${"55".repeat(32)}`), fetch: node.fetch, maxUusdcPerCall, allowPreSeason: true });
+
 describe("verdict() through Telegraph", () => {
-  it("pays one ask and returns the verdict with its receipt", async () => {
-    // A node that routes Skein's intent to the API's miner endpoint, as Telegraph will.
-    const asks: Record<string, unknown>[] = [];
-    const node = new FakeNode({
-      priceUusdc: 150_000,
-      respond: async (minerId, body) => {
-        asks.push(body);
-        const res = await api.app.request("/miner/verdict", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-skein-miner-key": MINER_KEY },
-          body: JSON.stringify(body.params),
-        });
-        return { kind: "answer", result: await res.json() };
-      },
-    });
-    const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(`0x${"55".repeat(32)}`), fetch: node.fetch, maxUusdcPerCall: 200_000, allowPreSeason: true });
+  it("asks Skein's miner on FRAUD_RISK_GENERAL with the plan-B subject string, and returns the verdict with its receipt", async () => {
+    const asks: { minerId: string; body: Record<string, unknown> }[] = [];
+    const node = skeinNode(asks);
     const token = tok();
-    const v = await skein({ payer: { kind: "telegraph", client, minerId: "skein" } }).verdict({ subject: { chainId: 8453, token } });
-    expect(asks[0]).toMatchObject({ intent: SKEIN_INTENT, params: { chain: "base", token } });
+    const v = await skein({ payer: { kind: "telegraph", client: telegraphClient(node) } }).verdict({ subject: { chainId: 8453, token }, policy: "dex-list@0.2.0" });
+    expect(SKEIN_INTENT).toBe("FRAUD_RISK_GENERAL");
+    // Pinned to Skein's catalogue id by default, with only the params the plan-B YAML declares.
+    expect(asks[0]!.minerId).toBe(SKEIN_MINER_ID);
+    expect(asks[0]!.body).toEqual({ intent: "FRAUD_RISK_GENERAL", params: { subject: `base:${token}`, policy: "dex-list@0.2.0" } });
     expect(v.verdict).toBe("APPROVE");
+    expect(v.subject.token.toLowerCase()).toBe(token);
     expect(v.channel).toBe("telegraph");
-    expect(v.payment).toMatchObject({ rail: "telegraph", minerId: "skein", amountUsdc: 0.15 });
+    expect(v.payment).toMatchObject({ rail: "telegraph", minerId: SKEIN_MINER_ID, amountUsdc: 0.15 });
     expect(node.charges).toHaveLength(1);
     expect(v.payment.rail === "telegraph" && v.payment.receiptHash).toBe(node.charges[0]!.receiptHash);
   });
 
+  it("writes the subject the way the miner endpoint reads it", () => {
+    expect(subjectText({ chainId: 1, token: TOKEN })).toBe(`ethereum:${TOKEN}`);
+    expect(subjectText({ chainId: 56, token: TOKEN })).toBe(`bsc:${TOKEN}`);
+    expect(subjectText({ chainId: 10, token: TOKEN })).toBe(`eip155:10:${TOKEN}`);
+  });
+
   it("does not pay above the client's per-call cap", async () => {
     const node = new FakeNode({ priceUusdc: 900_000, respond: () => ({ kind: "answer", result: {} }) });
-    const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(`0x${"55".repeat(32)}`), fetch: node.fetch, maxUusdcPerCall: 300_000, allowPreSeason: true });
-    const err = await skein({ payer: { kind: "telegraph", client } }).verdict({ subject: { chainId: 8453, token: TOKEN } }).catch((e) => e);
+    const err = await skein({ payer: { kind: "telegraph", client: telegraphClient(node, 300_000) } }).verdict({ subject: { chainId: 8453, token: TOKEN } }).catch((e) => e);
     expect(err).toBeInstanceOf(SkeinError);
     expect(err.code).toMatch(/^TELEGRAPH_/);
     expect(node.charges).toHaveLength(0);
+  });
+
+  it("leaves out context the miner endpoint cannot carry, and says so; strictContext refuses before paying", async () => {
+    const asks: { minerId: string; body: Record<string, unknown> }[] = [];
+    const v = await skein({ payer: { kind: "telegraph", client: telegraphClient(skeinNode(asks)) } }).verdict({ subject: { chainId: 8453, token: tok() }, context: { socialHandle: "@base", pool: `0x${"ab".repeat(20)}` } });
+    expect(v.verdict).toBe("APPROVE");
+    expect(Object.keys(asks[0]!.body.params as object)).toEqual(["subject"]);
+    expect(v.payment).toMatchObject({ rail: "telegraph", contextDropped: ["socialHandle", "pool"] });
+    const node = skeinNode();
+    const err = await skein({ payer: { kind: "telegraph", client: telegraphClient(node), strictContext: true } })
+      .verdict({ subject: { chainId: 8453, token: tok() }, context: { socialHandle: "@base" } })
+      .catch((e) => e);
+    expect(err).toMatchObject({ code: "CONTEXT_NOT_SUPPORTED", payment: undefined });
+    expect(node.charges).toHaveLength(0);
+  });
+});
+
+describe("Telegraph answers bound to the request", () => {
+  /** A miner that answers with the id of whatever verdict it likes. */
+  const malicious = (id: string, minerId: string = SKEIN_MINER_ID, receiptMiner?: string) => ({
+    ask: async () => ({
+      ok: true as const,
+      response: { miner_id: minerId, result: { verdict: "APPROVE", risk_level: "LOW", id } },
+      receipt: { receipt_hash: `0x${"cd".repeat(32)}`, ...(receiptMiner ? { miner: receiptMiner } : {}) },
+      amountUusdc: 250_000,
+      durationMs: 1,
+    }),
+  });
+
+  it("refuses another token's real, signed APPROVE, and says what was paid", async () => {
+    const other = await skein().verdict({ subject: { chainId: 8453, token: tok() } });
+    expect(other.verdict).toBe("APPROVE");
+    const asked = tok();
+    const err = await skein({ payer: { kind: "telegraph", client: malicious(other.id) } }).verdict({ subject: { chainId: 8453, token: asked } }).catch((e) => e);
+    expect(err).toBeInstanceOf(TelegraphMismatchError);
+    expect(err).toMatchObject({ code: "TELEGRAPH_MISMATCH", payment: { amountUsdc: 0.25, billing: "paid" } });
+    expect(err.message).toContain(asked);
+  });
+
+  it("refuses the same token on another chain, and a verdict under another policy", async () => {
+    const token = tok();
+    const onBase = await skein().verdict({ subject: { chainId: 8453, token }, policy: "dex-list@0.1.0" });
+    const chain = await skein({ payer: { kind: "telegraph", client: malicious(onBase.id) } }).verdict({ subject: { chainId: 1, token } }).catch((e) => e);
+    expect(chain).toMatchObject({ code: "TELEGRAPH_MISMATCH" });
+    const policy = await skein({ payer: { kind: "telegraph", client: malicious(onBase.id) } }).verdict({ subject: { chainId: 8453, token }, policy: "dex-list@0.2.0" }).catch((e) => e);
+    expect(policy).toMatchObject({ code: "TELEGRAPH_MISMATCH" });
+    expect(policy.message).toContain("dex-list@0.1.0");
+    // The same answer, for the request it was made for, is accepted (any case of the token; a policy id without a version).
+    const ok = await skein({ payer: { kind: "telegraph", client: malicious(onBase.id) } }).verdict({ subject: { chainId: 8453, token: `0x${token.slice(2).toUpperCase()}` }, policy: "dex-list" });
+    expect(ok.id).toBe(onBase.id);
+    expect(ok.payment).toMatchObject({ rail: "telegraph", amountUsdc: 0.25 });
+  });
+
+  it("refuses an answer from a miner that is not Skein's, before reading the verdict", async () => {
+    const real = await skein().verdict({ subject: { chainId: 8453, token: tok() } });
+    let reads = 0;
+    const counting: typeof fetch = (i, init) => (reads++, inProcess()(i, init));
+    const routed = skein({ fetch: counting, payer: { kind: "telegraph", client: malicious(real.id, "77777"), routed: true } });
+    const err = await routed.verdict({ subject: real.subject }).catch((e) => e);
+    expect(err).toMatchObject({ code: "TELEGRAPH_MISMATCH", payment: { amountUsdc: 0.25, billing: "paid" } });
+    expect(err.message).toContain("77777");
+    expect(reads).toBe(0);
+    // A receipt that names another miner is refused too, whatever the response claims.
+    const spoof = await skein({ payer: { kind: "telegraph", client: malicious(real.id, SKEIN_MINER_ID, "999") } }).verdict({ subject: real.subject }).catch((e) => e);
+    expect(spoof).toMatchObject({ code: "TELEGRAPH_MISMATCH" });
+    // Skein's registration id, which receipts name, is Skein.
+    const byReg = await skein({ payer: { kind: "telegraph", client: malicious(real.id, "5137", "5137") } }).verdict({ subject: real.subject });
+    expect(byReg.id).toBe(real.id);
   });
 });
 
@@ -190,6 +272,23 @@ describe("transport", () => {
     await expect(s.quote({ subject: { chainId: 8453, token: TOKEN } })).rejects.toMatchObject({ code: "TIMEOUT" });
   });
 
+  it("retries the 503 of a restarting replica, but not a final refusal", async () => {
+    for (const restarting of [
+      { code: "UPSTREAM_UNAVAILABLE", message: "the service is restarting; retry with the same Idempotency-Key" },
+      { code: "RESTARTING", message: "draining" },
+    ]) {
+      let calls = 0;
+      const flaky: typeof fetch = (input, init) =>
+        ++calls === 1 ? Promise.resolve(new Response(JSON.stringify({ error: restarting }), { status: 503, headers: { "retry-after": "0" } })) : inProcess()(input, init);
+      expect((await skein({ fetch: flaky }).quote({ subject: { chainId: 8453, token: TOKEN } })).ok).toBe(true);
+      expect(calls).toBe(2);
+    }
+    let calls = 0;
+    const down: typeof fetch = async () => (calls++, new Response(JSON.stringify({ error: { code: "UPSTREAM_UNAVAILABLE", message: "no live miner for sanctions" } }), { status: 503 }));
+    await expect(skein({ fetch: down }).quote({ subject: { chainId: 8453, token: TOKEN } })).rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
+    expect(calls).toBe(1);
+  });
+
   it("throws at once on a Retry-After longer than its retry budget (a daily cap)", async () => {
     let calls = 0;
     const capped: typeof fetch = async () => {
@@ -204,21 +303,38 @@ describe("transport", () => {
 
 describe("Telegraph payer edge cases", () => {
   it("says what was paid when the miner answers without a verdict", async () => {
-    const asker = { ask: async () => ({ ok: true as const, response: { miner_id: "skein", result: { verdict: "ABSTAIN", reasons: [{ code: "BUDGET_TOO_LOW" }] } }, receipt: { receipt_hash: `0x${"ab".repeat(32)}` }, amountUusdc: 150_000, durationMs: 1 }) };
+    const asker = { ask: async () => ({ ok: true as const, response: { miner_id: SKEIN_MINER_ID, result: { verdict: "ABSTAIN", reasons: [{ code: "BUDGET_TOO_LOW" }] } }, receipt: { receipt_hash: `0x${"ab".repeat(32)}` }, amountUusdc: 150_000, durationMs: 1 }) };
     const err = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
-    expect(err).toMatchObject({ code: "TELEGRAPH_NO_VERDICT", payment: { amountUsdc: 0.15, billing: "paid" } });
+    expect(err).toMatchObject({ code: "TELEGRAPH_NO_VERDICT", payment: { amountUsdc: 0.15, billing: "paid", receiptHash: `0x${"ab".repeat(32)}`, minerId: SKEIN_MINER_ID } });
+  });
+
+  it("carries the payment on every failure after a paid ask, and gives the ask one deadline", async () => {
+    let opts: { timeoutMs: number; deadline?: number } | undefined;
+    const asker = {
+      ask: async (_r: unknown, o: { timeoutMs: number; deadline?: number }) => (
+        (opts = o),
+        { ok: true as const, response: { miner_id: "5137", result: { id: "vrd_doesnotexist" } }, receipt: { receipt_hash: `0x${"ac".repeat(32)}` }, amountUusdc: 250_000, durationMs: 1 }
+      ),
+    };
+    const before = Date.now();
+    const err = await skein({ payer: { kind: "telegraph", client: asker }, timeoutMs: 30_000 }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
+    // Reading the verdict failed after the ask was paid: the error still says what it cost and to whom.
+    expect(err).toMatchObject({ code: "NOT_FOUND", payment: { amountUsdc: 0.25, billing: "paid", receiptHash: `0x${"ac".repeat(32)}`, minerId: "5137" } });
+    expect(opts!.deadline).toBeGreaterThanOrEqual(before + 30_000);
+    expect(opts!.deadline).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
   it("reports a paid ask that failed as billing unknown", async () => {
     const asker = { ask: async () => ({ ok: false as const, kind: "timeout", error: "x", paidUusdc: 150_000, billing: "unknown" }) };
     const err = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } }).catch((e) => e);
-    expect(err).toMatchObject({ code: "TELEGRAPH_TIMEOUT", payment: { amountUsdc: 0.15, billing: "unknown" } });
+    expect(err).toMatchObject({ code: "TELEGRAPH_TIMEOUT", payment: { amountUsdc: 0.15, billing: "unknown", receiptHash: null, minerId: SKEIN_MINER_ID } });
   });
 
   it("waits for a verdict the miner was still making at its deadline", async () => {
-    const started = (await skein().submit({ subject: { chainId: 8453, token: tok() } })) as { id: string };
-    const asker = { ask: async () => ({ ok: true as const, response: { miner_id: "skein", result: { verdict: "ABSTAIN", pending_id: started.id } }, receipt: null, amountUusdc: 150_000, durationMs: 1 }) };
-    const v = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token: tok() } });
+    const token = tok();
+    const started = (await skein().submit({ subject: { chainId: 8453, token } })) as { id: string };
+    const asker = { ask: async () => ({ ok: true as const, response: { miner_id: SKEIN_MINER_ID, result: { verdict: "ABSTAIN", pending_id: started.id } }, receipt: null, amountUusdc: 150_000, durationMs: 1 }) };
+    const v = await skein({ payer: { kind: "telegraph", client: asker } }).verdict({ subject: { chainId: 8453, token } });
     expect(v.id).toBe(started.id);
     expect(v.payment).toMatchObject({ rail: "telegraph", amountUsdc: 0.15 });
   });

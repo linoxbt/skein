@@ -147,9 +147,9 @@ keys(atG("sniper", "hard") + 6, atG("sniper", "hard") + 40, 0.1, "sn");
 // 11 Bench — the music drops away, then the climax hits on "approved"
 hit(scene("bench").from + 2, "sweep_tech", 0.3, "start");
 hit(atG("bench", "72") - 6, "ui_zoom_long", 0.3, "start");
-for (let i = 0; i < 8; i++) hit(atG("bench", "40") - 10 + i * 3, "ui_click", 0.1, "start");
-hit(atG("bench", "27"), "glitch_quick", 0.3);
-hit(atG("bench", "27"), "bass_rumble", 0.35);
+for (let i = 0; i < 8; i++) hit(atG("bench", "80") - 10 + i * 3, "ui_click", 0.1, "start");
+hit(atG("bench", "49"), "glitch_quick", 0.3);
+hit(atG("bench", "49"), "bass_rumble", 0.35);
 hit(atG("bench", "approved"), "hit_reverse", 0.55);
 hit(atG("bench", "approved"), "impact_logo", 0.9);
 hit(atG("bench", "approved"), "impact_waves", 0.5);

@@ -12,8 +12,16 @@ import type { Decision, Finding, Subject } from "./types";
  * sha256 in the verdict hash; a check's independence group is that of its
  * worst finding and its confidence the best answer's; blockers need
  * minConfidence; only answers are graded by thresholds.
+ * 0.3.0: an optional check that does not answer is neutral in confidence.
+ * 0.4.0: monotone. Blockers and contradictions fire on an answer at their
+ * status or worse (a FAIL meets a WARN blocker), so a worse answer can never
+ * soften a verdict; and the run's mode (live or simulated) is in the verdict
+ * hash, so a simulated verdict cannot be passed off as a live one.
  */
-export const ENGINE_VERSION = "0.3.0";
+export const ENGINE_VERSION = "0.4.0";
+
+/** Whether a verdict was bought on the network or answered by a local fake node. */
+export type VerdictMode = "live" | "simulated";
 
 export interface PolicyRef {
   id: string;
@@ -50,10 +58,12 @@ export function verdictHash(input: {
   subject: Subject;
   findings: readonly Finding[];
   decision: Decision;
+  mode: VerdictMode;
 }): string {
   return keccakHex(
     canonicalJson({
       engine_version: input.engineVersion,
+      mode: input.mode,
       policy_id: input.policy.id,
       policy_version: input.policy.version,
       // The content, not just the name: an edited file can't pass for the published one.
@@ -69,6 +79,12 @@ export function receiptsOf(findings: readonly Finding[]): string[] {
   return findings.map((f) => f.evidence?.receiptHash).filter((r): r is string => !!r);
 }
 
+export interface SealOptions {
+  policySha256?: string;
+  /** Sealed into the verdict hash; "live" unless the run was simulated. */
+  mode?: VerdictMode;
+}
+
 /**
  * Runs the engine and seals the result. `receipts` defaults to the receipt
  * hashes carried by the findings; pass the purchase log's receipts when some
@@ -79,7 +95,7 @@ export function evaluate(
   subject: Subject,
   findings: readonly Finding[],
   receipts: readonly string[] = receiptsOf(findings),
-  opts: { policySha256?: string } = {},
+  opts: SealOptions = {},
 ): SealedVerdict {
   const { decision } = decide(policy, findings);
   const ref: PolicyRef = { id: policy.id, version: policy.version, ...(opts.policySha256 ? { sha256: opts.policySha256 } : {}) };
@@ -91,7 +107,7 @@ export function evaluate(
     decision,
     summary: summarise(decision),
     findings: sorted,
-    verdictHash: verdictHash({ engineVersion: ENGINE_VERSION, policy: ref, subject, findings: sorted, decision }),
+    verdictHash: verdictHash({ engineVersion: ENGINE_VERSION, policy: ref, subject, findings: sorted, decision, mode: opts.mode ?? "live" }),
     bom: { root: merkleRoot(receipts), items: uniqueReceipts(receipts).length },
   };
 }

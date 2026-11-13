@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { IconArrow } from "@skein/ui";
 import { Lead, PageHero, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
+import { Bars, StackedRows } from "@/components/charts";
 import { StatTile, VERDICT_COLOR, VERDICT_COLOR_LIGHT } from "@/components/ui";
 import { getLedger, getStatus, type Ledger, type Status } from "@/lib/api";
+import { networkName } from "@/lib/network";
+import { getRegistration, MINER, type MinerRegistration } from "@/lib/site";
 import type { Verdict } from "@/lib/types";
 
 const ORDER: Verdict[] = ["APPROVE", "ESCALATE", "ABSTAIN", "REJECT"];
@@ -20,9 +23,17 @@ export default function LedgerPage() {
   const [l, setL] = useState<Ledger | null>(null);
   const [s, setS] = useState<Status | null>(null);
   const [err, setErr] = useState(false);
+  const [reg, setReg] = useState<MinerRegistration | null | undefined>(undefined);
+  const [regErr, setRegErr] = useState<string | null>(null);
   useEffect(() => {
     getLedger().then(setL).catch(() => setErr(true));
     getStatus().then(setS).catch(() => {});
+    getRegistration()
+      .then(setReg)
+      .catch((e) => {
+        setReg(null);
+        setRegErr((e as Error).message);
+      });
   }, []);
   const total = l ? Object.values(l.verdicts).reduce((a, b) => a + b, 0) : 0;
   const dash = (v: unknown) => (l ? String(v) : "—");
@@ -38,7 +49,7 @@ export default function LedgerPage() {
         aside={
           <div className="border border-edge bg-panel/90 p-6 font-mono text-[13px]">
             <div className="text-muted">network</div>
-            <div className="mt-1 text-[16px]">{l?.network ?? (err ? "unreachable" : "…")}</div>
+            <div className="mt-1 text-[16px]">{l ? networkName(l.network) : err ? "unreachable" : "…"}</div>
             <div className="rule-dots-dark my-5" />
             <div className="text-muted">purchaser wallet</div>
             <div className="mt-1 break-all text-[15px]">{s?.payer ?? "not configured"}</div>
@@ -58,6 +69,9 @@ export default function LedgerPage() {
           <StatTile label="upstream spend" gold value={l ? `$${l.upstreamSpendUsdc.toFixed(2)}` : "—"} />
           <StatTile label="receipts" value={dash(l?.receipts)} />
           <StatTile label="miners paid" value={dash(l?.minersUsed)} />
+          <StatTile label="mean upstream cost" gold value={l && total ? `$${(l.upstreamSpendUsdc / total).toFixed(3)}` : "—"} />
+          <StatTile label="revenue owed" value={l && typeof l.revenueOwedUsdc === "number" ? `$${l.revenueOwedUsdc.toFixed(2)}` : "—"} />
+          <StatTile label="revenue settled" value={l && typeof l.revenueSettledUsdc === "number" ? `$${l.revenueSettledUsdc.toFixed(2)}` : "—"} />
         </div>
         {err ? <p className="mt-10 font-mono text-[13px] text-reject">The Skein API is unreachable; these numbers will fill in when it answers.</p> : null}
       </Section>
@@ -129,6 +143,72 @@ export default function LedgerPage() {
         ) : null}
       </Section>
 
+      {/* Charts. */}
+      <Section tone="paper" inner="pb-20 md:pb-28">
+        <div className="grid gap-16 lg:grid-cols-2">
+          <div>
+            <Lead tag={l?.byDay?.length ? "Verdicts by day" : "Verdicts over time"} />
+            {l?.byDay?.length ? (
+              <StackedRows
+                label="Verdicts per day, by outcome"
+                rows={l.byDay.slice(-14).map((d) => ({ key: d.day.slice(5, 10), mix: d.verdicts ?? { ESCALATE: d.n ?? 0 } }))}
+              />
+            ) : l ? (
+              <>
+                <StackedRows
+                  label="Verdicts in the last 24 hours, 72 hours and all time, by outcome"
+                  rows={[
+                    ...(l.last24h ? [{ key: "last 24 h", mix: l.last24h }] : []),
+                    ...(l.last72h ? [{ key: "last 72 h", mix: l.last72h }] : []),
+                    { key: "all time", mix: l.verdicts },
+                  ]}
+                />
+                <p className="mt-3 font-mono text-[12px] text-ink-2">This API build reports rolling windows, not a per-day series.</p>
+              </>
+            ) : (
+              <p className="mt-6 text-ink-2">{err ? "No data." : "Loading…"}</p>
+            )}
+          </div>
+          <div>
+            <Lead tag="Upstream spend and revenue" />
+            {l ? (
+              <Bars
+                label="Upstream spend and revenue, USDC"
+                format={(n) => `$${n.toFixed(2)}`}
+                items={[
+                  { key: "upstream spend", value: l.upstreamSpendUsdc, color: "var(--color-knot-deep)" },
+                  ...(typeof l.revenueOwedUsdc === "number" ? [{ key: "revenue owed", value: l.revenueOwedUsdc, color: "var(--color-thread-deep)" }] : []),
+                  ...(typeof l.revenueSettledUsdc === "number" ? [{ key: "revenue settled", value: l.revenueSettledUsdc, color: "var(--color-approve-deep)" }] : []),
+                ]}
+              />
+            ) : (
+              <p className="mt-6 text-ink-2">{err ? "No data." : "Loading…"}</p>
+            )}
+            <p className="mt-3 font-mono text-[12px] text-ink-2">
+              Upstream spend is what Skein paid miners. Revenue owed is what verdicts sold through Telegraph earn Skein&apos;s miner; settled is what has reached its wallet{typeof l?.revenueSettledUsdc === "number" ? "" : " (not reported by this API build)"}.
+            </p>
+          </div>
+          <div className="lg:col-span-2">
+            <Lead tag={l?.minersByCheck ? "Miners paid per check" : "Miners per check"} />
+            {l?.minersByCheck ? (
+              <Bars label="Distinct miners paid per check" items={Object.entries(l.minersByCheck).map(([k, n]) => ({ key: k.replace(/_/g, " "), value: n, color: "var(--color-thread-deep)" }))} />
+            ) : s ? (
+              <>
+                <Bars
+                  label="Active miners Skein can buy from, per check"
+                  items={s.intents.map((i) => ({ key: i.check.replace(/_/g, " "), value: i.activeMiners, color: "var(--color-thread-deep)", note: i.intent ?? "no intent" }))}
+                />
+                <p className="mt-3 font-mono text-[12px] text-ink-2">
+                  Active miners on the network per check, from /v1/status. Skein has paid {l ? l.minersUsed : "—"} distinct miners in all; this API build does not split that by check.
+                </p>
+              </>
+            ) : (
+              <p className="mt-6 text-ink-2">Loading…</p>
+            )}
+          </div>
+        </div>
+      </Section>
+
       {/* Recent verdicts. */}
       <Section tone="mist" inner="py-20 md:py-28">
         <Lead tag="Recent" />
@@ -159,16 +239,34 @@ export default function LedgerPage() {
         )}
       </Section>
 
-      {/* Registration. */}
-      <section className="relative overflow-hidden bg-bg">
+      {/* Registration: the node's own record, read live. */}
+      <section className="relative overflow-hidden bg-bg" data-testid="registration">
         <Stripes seed={31} className="opacity-25" />
         <div className="relative mx-auto grid max-w-[1400px] gap-10 px-5 py-24 md:grid-cols-[1fr_auto] md:items-end md:px-10 md:py-32">
           <div>
             <span className="tag tag-dark">Miner registration</span>
-            <h2 className="display mt-6 text-[44px] md:text-[80px]">Registers Nov 1.</h2>
+            <h2 className="display mt-6 text-[44px] md:text-[80px]">Registration {MINER.registrationId}.</h2>
             <p className="mt-6 max-w-2xl text-[18px] text-muted">
-              The Skein miner ID and its on-chain registration appear here once the season opens. Until then the client refuses every paid call, so the spend above stays at zero.
+              Skein is itself a Telegraph miner: miner {MINER.minerId} ({MINER.slug}), answering {MINER.intent}. Its status below is the
+              node&apos;s own registry entry, read by this page from {MINER.node.replace("https://", "")}.
             </p>
+            <dl className="mt-10 grid gap-px bg-line font-mono text-[13px] sm:grid-cols-2">
+              {(
+                [
+                  ["status", reg === undefined ? "reading the node…" : reg ? reg.activation_status + (reg.rejection_reason ? ` · ${reg.rejection_reason}` : "") : `unknown: ${regErr ?? "the node did not answer"}`],
+                  ["intents", reg ? reg.supported_intents.join(", ") : MINER.intent],
+                  ["miner address", reg?.miner_address ?? "—"],
+                  ["floor price", reg ? `$${(reg.min_price_usdc / 1e6).toFixed(2)} per answer` : "—"],
+                  ["registered", reg ? new Date(reg.registered_at).toUTCString() : "—"],
+                  ["pin it", `/engine/v1/ask/${MINER.minerId}`],
+                ] as [string, string][]
+              ).map(([k, v]) => (
+                <div key={k} className="bg-surface p-4">
+                  <dt className="text-muted">{k}</dt>
+                  <dd className={`mt-1 break-all ${k === "status" && reg?.activation_status === "active" ? "text-thread" : ""}`}>{v}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
           <Link href="/status" className="btn btn-light">Network status</Link>
         </div>

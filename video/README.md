@@ -1,6 +1,6 @@
 # Skein motion demo
 
-The 3 min 48 s narrated demo film at `docs/demo/skein-motion.mp4`, built with
+The 3 min 48 s narrated demo film at `docs/demo/skein-motion.mp4` and the 42 s teaser at `docs/demo/skein-teaser.mp4`, built with
 [Remotion](https://www.remotion.dev) (React → video). The composition is
 `Film` (`src/v2`). The first cut, `Main` (`src/scenes`), is kept for
 reference. `docs/demo/README.md` lists what is live footage and what is
@@ -20,6 +20,7 @@ node scripts/voice-v2.mjs                      # narration: Kokoro-82M af_heart 
 python3 -I scripts/align-v2.py                 # word timings → public/v2/vo/words.json
 sh scripts/fetch-audio-v2.sh                   # Mixkit music and effects, peak-normalized
 npx remotion render Film out/film-v2-raw.mp4
+npx remotion render Teaser out/teaser-raw.mp4  # the 42 s teaser (src/teaser); music: public/v2/music/teaser-edit.wav
 ```
 
 Then master the audio to −14 LUFS (two-pass `loudnorm`) and encode two-pass

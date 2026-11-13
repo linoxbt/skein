@@ -13,7 +13,7 @@ import {
   ZERO_HASH,
   type StoredVerdict,
 } from "../src";
-import { cex, cleanCex, f } from "./helpers";
+import { boughtCex, cex, cleanCex, f } from "./helpers";
 
 const subject = { chainId: 8453, token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" };
 const r = (n: number) => `0x${n.toString(16).padStart(64, "0")}`;
@@ -94,22 +94,23 @@ describe("reproduce", () => {
     const ctx = { check: "sanctions" as const, adapterVersion: "0.1.0", sourceGroup: "opensanctions", minerId: "78021", receiptHash: r(99) };
     const raw = { matched: "no match", match_score: 0.1 };
     // Recorded with a superseded adapter version: it must still replay.
-    const findings = [...cleanCex({ sanctions: null }), adapterFor("sanctions", "0.1.0").adapt(raw, ctx)];
+    const bought = boughtCex(subject);
+    const others = bought.purchases.filter((p) => p.check !== "sanctions");
+    const findings = [...bought.findings.filter((x) => x.check !== "sanctions"), adapterFor("sanctions", "0.1.0").adapt(raw, ctx)];
     const sealed = evaluate(policy, subject, findings);
-    const others = findings.filter((x) => x.check !== "sanctions");
     const stored: StoredVerdict = {
       engineVersion: sealed.engineVersion,
       policy: sealed.policy,
       subject,
       findings: sealed.findings,
-      purchases: [{ ...ctx, rawResult: raw }],
-      unpurchased: others, // stand-ins for the other checks' stored findings
+      purchases: [...others, { ...ctx, rawResult: raw }],
+      unpurchased: [],
       verdictHash: sealed.verdictHash,
       bomRoot: sealed.bom.root,
     };
     expect(reproduce(stored, policy)).toMatchObject({ ok: true, problems: [] });
 
-    const tampered = { ...stored, purchases: [{ ...ctx, rawResult: { matched: "yes" } }] };
+    const tampered = { ...stored, purchases: [...others, { ...ctx, rawResult: { matched: "yes" } }] };
     const report = reproduce(tampered, policy);
     expect(report.ok).toBe(false);
     expect(report.problems).toContain("findings re-derived from raw answers differ from the stored findings");
@@ -121,10 +122,10 @@ describe("replay across engine versions", () => {
   it("replays a verdict with the engine that sealed it, including the frozen 0.1.0", async () => {
     const { evaluate: evaluate010 } = await import("../src/frozen/v0_1_0/seal");
     const policy = cex();
-    const findings = cleanCex();
+    const { findings, purchases } = boughtCex(subject);
     const old = evaluate010(policy, subject, findings);
     expect(old.engineVersion).toBe("0.1.0");
-    const stored: StoredVerdict = { engineVersion: "0.1.0", policy: old.policy, subject, findings: old.findings, verdictHash: old.verdictHash, bomRoot: old.bom.root };
+    const stored: StoredVerdict = { engineVersion: "0.1.0", policy: old.policy, subject, findings: old.findings, purchases, verdictHash: old.verdictHash, bomRoot: old.bom.root };
     expect(reproduce(stored, policy)).toMatchObject({ ok: true, verdictHash: old.verdictHash });
     // The current engine seals the same findings differently (new Merkle tree, policy hash).
     expect(evaluate(policy, subject, findings).verdictHash).not.toBe(old.verdictHash);
@@ -133,9 +134,10 @@ describe("replay across engine versions", () => {
 
   it("catches a served decision that disagrees with its own hash", () => {
     const policy = cex();
-    const sealed = evaluate(policy, subject, cleanCex(), undefined, { policySha256: "ab".repeat(32) });
+    const { findings, purchases } = boughtCex(subject);
+    const sealed = evaluate(policy, subject, findings, undefined, { policySha256: "ab".repeat(32) });
     const stored: StoredVerdict = {
-      engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings, verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root,
+      engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings, purchases, verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root,
       decision: { verdict: "APPROVE", riskBps: sealed.decision.riskBps, confidenceBps: sealed.decision.confidenceBps },
     };
     expect(reproduce(stored, policy, { policySha256: "ab".repeat(32) }).ok).toBe(sealed.decision.verdict === "APPROVE");
@@ -153,5 +155,84 @@ describe("replay across engine versions", () => {
     const base: StoredVerdict = { engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings, verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root, receipts };
     const extra = reproduce({ ...base, purchases: purchases.slice(1), receipts }, policy);
     expect(extra.problems.join(" ")).toMatch(/belong to no purchase/);
+  });
+});
+
+describe("findings without a purchase (audit M1)", () => {
+  const policy = cex();
+  const base = () => {
+    const { findings, purchases } = boughtCex(subject);
+    const keep = purchases.filter((p) => p.check !== "code_review");
+    const unpurchased = [{ check: "code_review" as const, status: "UNAVAILABLE" as const, severity: 0 as const, confidence: 0, sourceGroup: "none", notes: ["no_repo_url"] }];
+    const all = [...findings.filter((x) => x.check !== "code_review"), ...unpurchased];
+    const sealed = evaluate(policy, subject, all);
+    const stored: StoredVerdict = { engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings, purchases: keep, unpurchased, verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root };
+    return { stored, all, keep };
+  };
+
+  it("accepts a non-answer for a check that was not bought", () => {
+    expect(reproduce(base().stored, policy)).toMatchObject({ ok: true, problems: [] });
+  });
+
+  it("refuses an answer that no purchase stands behind, even one that reseals consistently", () => {
+    const { all, keep } = base();
+    // A forged PASS for the code review, sealed as if it were real: the hash matches, the evidence does not.
+    const forged = { ...all.find((x) => x.check === "code_review")!, status: "PASS" as const, confidence: 0.9, notes: [] };
+    const findings = [...all.filter((x) => x.check !== "code_review"), forged];
+    const sealed = evaluate(policy, subject, findings);
+    const stored: StoredVerdict = { engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings, purchases: keep, unpurchased: [forged], verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root };
+    const report = reproduce(stored, policy);
+    expect(report.ok).toBe(false);
+    expect(report.problems.join(" ")).toMatch(/unpurchased code_review PASS: only non-answers and a list screen/);
+    // Without purchase records at all, every answered finding is unpurchased.
+    expect(reproduce({ ...stored, purchases: undefined, unpurchased: undefined }, policy).ok).toBe(false);
+  });
+
+  it("accepts the OFAC list screen only from a snapshot Skein ships, when told which", () => {
+    const { all, keep } = base();
+    const sha = "ab".repeat(32);
+    const listHit = {
+      check: "sanctions" as const, status: "FAIL" as const, severity: 3 as const, confidence: 1, sourceGroup: "ofac-sdn@2026-11-11", notes: ["ofac_sdn_address_match"], adapterVersion: "ofac-sdn-1",
+      evidence: { list: "OFAC SDN", listSha256: sha, matches: [{ field: "deployer", address: "0x01", sdnUid: "1" }] },
+    };
+    const findings = [...all.filter((x) => x.check !== "sanctions"), listHit];
+    const sealed = evaluate(policy, subject, findings);
+    expect(sealed.decision.verdict).toBe("REJECT");
+    const stored: StoredVerdict = {
+      engineVersion: sealed.engineVersion, policy: sealed.policy, subject, findings: sealed.findings,
+      purchases: keep.filter((p) => p.check !== "sanctions"), unpurchased: [all.find((x) => x.check === "code_review")!, listHit], verdictHash: sealed.verdictHash, bomRoot: sealed.bom.root,
+    };
+    expect(reproduce(stored, policy).ok).toBe(true);
+    expect(reproduce(stored, policy, { knownLists: { "OFAC SDN": [sha] } }).ok).toBe(true);
+    expect(reproduce(stored, policy, { knownLists: { "OFAC SDN": ["cd".repeat(32)] } }).problems.join(" ")).toMatch(/not one Skein ships/);
+  });
+});
+
+describe("mode in the verdict hash (engine 0.4.0, audit L4)", () => {
+  it("a simulated verdict cannot be relabelled live", () => {
+    const policy = cex();
+    const { findings, purchases } = boughtCex(subject);
+    const sim = evaluate(policy, subject, findings, undefined, { mode: "simulated" });
+    expect(sim.verdictHash).not.toBe(evaluate(policy, subject, findings).verdictHash);
+    const stored: StoredVerdict = { engineVersion: sim.engineVersion, policy: sim.policy, subject, findings: sim.findings, purchases, verdictHash: sim.verdictHash, bomRoot: sim.bom.root, mode: "simulated" };
+    expect(reproduce(stored, policy).ok).toBe(true);
+    expect(reproduce({ ...stored, mode: "live" }, policy).problems).toContain("verdict hash mismatch");
+    expect(reproduce({ ...stored, mode: undefined }, policy).problems).toContain("verdict hash mismatch");
+  });
+});
+
+describe("frozen engines parse the policy with their own schema (audit L3)", () => {
+  it("a changed live default cannot change a replay when the policy source is given", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { parse } = await import("yaml");
+    const { evaluateWith } = await import("../src");
+    const source = parse(readFileSync(new URL("../../policies/policies/cex-standard@0.1.0.yaml", import.meta.url), "utf8"));
+    const policy = cex();
+    const { findings } = boughtCex(subject, { wash_trading: { verdict: "wash_trading", wash_volume_pct: 70 } });
+    const sealed = evaluateWith("0.3.0", policy, subject, findings);
+    // As if a later live schema changed a default the policy file does not set.
+    const drifted = { ...policy, decision: { ...policy.decision, agreement_penalty: 0.9 } };
+    expect(evaluateWith("0.3.0", drifted, subject, findings).verdictHash).not.toBe(sealed.verdictHash);
+    expect(evaluateWith("0.3.0", drifted, subject, findings, undefined, { policySource: source }).verdictHash).toBe(sealed.verdictHash);
   });
 });
