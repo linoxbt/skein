@@ -158,7 +158,7 @@ describe("verdict store", () => {
     const res = await pg.query<{ relname: string; relrowsecurity: boolean }>(
       "select relname, relrowsecurity from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r'",
     );
-    expect(res.rows.length).toBe(23);
+    expect(res.rows.length).toBe(24);
     expect(res.rows.filter((r) => !r.relrowsecurity)).toEqual([]);
   });
 });

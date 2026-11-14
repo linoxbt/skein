@@ -524,8 +524,8 @@ export default function TutorialPage() {
             <ul className="mt-4 list-disc space-y-2 pl-6 text-[17px] leading-[1.7] text-ink-2">
               <li>Node.js 20 or later. The SDK also runs on Bun, Deno and edge runtimes: anything with <C>fetch</C>.</li>
               <li>
-                For paid verdicts, one of: a <strong className="text-ink">partner key</strong> (free during the Telegraph hackathon;{" "}
-                <A href={KEY_REQUEST}>request one</A>), or a <strong className="text-ink">funded Telegraph burner wallet</strong>, set up in{" "}
+                For paid verdicts, one of: a <strong className="text-ink">partner key</strong> (free during the Telegraph hackathon:{" "}
+                <A href="/keys">get one with your wallet</A> in a few seconds, or <A href={KEY_REQUEST}>request one</A> with a higher cap), or a <strong className="text-ink">funded Telegraph burner wallet</strong>, set up in{" "}
                 <A href="#telegraph">section 09</A>.
               </li>
               <li>Quotes, verdict pages, event streams and verification are free and need neither.</li>

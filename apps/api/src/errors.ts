@@ -27,6 +27,10 @@ export type ErrorCode =
   | "PRECONDITION_FAILED"
   | "WALLET_EMPTY"
   | "PAYMENT_PENDING"
+  | "SELF_SERVE_OFF"
+  | "CHALLENGE_EXPIRED"
+  | "BAD_SIGNATURE"
+  | "NOT_EDITABLE"
   | "INTERNAL";
 
 /** Every error body is { error: { code, message, details } }. */

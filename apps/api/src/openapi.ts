@@ -15,7 +15,10 @@ export const OPENAPI = {
   },
   servers: [{ url: "https://api.skeinlabs.site" }],
   components: {
-    securitySchemes: { partnerKey: { type: "http", scheme: "bearer", description: "A Skein partner API key (sk_part_…)." } },
+    securitySchemes: {
+      partnerKey: { type: "http", scheme: "bearer", description: "A Skein partner API key (sk_part_…)." },
+      adminKey: { type: "http", scheme: "bearer", description: "An admin key (its SHA-256 listed in ADMIN_KEY_HASHES). It manages keys and buys nothing." },
+    },
     schemas: {
       Error: {
         type: "object",
@@ -150,6 +153,48 @@ export const OPENAPI = {
         summary: "The public spend ledger",
         description: "All-time totals: verdicts, upstream spend, receipts, miners; revenueOwedUsdc (Telegraph answers at the floor, ABSTAIN included), revenueSettledUsdc (x402, gross), refundsOwedUsdc and refundsSentUsdc. Stability, abstain causes, byDay (verdicts and upstream spend per UTC day) and minersByCheck (distinct miners paid per check) cover the last 30 days (windowDays). recent: the 10 latest verdicts; latestDecided: the latest that is not ABSTAIN (or null).",
         responses: { "200": { description: "Totals" } },
+      },
+    },
+    "/v1/keys/challenge": {
+      post: {
+        summary: "Start a self-serve key sign-in: the message a wallet signs",
+        description:
+          "Body { address }. Returns { address, nonce, message, expiresAt }. Sign `message` with the wallet (EIP-191 personal_sign; no transaction, no gas) and send it to POST /v1/keys within 10 minutes. 403 SELF_SERVE_OFF when self-serve keys are turned off (SELF_SERVE_KEYS=off).",
+        responses: { "201": { description: "The challenge" }, "400": error, "403": error, "429": error },
+      },
+    },
+    "/v1/keys": {
+      post: {
+        summary: "Get a self-serve partner key for a signed challenge",
+        description:
+          "Body { nonce, signature, name? }. A challenge is used once. Returns the key once ({ key, id, name, wallet, plan: 'self', dailyCapUsdc, replaced }); Skein keeps only its SHA-256. One self-serve key per wallet: signing in again revokes the previous one. Each self-serve key has a daily cap on upstream spend (SELF_SERVE_DAILY_CAP_USDC, default 0.5), and all of them together share SELF_SERVE_TOTAL_DAILY_USDC (default 3) a UTC day; past it, their uncached verdicts get 429.",
+        responses: { "201": { description: "The key, shown once" }, "400": error, "401": error, "403": error, "429": error },
+      },
+    },
+    "/v1/admin/keys": {
+      get: {
+        summary: "Every key: name, plan, wallet, cap, today's spend, revocation (never the key or its hash)",
+        security: [{ adminKey: [] }],
+        responses: { "200": { description: "{ selfServe, keys }" }, "401": error, "403": error },
+      },
+      post: {
+        summary: "Create a partner key: body { name, kind: agent | team | contract, dailyCapUsdc }; the key is shown once",
+        security: [{ adminKey: [] }],
+        responses: { "201": { description: "The key, shown once" }, "400": error, "401": error, "403": error },
+      },
+    },
+    "/v1/admin/keys/{id}": {
+      post: {
+        summary: "Change a key's daily cap: body { dailyCapUsdc } (0 to 100). A seeded key's cap is set by SEED_CONSUMERS instead",
+        security: [{ adminKey: [] }],
+        responses: { "200": { description: "{ id, dailyCapUsdc }" }, "400": error, "401": error, "404": error, "409": error },
+      },
+    },
+    "/v1/admin/keys/{id}/revoke": {
+      post: {
+        summary: "Revoke a key. Final: a revoked key can never be restored (make a new one)",
+        security: [{ adminKey: [] }],
+        responses: { "200": { description: "{ id, revokedAt, final: true }" }, "400": error, "401": error, "404": error, "409": error },
       },
     },
     "/v1/webhooks": {

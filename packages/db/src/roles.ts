@@ -31,6 +31,8 @@ export const PRIVILEGES: Record<string, Priv[]> = {
   kv: ["SELECT", "INSERT", "UPDATE"],
   alert_state: ["SELECT", "INSERT", "UPDATE"],
   heartbeats: ["SELECT", "INSERT", "UPDATE"],
+  // Self-serve sign-in challenges: each used once, then deleted.
+  key_challenges: ["SELECT", "INSERT", "DELETE"],
   // Operational, pruned on a schedule.
   events: ["SELECT", "INSERT", "DELETE"],
   error_log: ["SELECT", "INSERT", "DELETE"],

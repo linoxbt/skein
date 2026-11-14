@@ -152,3 +152,43 @@ export function shared<T>(key: string, fn: () => Promise<T>, ttlMs = 10_000): Pr
 }
 export const sharedStatus = () => shared("status", getStatus);
 export const sharedLedger = () => shared("ledger", getLedger);
+
+// Keys: self-serve (a wallet signs in) and admin (an admin key manages every key).
+export interface IssuedKey {
+  key: string;
+  id: string;
+  name: string;
+  plan: string;
+  dailyCapUsdc: number;
+  wallet?: string;
+  replaced?: boolean;
+  kind?: string;
+}
+const post = (body: unknown, key?: string): RequestInit => ({
+  method: "POST",
+  headers: { "content-type": "application/json", ...(key ? { authorization: `Bearer ${key}` } : {}) },
+  body: JSON.stringify(body),
+});
+export const keyChallenge = (address: string) => call<{ address: string; nonce: string; message: string; expiresAt: string }>("/v1/keys/challenge", post({ address }));
+export const claimKey = (nonce: string, signature: string, name?: string) => call<IssuedKey>("/v1/keys", post({ nonce, signature, ...(name ? { name } : {}) }));
+
+export interface AdminKeyRow {
+  id: string;
+  name: string;
+  kind: string;
+  plan: string;
+  wallet: string | null;
+  dailyCapUsdc: number;
+  spentTodayUsdc: number;
+  seeded: boolean;
+  revokedAt: string | null;
+  createdAt: string;
+}
+export interface AdminKeys {
+  selfServe: { enabled: boolean; dailyCapUsdc: number; totalDailyUsdc: number; spentTodayUsdc: number };
+  keys: AdminKeyRow[];
+}
+export const adminKeys = (admin: string) => call<AdminKeys>("/v1/admin/keys", { headers: { authorization: `Bearer ${admin}` } });
+export const adminCreateKey = (admin: string, b: { name: string; kind: string; dailyCapUsdc: number }) => call<IssuedKey>("/v1/admin/keys", post(b, admin));
+export const adminSetCap = (admin: string, id: string, dailyCapUsdc: number) => call<{ id: string; dailyCapUsdc: number }>(`/v1/admin/keys/${id}`, post({ dailyCapUsdc }, admin));
+export const adminRevoke = (admin: string, id: string) => call<{ id: string; revokedAt: string }>(`/v1/admin/keys/${id}/revoke`, post({}, admin));

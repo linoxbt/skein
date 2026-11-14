@@ -393,6 +393,19 @@ export const alertState = pgTable("alert_state", {
   detail: text("detail"),
 });
 
+/**
+ * Sign-in challenges for self-serve keys (POST /v1/keys/challenge): the
+ * message a wallet signs to get its key. Each is used once (deleted when
+ * claimed) and expires after a few minutes.
+ */
+export const keyChallenges = pgTable("key_challenges", {
+  nonce: text("nonce").primaryKey(),
+  address: text("address").notNull(),
+  message: text("message").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: createdAt(),
+});
+
 /** The last run of each scheduled job (probe, backup), so a job that stops is noticed. */
 export const heartbeats = pgTable("heartbeats", {
   name: text("name").primaryKey(),
