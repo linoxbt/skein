@@ -194,7 +194,7 @@ function ConsoleInner() {
     ev.preventDefault();
     // A browser cannot pay: without a key, say how to buy instead of sending a request that can only come back 402.
     if (!form.key.trim()) {
-      setError("A paid verdict needs a partner key here. Request one (free during the hackathon), or pay per verdict from your own code: see the note under the key field. Nothing was bought.");
+      setError("A paid verdict needs a key here. Get one with your wallet at /keys (free during the hackathon), or pay per verdict from your own code: see the note under the key field. Nothing was bought.");
       setPhase("refused");
       return;
     }
@@ -327,9 +327,9 @@ function ConsoleInner() {
             </label>
             {!form.key ? (
               <p className="font-mono text-[12px] leading-relaxed text-muted">
-                No key? The quote is free, as is every verdict page. To buy one:{" "}
-                <a className="text-thread underline underline-offset-4" href={KEY_REQUEST}>request a partner key</a> (free during the hackathon), or pay 0.25 USDC a verdict
-                with no account, through Telegraph or x402, from your own code (<Link className="text-thread underline underline-offset-4" href="/tutorial#telegraph">how</Link>).
+                No key? <Link className="text-thread underline underline-offset-4" href="/keys">Get one with your wallet</Link> in a few seconds (free during the hackathon), or{" "}
+                <a className="text-thread underline underline-offset-4" href={KEY_REQUEST}>request a partner key</a> with a higher cap. The quote is free, as is every verdict
+                page; you can also pay per verdict with no key, through Telegraph or x402, from your own code (<Link className="text-thread underline underline-offset-4" href="/tutorial#telegraph">how</Link>).
               </p>
             ) : null}
             <QuoteBox quote={currentQuote} pending={!!quoteKey && !currentQuote} required={policyDoc?.policy.required ?? []} />

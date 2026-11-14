@@ -137,6 +137,7 @@ export function Nav() {
               ["/policies", "Policies"],
               ["/docs", "Integrate"],
               ["/tutorial", "Tutorial"],
+              ["/keys", "Get an API key"],
             ].map(([href, l]) => (
               <Link key={href} href={href!} className="display border-b border-edge py-4 text-[40px]">
                 {l}
