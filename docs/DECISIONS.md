@@ -769,6 +769,19 @@ finding cites is the sha256 of those two digests joined by a newline, so it can
 be recomputed from Treasury's files. The Nov 11 snapshot's sha256 stays in
 `SHIPPED_SDN_SNAPSHOTS`, so verdicts that cite it still replay.
 
+**L42. A paid Telegraph ask decided without its verdict is recovered, not
+rewritten.** The node rebuilds a miner's answer from the intent's label and
+reason fields, so Desk's first Telegraph purchase (Nov 14) came back without
+its verdict id and went to an analyst as `TELEGRAPH_NO_VERDICT`, although Skein
+had sealed a verdict for it. The node keeps its own public record of every paid
+answer (`/engine/v1/signal/{hash}`). On each run the Desk agent reads the
+verdict id from that record, provided the record is for the miner it paid. It
+reads the verdict (free) and checks it is for the application's token. It then
+stores the decision that verdict gives as `recovered`, beside the first
+decision, which stays as written. Nothing is asked or paid again. A record that
+does not check out is noted and tried again after an hour. Since PR #35 the SDK
+reads the same record during the ask, so new purchases should not need this.
+
 ## Spec deviations recorded by the audit
 
 - **No OpenTelemetry traces (spec §15).** Errors go to Sentry and `error_log`,

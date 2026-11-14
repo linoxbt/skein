@@ -1120,6 +1120,13 @@ export function createApp(service: VerdictService) {
       .from(schema.x402Payments)
       .where(eq(schema.x402Payments.status, "settled"));
     const recent = await db.select({ id: schema.verdicts.id, verdict: schema.verdicts.verdict, createdAt: schema.verdicts.createdAt }).from(schema.verdicts).orderBy(desc(schema.verdicts.createdAt)).limit(10);
+    // The latest verdict that decided something (APPROVE, REJECT or ESCALATE): the site features it, and says how many ABSTAINs came since.
+    const [latestDecided] = await db
+      .select({ id: schema.verdicts.id, verdict: schema.verdicts.verdict, createdAt: schema.verdicts.createdAt })
+      .from(schema.verdicts)
+      .where(ne(schema.verdicts.verdict, "ABSTAIN"))
+      .orderBy(desc(schema.verdicts.createdAt))
+      .limit(1);
     // Stability: the same token under the same policy, decided again within 7
     // days, should get the same answer. Consecutive pairs of answered
     // (non-ABSTAIN) verdicts, grouped by the later one's engine.
@@ -1197,6 +1204,7 @@ export function createApp(service: VerdictService) {
       byDay: [...byDay.values()].map((d) => ({ day: d.day, verdicts: d.verdicts, upstreamUsdc: usdc(d.upstreamUusdc) })),
       minersByCheck: Object.fromEntries(perCheck.map((r) => [r.check, Number(r.n)])),
       recent,
+      latestDecided: latestDecided ?? null,
     };
   });
   app.get("/v1/ledger", async (c) => {

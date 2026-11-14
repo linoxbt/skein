@@ -83,6 +83,8 @@ export interface Ledger {
   receipts: number;
   minersUsed: number;
   recent: { id: string; verdict: string; createdAt: string }[];
+  /** The latest verdict that is not ABSTAIN (newer API builds; null when there is none). */
+  latestDecided?: { id: string; verdict: string; createdAt: string } | null;
   /** The same mix over rolling windows (absent on older API builds). */
   last24h?: Record<string, number>;
   last72h?: Record<string, number>;

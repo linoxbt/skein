@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Lead, Section } from "@skein/ui";
 import { Stripes } from "@skein/ui";
 import { paidLabel, receiptHref, short, SOURCE_LABEL, usd, VCOLOR } from "@/lib/client";
-import { CHAINS, columnOf, type Application } from "@/lib/types";
+import { CHAINS, columnOf, current, type Application } from "@/lib/types";
 
 const SKEIN_WEB = process.env.NEXT_PUBLIC_SKEIN_WEB_URL ?? "https://skeinlabs.site";
 const COLUMN_LABEL = { incoming: "Incoming", shortlist: "Shortlisted", analyst: "Analyst queue", declined: "Declined" } as const;
@@ -42,7 +42,8 @@ export default function ApplicationPage() {
     };
   }, [id]);
 
-  const d = a?.decision;
+  const d = a ? current(a) : undefined;
+  const first = a?.recovered ? a.decision : undefined;
   return (
     <>
       <section className="relative overflow-hidden bg-bg">
@@ -76,6 +77,13 @@ export default function ApplicationPage() {
                 {d.verdict ?? "Refused"}
               </div>
               <p className="statement mt-4 max-w-4xl text-[24px] text-[#c9d1d6] md:text-[34px]">{d.summary}</p>
+              {a?.recovered && first ? (
+                <p className="mt-6 max-w-3xl font-mono text-[13px] leading-relaxed text-muted">
+                  Recovered {new Date(a.recovered.at).toLocaleString()}. The paid answer came back without its verdict id ({first.refusal?.code ?? "no verdict"}), so the
+                  agent first sent it to an analyst. It then read the verdict id from the Telegraph node&apos;s public record of that answer and read the verdict itself. Nothing was
+                  asked or paid again, and the first decision is kept as written.
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -121,6 +129,7 @@ export default function ApplicationPage() {
                       : d.rail === "apiKey" ? "a Skein partner key" : "nothing (refused)",
                   ],
                   ["receipt", d.receiptHash ? short(d.receiptHash, 10) : d.rail === "apiKey" ? "upstream receipts are in the verdict's bill of materials" : "—", d.receiptHash ? receiptHref(a!.id, d) : undefined],
+                  ...(first ? ([["first decision", `${first.summary} (${new Date(first.at).toLocaleString()})`]] as [string, string][]) : []),
                   ["network", d.network ?? (d.rail === "telegraph" ? "Telegraph testnet" : "—")],
                   ["list price", d.listPriceUsdc ? usd(d.listPriceUsdc) : "—"],
                 ] as [string, string, string?][]
