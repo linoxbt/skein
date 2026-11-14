@@ -15,7 +15,16 @@ const META_HEADER = "x-skein-verdict-meta";
  * page's metadata needs no second request to the API.
  */
 export async function middleware(req: NextRequest) {
-  const id = req.nextUrl.pathname.split("/")[2] ?? "";
+  // Paths are lowercase. A phone that capitalises what is typed (/Admin, /Keys)
+  // lands on the page, not on a 404.
+  const path = req.nextUrl.pathname;
+  if (/[A-Z]/.test(path)) {
+    const url = req.nextUrl.clone();
+    url.pathname = path.toLowerCase();
+    return NextResponse.redirect(url, 308);
+  }
+  if (!path.startsWith("/v/")) return NextResponse.next();
+  const id = path.split("/")[2] ?? "";
   let missing = !/^vrd_[a-z0-9]{6,40}$/.test(id);
   let meta: string | null = null;
   if (!missing) {
@@ -50,4 +59,5 @@ export async function middleware(req: NextRequest) {
   }
 }
 
-export const config = { matcher: "/v/:id*" };
+// Verdict pages, and any other page path with a capital letter (not build assets or files, whose names are case-sensitive).
+export const config = { matcher: ["/v/:id*", "/((?!_next/|api/|.*\\.)[^/]*[A-Z].*)"] };
