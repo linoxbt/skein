@@ -4,6 +4,10 @@
 # set in the Netlify UI, not here. docs/RUNBOOK.md has the deploy steps.
 [build]
   command = "cd ../.. && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @skein/web... build"
+  # Build when the app, any workspace package it bundles, or the lockfile changed.
+  # (Netlify's default only diffs the base directory, so an SDK fix was skipped.)
+  # Exit 0 skips the build; a failing diff (no cached ref) builds.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../../packages ../../pnpm-lock.yaml ../../package.json"
   publish = ".next"
 
 [build.environment]
