@@ -661,6 +661,7 @@ repository rather than a public issue.
 | [Guides](docs/guides/README.md) | Purchaser wallet, miner registration, labelled evaluation set |
 | [Mainnet](docs/MAINNET.md) | What changes before real money |
 | [Submission](docs/SUBMISSION.md) | Telegraph Season II submission answers |
+| [Hackathon rules map](docs/HACKATHON.md) | Tracks, missions, judging and submission, and where Skein stands |
 | [Demo films](docs/demo/README.md) | The narrated film and the plain screen walkthrough |
 
 ---
