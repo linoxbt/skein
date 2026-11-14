@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * One run of the agent: the intake files fresh launches (DESK_AUTO_DAILY a
  * day), then every open application is settled within a time budget. On
  * Netlify the scheduled function starts the background function instead
- * (netlify/functions/desk-agent-background.mts); this route, its fallback,
+ * (netlify/agent/desk-agent-background.mts, bundled at build); this route, its fallback,
  * hands over to it on the Telegraph rail when it can, because a request
  * function can be stopped mid-ask, after paying. Elsewhere (next start), or
  * when no background function answers, it does the work itself.
