@@ -58,6 +58,16 @@ export interface ApiConfig {
   selfRegistrationIds: string[];
   /** Pay-per-verdict on POST /v1/verdicts without a partner key; off unless X402_PAY_TO is set. */
   x402?: X402Config;
+  /** SHA-256 hashes of admin keys: they manage partner keys (/v1/admin/keys) and buy nothing. */
+  adminKeyHashes: string[];
+  /** Self-serve keys: a wallet signs in and gets one (POST /v1/keys). */
+  selfServe: {
+    enabled: boolean;
+    /** Each self-serve key's daily cap on upstream spend. */
+    capUusdc: number;
+    /** What every self-serve key together may spend upstream in a UTC day. */
+    totalDailyUusdc: number;
+  };
 }
 
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -136,6 +146,12 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     revokedKeyHashes: (env.REVOKED_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
     eventRetentionDays: num(env.EVENT_RETENTION_DAYS, 7),
     selfRegistrationIds: (env.SKEIN_SELF_REGISTRATION_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    adminKeyHashes: (env.ADMIN_KEY_HASHES ?? "").split(",").map((h) => h.trim().toLowerCase()).filter((h) => /^[0-9a-f]{64}$/.test(h)),
+    selfServe: {
+      enabled: env.SELF_SERVE_KEYS !== "off",
+      capUusdc: usdc(env.SELF_SERVE_DAILY_CAP_USDC, 0.5),
+      totalDailyUusdc: usdc(env.SELF_SERVE_TOTAL_DAILY_USDC, 3),
+    },
     ...(() => {
       const x = x402FromEnv(env);
       return x ? { x402: x } : {};

@@ -306,6 +306,20 @@ database.
   evidence tables and, with `DATABASE_URL`, checks production has not lost
   rows. Run it monthly and after any change to the backup job.
 
+## API keys
+
+- **Self-serve** (<https://skeinlabs.site/keys>): a wallet signs a one-time
+  message (no transaction) and gets one key, plan `self`. Signing again
+  revokes that wallet's previous key. Each has `SELF_SERVE_DAILY_CAP_USDC`
+  (0.5) of upstream spend a day, and all of them share
+  `SELF_SERVE_TOTAL_DAILY_USDC` (3). Turn it off with `SELF_SERVE_KEYS=off`.
+- **Admin** (<https://skeinlabs.site/admin>): with the admin key (its SHA-256
+  in `ADMIN_KEY_HASHES`), list every key with today's spend, create partner
+  keys (shown once), change caps, revoke. A seeded key's cap stays in
+  `SEED_CONSUMERS`, which is reapplied on every start.
+- Abuse: revoke the key at /admin; to stop self-serve at once, set
+  `SELF_SERVE_KEYS=off` (a redeploy) or `SELF_SERVE_TOTAL_DAILY_USDC=0`.
+
 ## x402 refunds
 
 An x402 payment is settled before anything is bought (DECISIONS L31), so a
@@ -376,8 +390,13 @@ Rotate in this order, each in its host's secret store, and redeploy:
 1. **Payer keys** (`PURCHASER_PRIVATE_KEY`, Desk `DESK_PAYER_KEY`, sniper
    `SNIPER_PAYER_KEY`): create a new burner, deposit, switch, then withdraw
    what is left in the old escrow.
-2. **Partner keys**: issue a new one (`scripts/issue-partner-key.mjs`), add the
-   old hash to `REVOKED_KEY_HASHES`. Revocation is final.
+2. **Partner keys**: create a new one and revoke the old one at
+   <https://skeinlabs.site/admin> (the admin key), or for a seeded key issue a
+   new one (`scripts/issue-partner-key.mjs`) and add the old hash to
+   `REVOKED_KEY_HASHES`. Revocation is final.
+   **The admin key**: make a new one (`node -e` with 24 random bytes, prefix
+   `sk_admin_`), put its SHA-256 in `ADMIN_KEY_HASHES` (comma-separated, so the
+   old one can stay until the new one works), then remove the old hash.
 3. **`SKEIN_ATTESTATION_KEY`**: new key, publish the new attester address
    (it appears in `/v1/status`), update `SKEIN_ATTESTER` on the sniper. Old
    verdicts keep their stored signatures from the old key.

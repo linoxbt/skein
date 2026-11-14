@@ -18,6 +18,7 @@ import { acquireFlight, releaseFlight, SharedRateLimiter, type Limiter } from ".
 import { OPENAPI } from "./openapi";
 import { refuseUnsafeUrl } from "./safeurl";
 import { contextHash, FAILED_MESSAGE, flightKey, normaliseContext, type Consumer, type Refusal, type RunOutcome, type VerdictEvent, type VerdictService } from "./service";
+import { registerKeyRoutes, SELF_PLAN, selfServeSpentToday } from "./keys";
 import { bomObject, verdictObject } from "./views";
 import { sealSecret, WEBHOOK_TOLERANCE_SEC } from "./webhooks";
 import { checkPayment, decodePayment, Facilitator, PaymentError, paymentKey, paymentResponse, requirements, type PaymentPayload, type PaymentRequirements } from "./x402";
@@ -390,6 +391,11 @@ export function createApp(service: VerdictService) {
     }
     if ((await service.spentTodayUusdc({ consumerId: consumer.id })) >= consumer.dailyCapUusdc) {
       return new ApiError(429, "RATE_LIMITED", "this key's daily cap is reached", undefined, { "Retry-After": String(secondsToUtcMidnight(now())) });
+    }
+    if (consumer.plan === SELF_PLAN && (await selfServeSpentToday(service, now())) >= config.selfServe.totalDailyUusdc) {
+      return new ApiError(429, "RATE_LIMITED", "self-serve keys share a daily budget, and it is spent for today; request a partner key, or try again tomorrow (UTC)", undefined, {
+        "Retry-After": String(secondsToUtcMidnight(now())),
+      });
     }
     return null;
   };
@@ -1502,6 +1508,8 @@ export function createApp(service: VerdictService) {
     if (out.kind === "failed") return abstain("VERDICT_FAILED", FAILED_MESSAGE);
     return answer(out.id, false);
   });
+
+  registerKeyRoutes(app, { service, config, now, limit, limiter, ip });
 
   return app;
 }

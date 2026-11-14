@@ -50,6 +50,8 @@ export interface ServiceDeps {
 export interface Consumer {
   id: string;
   dailyCapUusdc: number;
+  /** partner, self (a self-serve key: shares SELF_SERVE_TOTAL_DAILY_USDC), x402. */
+  plan?: string;
 }
 
 export interface StartRequest {
