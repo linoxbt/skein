@@ -5,20 +5,23 @@
 # rail DESK_PAYER=telegraph and DESK_PAYER_KEY (the other settings are listed
 # in lib/desk.ts). docs/RUNBOOK.md has the deploy steps.
 #
-# Functions (netlify/functions, found by convention, no settings needed here):
+# Functions (netlify/functions, found by convention):
 #   desk-tick              scheduled every minute; starts the background agent
 #   desk-agent-background  the agent's run: intake, then every open application
 #                          (a background function, up to 15 minutes, so a paid
-#                          Telegraph ask is never cut off)
+#                          Telegraph ask is never cut off). Its source is
+#                          netlify/agent/desk-agent-background.mts; the build
+#                          (pnpm build:functions) bundles it, with the workspace
+#                          SDK, telegraph and engine code, into one .mjs here.
 [build]
   command = "cd ../.. && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @skein/desk... build"
   publish = ".next"
 
-# The functions import workspace packages whose exports point at TypeScript
-# source (@skeinlabs/sdk -> src/index.ts). Netlify's default packager copies
-# them as they are, and Node cannot load .ts at run time, so every background
-# run failed with ERR_MODULE_NOT_FOUND (Nov 14). esbuild bundles and compiles
-# them into each function.
+# The agent imports workspace packages whose exports point at TypeScript
+# source (@skeinlabs/sdk -> src/index.ts). Netlify's packager left them as
+# imports, even with node_bundler = "esbuild", and Node cannot load .ts at run
+# time: every background run failed with ERR_MODULE_NOT_FOUND (Nov 14). So the
+# build bundles the agent into a self-contained file first (see above).
 [functions]
   node_bundler = "esbuild"
 

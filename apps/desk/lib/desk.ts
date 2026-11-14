@@ -82,7 +82,7 @@ export const PER_IP_DAILY_LIMIT = Number(process.env.DESK_DAILY_PER_IP ?? 5);
 /** True on Netlify's runtime (the same test the store uses to pick its backend). */
 export const onNetlify = () => "Netlify" in globalThis || !!process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY === "true";
 
-/** The background function that runs the agent on Netlify (netlify/functions/desk-agent-background.mts). */
+/** The background function that runs the agent on Netlify (netlify/agent/desk-agent-background.mts, bundled into netlify/functions by `pnpm build:functions`). */
 export const BACKGROUND_AGENT_PATH = "/.netlify/functions/desk-agent-background";
 
 /**

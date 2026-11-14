@@ -21,3 +21,5 @@ next-env.d.ts
 desk.cron
 *secrets*.md
 .env*.local
+# Built from netlify/agent by `pnpm build:functions` (one self-contained file).
+apps/desk/netlify/functions/desk-agent-background.mjs
