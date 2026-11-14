@@ -187,6 +187,8 @@ describe("POST /miner/verdict (the Telegraph dispatcher)", () => {
     expect(v).toMatchObject({ verdict: "APPROVE", verdict_code: 1, cached: false });
     expect(typeof v.confidence).toBe("number");
     expect(v.bom.root).toMatch(/^0x[0-9a-f]{64}$/);
+    // The node keeps only the YAML's label and reason fields (risk_level, summary): the id rides in the summary.
+    expect(v.summary).toContain(`[verdict ${v.id}]`);
   });
 
   it("never buys an intent in its own family, so a request can never route back to Skein", async () => {

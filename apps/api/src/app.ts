@@ -1412,7 +1412,10 @@ export function createApp(service: VerdictService) {
         risk_score: riskScore(v.verdict, v.riskBps),
         signals: [...reasons.map((r) => r.detail), ...(v.openRisks as string[]).map((r) => `open: ${r}`)],
         confidence: v.confidenceBps / 10_000,
-        summary: v.summary,
+        // The node rebuilds a FRAUD_RISK_GENERAL answer from the YAML's label and reason fields
+        // (risk_level, summary) and drops the rest, so the verdict id rides in the summary too:
+        // a caller reads it from there, or from the signal record on the node.
+        summary: `${v.summary} [verdict ${v.id}]`,
         reasons: reasons.map((r) => ({ code: r.code, ...(r.check ? { check: r.check } : {}), detail: r.detail })),
         open_risks: v.openRisks,
         verdict_code: v.verdictCode,
@@ -1430,7 +1433,8 @@ export function createApp(service: VerdictService) {
     const abstain = async (code: string, detail: string, extra: Record<string, unknown> = {}) => {
       await owed(code, { code, ...(typeof extra.pending_id === "string" ? { runId: extra.pending_id } : {}) });
       return c.json({
-        verdict: "ABSTAIN", risk_level: "MEDIUM", risk_score: riskScore("ABSTAIN", 0), signals: [detail], confidence: 0, summary: `Abstained: ${detail}`,
+        verdict: "ABSTAIN", risk_level: "MEDIUM", risk_score: riskScore("ABSTAIN", 0), signals: [detail], confidence: 0,
+        summary: `Abstained: ${detail}${typeof extra.pending_id === "string" ? ` [pending ${extra.pending_id}]` : ""}`,
         reasons: [{ code, detail }], open_risks: [], verdict_code: 0, risk_bps: 0, confidence_bps: 0, bom_root: null, cached: false,
         disclaimer: "Risk evidence, not investment advice.", ...extra,
       });

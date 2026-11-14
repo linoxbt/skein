@@ -50,7 +50,7 @@ export function subjectText(s: Subject): string {
  */
 export type Payer =
   | { kind: "apiKey"; key: string }
-  | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string; routed?: boolean; expectedMinerIds?: readonly string[]; strictContext?: boolean }
+  | { kind: "telegraph"; client: TelegraphAsker; minerId?: string; intent?: string; routed?: boolean; expectedMinerIds?: readonly string[]; strictContext?: boolean; /** The node whose signal records hold each answer; default: the client's network. */ nodeUrl?: string }
   | { kind: "x402"; account: X402Account; network: X402Network; payTo: string; asset?: string; maxUsdc?: number };
 
 export type PayerByRail = { [K in Payer["kind"]]: Extract<Payer, { kind: K }> };
@@ -172,6 +172,38 @@ export interface FailurePayment {
 }
 
 /** Every API error, with the API's code (BUDGET_TOO_LOW, RATE_LIMITED, …) or an SDK code. */
+/**
+ * The miner's own answer for a paid ask, read back from the node's public
+ * signal record (GET /engine/v1/signal/{hash}): its verdict id or pending id.
+ * Free, and tried a few times because the node indexes a signal a moment after
+ * it answers. Only an answer recorded for one of Skein's miners is used.
+ */
+async function signalAnswer(
+  payer: { client: unknown; nodeUrl?: string },
+  signalHash: string,
+  expected: ReadonlySet<string>,
+  fetchImpl: typeof fetch,
+): Promise<{ id?: string; pending?: string }> {
+  const node = (payer.nodeUrl ?? (payer.client as { network?: { nodeUrl?: string } }).network?.nodeUrl)?.replace(/\/$/, "");
+  if (!node || !/^0x[0-9a-fA-F]{64}$/.test(signalHash)) return {};
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 1_500));
+    try {
+      const res = await fetchImpl(`${node}/engine/v1/signal/${signalHash}`, { signal: AbortSignal.timeout(5_000) });
+      if (!res.ok) continue;
+      const body = (await res.json()) as { payload?: { subnet_id?: unknown; response?: { id?: unknown; pending_id?: unknown } } };
+      const p = body.payload;
+      if (!p || (p.subnet_id !== undefined && !expected.has(String(p.subnet_id)))) return {};
+      const id = typeof p.response?.id === "string" ? p.response.id : undefined;
+      const pending = typeof p.response?.pending_id === "string" ? p.response.pending_id : undefined;
+      if (id || pending) return { ...(id ? { id } : {}), ...(pending ? { pending } : {}) };
+    } catch {
+      // try again
+    }
+  }
+  return {};
+}
+
 export class SkeinError extends Error {
   constructor(
     readonly code: string,
@@ -554,8 +586,14 @@ export class Skein<R extends Rail = DefaultRail> {
     try {
       // The miner's JSON, either as the result itself or wrapped once by the node.
       const raw = (out.response.result ?? {}) as { id?: string; pending_id?: string; verdict?: string; reasons?: unknown; result?: { id?: string; pending_id?: string } };
-      const id = raw.id ?? raw.result?.id;
-      const pending = raw.pending_id ?? raw.result?.pending_id;
+      // The node rebuilds an intent-shaped answer from the miner YAML's label and
+      // reason fields (risk_level, summary) and drops the rest, ids included. Skein
+      // tags its summary "[verdict vrd_…]" (or "[pending …]"); failing that, the
+      // signal record on the node holds the miner's whole answer.
+      const tagged = (kind: string) => JSON.stringify(raw).match(new RegExp(`\\[${kind} (vrd_[a-z0-9]+)\\]`))?.[1];
+      let id = raw.id ?? raw.result?.id ?? tagged("verdict");
+      let pending = raw.pending_id ?? raw.result?.pending_id ?? tagged("pending");
+      if (!id && !pending && payment.signalHash) ({ id, pending } = await signalAnswer(payer, payment.signalHash, expected, this.fetch));
       let v: VerdictObject;
       if (!id && pending) {
         // The miner answered before its verdict was sealed (its deadline); the verdict is still being made.

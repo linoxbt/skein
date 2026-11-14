@@ -330,6 +330,40 @@ describe("Telegraph payer edge cases", () => {
     expect(err).toMatchObject({ code: "TELEGRAPH_TIMEOUT", payment: { amountUsdc: 0.15, billing: "unknown", receiptHash: null, minerId: SKEIN_MINER_ID } });
   });
 
+  it("reads the verdict id from an intent-shaped answer: the summary tag, or the node's signal record", async () => {
+    // The node rebuilds a FRAUD_RISK_GENERAL answer from the YAML's label and reason fields
+    // (risk_level, summary) and drops the id, as it did on Nov 14 for Desk's first ask.
+    const token = tok();
+    const sealed = await skein().verdict({ subject: { chainId: 8453, token } });
+    const signal = `0x${"5e".repeat(32)}`;
+    const shaped = (summary: string) => ({
+      ask: async () => ({ ok: true as const, response: { miner_id: SKEIN_MINER_ID, signal_hash: signal, result: { risk_level: "MEDIUM", summary } }, receipt: { receipt_hash: `0x${"ab".repeat(32)}` }, amountUusdc: 250_000, durationMs: 1 }),
+    });
+    // 1. Skein tags its summary with the id.
+    const tagged = await skein({ payer: { kind: "telegraph", client: shaped(`Approved. [verdict ${sealed.id}]`) } }).verdict({ subject: { chainId: 8453, token } });
+    expect(tagged.id).toBe(sealed.id);
+    expect(tagged.payment).toMatchObject({ rail: "telegraph", amountUsdc: 0.25, signalHash: signal });
+    // 2. No tag: the signal record on the node holds the miner's whole answer.
+    const base = inProcess();
+    const lookups: string[] = [];
+    const viaNode: typeof fetch = async (input, init) => {
+      const url = String(input);
+      if (url.startsWith("https://node.test/")) {
+        lookups.push(url);
+        return new Response(JSON.stringify({ payload: { subnet_id: SKEIN_MINER_ID, response: { id: sealed.id } } }), { headers: { "content-type": "application/json" } });
+      }
+      return base(input, init);
+    };
+    const fromSignal = await skein({ fetch: viaNode, payer: { kind: "telegraph", client: shaped("Approved."), nodeUrl: "https://node.test" } }).verdict({ subject: { chainId: 8453, token } });
+    expect(fromSignal.id).toBe(sealed.id);
+    expect(lookups).toEqual([`https://node.test/engine/v1/signal/${signal}`]);
+    // 3. A signal recorded for another miner is not used: the ask stays paid, with no verdict.
+    const stranger: typeof fetch = async (input, init) =>
+      String(input).startsWith("https://node.test/") ? new Response(JSON.stringify({ payload: { subnet_id: "999", response: { id: sealed.id } } })) : base(input, init);
+    const err = await skein({ fetch: stranger, payer: { kind: "telegraph", client: shaped("Approved."), nodeUrl: "https://node.test" } }).verdict({ subject: { chainId: 8453, token } }).catch((e) => e);
+    expect(err).toMatchObject({ code: "TELEGRAPH_NO_VERDICT", payment: { amountUsdc: 0.25, billing: "paid" } });
+  });
+
   it("waits for a verdict the miner was still making at its deadline", async () => {
     const token = tok();
     const started = (await skein().submit({ subject: { chainId: 8453, token } })) as { id: string };
