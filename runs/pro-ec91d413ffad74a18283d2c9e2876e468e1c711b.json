@@ -1,0 +1,112 @@
+{
+  "caseId": "pro-ec91d413ffad74a18283d2c9e2876e468e1c711b",
+  "importedFrom": "vrd_mwbcy3kg4b2g1x734r4c",
+  "boughtAt": "2026-11-11T00:05:22.123Z",
+  "policyRef": "agent-pretrade@0.2.0",
+  "wallMs": 2991,
+  "verdict": {
+    "findings": [
+      {
+        "check": "holder_count",
+        "status": "ERROR",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7302"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "adapterVersion": "0.1.0"
+      },
+      {
+        "check": "sanctions",
+        "status": "ERROR",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "evidence": {
+          "minerId": "9002"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "adapterVersion": "0.3.0"
+      },
+      {
+        "check": "wash_trading",
+        "status": "ERROR",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7378"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "adapterVersion": "0.3.0"
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "ERROR",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "geckoterminal.com",
+        "evidence": {
+          "minerId": "72006"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "adapterVersion": "0.4.0"
+      },
+      {
+        "check": "contract_audit",
+        "status": "ERROR",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "gopluslabs.io",
+        "evidence": {
+          "minerId": "200001"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "adapterVersion": "0.5.0"
+      }
+    ],
+    "decision": {
+      "verdict": "ABSTAIN",
+      "coverageBps": 0
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "amountUusdc": 0,
+      "durationMs": 2065
+    },
+    {
+      "check": "holder_count",
+      "amountUusdc": 0,
+      "durationMs": 299
+    },
+    {
+      "check": "liquidity_depth",
+      "amountUusdc": 0,
+      "durationMs": 398
+    },
+    {
+      "check": "sanctions",
+      "amountUusdc": 0,
+      "durationMs": 1925
+    },
+    {
+      "check": "wash_trading",
+      "amountUusdc": 0,
+      "durationMs": 944
+    }
+  ]
+}
