@@ -53,6 +53,15 @@ function telegraphFromEnv(maxUsdcPerCall: number): TelegraphSkein | null {
   return (wrap) => new Skein({ apiUrl: SKEIN_API_URL, payer: { kind: "telegraph", client: wrap(client), intent, ...(minerId ? { minerId } : {}) }, maxUsdcPerCall, timeoutMs });
 }
 
+/** The Telegraph node (TELEGRAPH_NODE_URL, else the testnet's). */
+function nodeUrl(): string | undefined {
+  try {
+    return networkFromEnv().nodeUrl;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function deskDeps(overrides: Partial<AgentDeps> = {}): Promise<AgentDeps> {
   const maxUsdcPerCall = num(process.env.DESK_MAX_USDC_PER_CALL, 0.3);
   return {
@@ -62,6 +71,7 @@ export async function deskDeps(overrides: Partial<AgentDeps> = {}): Promise<Agen
     rail: payerRail(),
     webUrl: SKEIN_WEB_URL,
     telegraphFormDaily: num(process.env.DESK_TELEGRAPH_FORM_DAILY, 1),
+    nodeUrl: nodeUrl(),
     ...overrides,
   };
 }

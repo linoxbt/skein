@@ -42,12 +42,24 @@ export function LiveNumbers() {
   );
 }
 
+/**
+ * The verdict the landing page shows: the latest one that decided something
+ * (APPROVE, REJECT or ESCALATE), with a line to the newest verdict when that
+ * one abstained, so a run of ABSTAINs on fresh launches does not hide what a
+ * decision looks like, and is not hidden either.
+ */
 export function LatestVerdict() {
   const [id, setId] = useState<string | null | undefined>(undefined);
+  const [newest, setNewest] = useState<{ id: string; verdict: string; createdAt: string } | null>(null);
   const [down, setDown] = useState(false);
   useEffect(() => {
     sharedLedger()
-      .then((l) => setId(l.recent[0]?.id ?? null))
+      .then((l) => {
+        const head = l.recent[0] ?? null;
+        const featured = l.latestDecided ?? head;
+        setId(featured?.id ?? null);
+        setNewest(head && featured && head.id !== featured.id ? head : null);
+      })
       .catch(() => {
         setDown(true);
         setId(null);
@@ -71,6 +83,13 @@ export function LatestVerdict() {
   }
   return (
     <div className="space-y-8">
+      {newest ? (
+        <p className="font-mono text-[12px] text-muted">
+          The latest verdict that decided something. Newer ones abstained: a required check had nothing to read yet (the latest,{" "}
+          <Link href={`/v/${newest.id}`} className="underline underline-offset-4">{newest.id}</Link>, {new Date(newest.createdAt).toUTCString()}). Why they abstain is on the{" "}
+          <Link href="/ledger" className="underline underline-offset-4">ledger</Link>.
+        </p>
+      ) : null}
       <VerdictHeader v={v} />
       <GraphWithPanel state={graph} verdictId={v.id} />
       <Link href={`/v/${v.id}`} className="btn btn-ghost">Open the full verdict</Link>

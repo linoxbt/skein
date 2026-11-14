@@ -18,11 +18,25 @@ interface LogLine {
 }
 
 const KEY_STORE = "skein.partnerKey";
+const KEY_REQUEST = "https://github.com/linoxbt/skein/issues/new?template=partner-key.yml";
+/** Shown until the API's list arrives; then the newest dex-list version replaces it. */
+const DEFAULT_POLICY = "dex-list@0.2.0";
+
+/** The newest version of a policy in the API's list, by semver. */
+function newestOf(ps: readonly PolicySummary[], id: string): string | null {
+  const num = (v: string) => v.split(".").map((x) => Number(x) || 0);
+  const mine = ps.filter((p) => p.id === id).sort((a, b) => {
+    const [x, y] = [num(a.version), num(b.version)];
+    for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return (y[i] ?? 0) - (x[i] ?? 0);
+    return 0;
+  });
+  return mine[0]?.ref ?? null;
+}
 const label = (c: string) => c.replace(/_/g, " ");
 
 function ConsoleInner() {
   const [policies, setPolicies] = useState<PolicySummary[]>([]);
-  const [form, setForm] = useState({ chainId: 8453, token: "", policy: "dex-list@0.1.0", social: "", repo: "", budget: "", key: "" });
+  const [form, setForm] = useState({ chainId: 8453, token: "", policy: DEFAULT_POLICY, social: "", repo: "", budget: "", key: "" });
   const [graph, setGraph] = useState<GraphState>(EMPTY);
   const [log, setLog] = useState<LogLine[]>([]);
   const [verdictId, setVerdictId] = useState<string | null>(null);
@@ -36,7 +50,14 @@ function ConsoleInner() {
   const params = useSearchParams();
 
   useEffect(() => {
-    listPolicies().then(setPolicies).catch(() => {});
+    listPolicies()
+      .then((ps) => {
+        setPolicies(ps);
+        // Start on the newest listing policy (what the API uses when none is named), unless one was already picked.
+        const newest = newestOf(ps, "dex-list");
+        if (newest) setForm((f) => (f.policy === DEFAULT_POLICY ? { ...f, policy: newest } : f));
+      })
+      .catch(() => {});
     try {
       const k = sessionStorage.getItem(KEY_STORE);
       if (k) setForm((f) => ({ ...f, key: k }));
@@ -171,6 +192,12 @@ function ConsoleInner() {
 
   async function run(ev: React.FormEvent) {
     ev.preventDefault();
+    // A browser cannot pay: without a key, say how to buy instead of sending a request that can only come back 402.
+    if (!form.key.trim()) {
+      setError("A paid verdict needs a partner key here. Request one (free during the hackathon), or pay per verdict from your own code: see the note under the key field. Nothing was bought.");
+      setPhase("refused");
+      return;
+    }
     // Refused here, before any request: a malformed budget, or one below what the required checks are quoted at.
     if (!budget.ok) {
       setError(budget.error);
@@ -266,7 +293,7 @@ function ConsoleInner() {
               <label className="block">
                 <span className={label2}>policy</span>
                 <select className="field" value={form.policy} onChange={(e) => setForm({ ...form, policy: e.target.value })}>
-                  {(policies.length ? policies.map((p) => p.ref) : ["dex-list@0.1.0"]).map((r) => (
+                  {(policies.length ? policies.map((p) => p.ref) : [DEFAULT_POLICY]).map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
@@ -296,8 +323,15 @@ function ConsoleInner() {
             </label>
             <label className="block">
               <span className={label2}>partner key</span>
-              <input className="field" type="password" required autoComplete="off" placeholder="sk_part_…" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} />
+              <input className="field" type="password" autoComplete="off" placeholder="sk_part_…" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} />
             </label>
+            {!form.key ? (
+              <p className="font-mono text-[12px] leading-relaxed text-muted">
+                No key? The quote is free, as is every verdict page. To buy one:{" "}
+                <a className="text-thread underline underline-offset-4" href={KEY_REQUEST}>request a partner key</a> (free during the hackathon), or pay 0.25 USDC a verdict
+                with no account, through Telegraph or x402, from your own code (<Link className="text-thread underline underline-offset-4" href="/tutorial#telegraph">how</Link>).
+              </p>
+            ) : null}
             <QuoteBox quote={currentQuote} pending={!!quoteKey && !currentQuote} required={policyDoc?.policy.required ?? []} />
             <p id="budget-note" className={`font-mono text-[12px] ${!budget.ok ? "text-reject" : budget.warning ? "text-knot" : "text-muted"}`} aria-live="polite">
               {!budget.ok ? budget.error : (budget.warning ?? "Budget caps upstream spend. Leave it empty for the policy's own cap.")}

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { VerdictObject } from "@skeinlabs/sdk";
 import { deskDeps, SKEIN_API_URL, SKEIN_WEB_URL } from "@/lib/desk";
-import { CHAINS, EXCHANGE } from "@/lib/types";
+import { CHAINS, current, EXCHANGE } from "@/lib/types";
 import { PrintButton } from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export default async function MemoPage({ params }: { params: Promise<{ id: strin
   if (!/^app_[a-z0-9]{6,32}$/.test(id)) notFound();
   const a = (await (await deskDeps()).store.get(id))?.value;
   if (!a) notFound();
-  const d = a.decision;
+  const d = current(a);
   const v = d?.verdictId ? await getJson<VerdictObject>(`/v1/verdicts/${encodeURIComponent(d.verdictId)}`) : null;
   const bom = d?.verdictId ? await getJson<{ lines: BomLine[] }>(`/v1/verdicts/${encodeURIComponent(d.verdictId)}/bom`) : null;
   const lines = bom?.lines ?? [];
@@ -148,6 +148,15 @@ export default async function MemoPage({ params }: { params: Promise<{ id: strin
                 {d.rail === "telegraph" ? (
                   <>
                     <div className={row}><span className="text-ink-2">Bought from</span><span className="break-all font-mono">Telegraph miner {d.minerId ?? "unknown"}</span></div>
+                    {a.recovered ? (
+                      <div className={row}>
+                        <span className="text-ink-2">Verdict id</span>
+                        <span>
+                          The paid answer came back without it; read on {new Date(a.recovered.at).toUTCString()} from the node&apos;s public record of that answer. Nothing was asked or paid
+                          again. First recorded decision: {a.decision?.summary}.
+                        </span>
+                      </div>
+                    ) : null}
                     <div className={row}>
                       <span className="text-ink-2">Desk&apos;s receipt</span>
                       <span className="break-all font-mono">

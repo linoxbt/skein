@@ -8,16 +8,17 @@ import { CHAINS } from "@/lib/types";
 export default function Log() {
   const { state, error } = useApplications(15_000);
   const rows = (state?.applications ?? []).filter((a) => a.decision).sort((a, b) => b.decision!.at.localeCompare(a.decision!.at));
-  const paid = rows.reduce((s, a) => s + a.decision!.paidUsdc, 0);
+  const telegraphRows = rows.filter((a) => a.decision!.rail === "telegraph");
+  const paid = telegraphRows.reduce((s, a) => s + a.decision!.paidUsdc, 0);
   const upstream = rows.reduce((s, a) => s + a.decision!.upstreamUsdc, 0);
-  const viaTelegraph = rows.filter((a) => a.decision!.rail === "telegraph").length;
+  const viaTelegraph = telegraphRows.length;
   return (
     <>
       <PageHero
         compact
         tag="Decision log"
         title={<>Every decision,<br />with its receipt.</>}
-        sub="What the agent did, why, what it paid and what evidence stood behind it. Append-only: a decision is never rewritten."
+        sub="What the agent did, why, what it paid and what evidence stood behind it. Append-only: a decision is never rewritten; a verdict recovered later is added beside it."
         background={<Stripes seed={33} className="opacity-30" />}
       />
       <Section tone="dark" inner="pb-16 pt-6">
@@ -26,9 +27,9 @@ export default function Log() {
             [
               ["decisions", state ? String(rows.length) : "—"],
               ["bought through Telegraph", state ? String(viaTelegraph) : "—"],
-              ["desk paid in total", state ? usd(paid) : "—"],
-              // What the Desk itself paid, averaged over every decision; the board shows Skein's list price instead.
-              ["desk paid per decision", rows.length ? usd(paid / rows.length) : "—"],
+              ["desk paid through Telegraph", state ? usd(paid) : "—"],
+              // Per Telegraph purchase: partner-key decisions cost the Desk nothing and would dilute it.
+              ["desk paid per Telegraph verdict", viaTelegraph ? usd(paid / viaTelegraph) : "—"],
             ] as [string, string][]
           ).map(([k, v], i) => (
             <div key={k} className="min-w-0 border-t border-edge pt-4">
@@ -69,7 +70,10 @@ export default function Log() {
                         <Link href={`/a/${a.id}`} className="underline-offset-4 hover:underline">{a.project}</Link>
                         <div className="font-mono text-[12px] text-ink-2">{CHAINS[a.subject.chainId]} · {short(a.subject.token)}{a.source === "agent" ? ` · ${SOURCE_LABEL.agent}` : ""}</div>
                       </td>
-                      <td className="py-4 pr-4 font-mono text-[12px] uppercase tracking-wider" style={{ color: d.verdict ? VCOLOR_LIGHT[d.verdict] : undefined }}>{d.verdict ?? d.refusal?.code}</td>
+                      <td className="py-4 pr-4 font-mono text-[12px] uppercase tracking-wider" style={{ color: d.verdict ? VCOLOR_LIGHT[d.verdict] : undefined }}>
+                        {d.verdict ?? d.refusal?.code}
+                        {a.recovered ? <div className="text-[11px] normal-case tracking-normal text-ink-2">recovered · first: {a.recovered.was}</div> : null}
+                      </td>
                       <td className="py-4 pr-4">{d.action}</td>
                       <td className="py-4 pr-4 font-mono text-[13px]">
                         {paidLabel(d)}

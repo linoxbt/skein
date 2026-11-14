@@ -1,9 +1,9 @@
 import { simulatedApi } from "@skein/api/simulated";
 import { Skein, type TelegraphAsker } from "@skeinlabs/sdk";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { MAX_UNPAID_ATTEMPTS, process, receive, tick, type AgentDeps, type TelegraphSkein } from "../lib/agent";
+import { MAX_UNPAID_ATTEMPTS, process, receive, recover, RECOVERY_RETRY_MS, tick, type AgentDeps, type TelegraphSkein } from "../lib/agent";
 import { memoryStore, Store, summarise, type KV } from "../lib/store";
-import type { Application } from "../lib/types";
+import { current, type Application } from "../lib/types";
 import { subjectFromWire } from "./subject";
 
 let api: Awaited<ReturnType<typeof simulatedApi>>;
@@ -92,7 +92,7 @@ describe("H5: what a Telegraph ask cost is never lost", () => {
     expect(first).toMatchObject({ status: "received", rail: "telegraph", attempts: 1 });
     expect(first.decision).toBeUndefined();
     expect((await d.store.kv.get<{ code: string }>("agent/last_error"))?.value.code).toBe("TELEGRAPH_NETWORK");
-    expect(await tick(d)).toEqual({ open: 0, decided: 1 });
+    expect(await tick(d)).toEqual({ open: 0, decided: 1, recovered: 0 });
     expect((await d.store.get(app.id))!.value.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, action: "shortlist" });
     expect(a.asks).toBe(2);
   });
@@ -144,7 +144,7 @@ describe("H9: a paid ask survives the function that made it", () => {
     expect(first).toMatchObject({ status: "buying", ask: { billing: "paid" } });
     expect(first.decision).toBeUndefined();
     fail = false;
-    expect(await tick(d)).toEqual({ open: 0, decided: 1 });
+    expect(await tick(d)).toEqual({ open: 0, decided: 1, recovered: 0 });
     expect((await d.store.get(app.id))!.value.decision).toMatchObject({ rail: "telegraph", paidUsdc: 0.15, action: "shortlist" });
     expect(a.asks).toBe(1);
   });
@@ -229,5 +229,84 @@ describe("M20: the board index heals", () => {
     await d.store.kv.create("index", [{ id: "app_ghost00001", receivedAt: new Date().toISOString(), source: "form", project: "Ghost", subject: { chainId: 8453, token: tok() }, status: "received" }]);
     await tick(d);
     expect(await d.store.list()).toEqual([]);
+  });
+});
+
+describe("a paid ask decided without its verdict id is recovered from the node's record", () => {
+  const SIGNAL = `0x${"5a".repeat(32)}`;
+  /** The node's public signal record, as GET /engine/v1/signal/{hash} serves it. */
+  const node = (payload: unknown) => {
+    const calls: string[] = [];
+    const f = (async (i: RequestInfo | URL) => {
+      calls.push(String(i));
+      return String(i) === `https://node.test/engine/v1/signal/${SIGNAL}` ? new Response(JSON.stringify({ payload })) : new Response("{}", { status: 404 });
+    }) as typeof fetch;
+    return { f, calls };
+  };
+  const noId = () => asker(() => paidAnswer({ verdict: "ABSTAIN", risk_level: "ABSTAIN", summary: "Abstained" }));
+
+  it("appends the verdict's decision beside the first one, without asking or paying again", async () => {
+    const a = noId();
+    const token = tok();
+    const verdictId = await mint({ chainId: 8453, token });
+    const rec = node({ subnet_id: 845301, response: { id: verdictId } });
+    const d = deps({ telegraph: tg(a.client), nodeUrl: "https://node.test", fetch: rec.f });
+    const app = await receive(d, { project: "Dropped Id", chainId: 8453, token }, "agent");
+    const first = (await process(d, app.id))!;
+    expect(first.decision).toMatchObject({ refusal: { code: "TELEGRAPH_NO_VERDICT" }, signalHash: SIGNAL });
+
+    expect(await tick(d)).toEqual({ open: 0, decided: 0, recovered: 1 });
+    const done = (await d.store.get(app.id))!.value;
+    expect(done.decision).toEqual(first.decision);
+    expect(done.recovered).toMatchObject({ from: "signal-record" });
+    expect(current(done)).toMatchObject({
+      verdictId, rail: "telegraph", paidUsdc: 0.15, billing: "paid", receiptHash: RECEIPT, minerId: "845301", signalHash: SIGNAL,
+      at: first.decision!.at, seconds: first.decision!.seconds,
+    });
+    expect(current(done)!.verdict).not.toBeNull();
+    expect(current(done)!.refusal).toBeUndefined();
+    // The board shows the recovered decision, and says it was recovered.
+    const s = (await d.store.list()).find((x) => x.id === app.id)!;
+    expect(s.decision).toMatchObject({ verdictId });
+    expect(s.recovered).toMatchObject({ was: "TELEGRAPH_NO_VERDICT" });
+
+    // Once recovered, never again; and nothing is asked again.
+    expect(await recover(d, app.id)).toBeNull();
+    expect(await tick(d)).toEqual({ open: 0, decided: 0, recovered: 0 });
+    expect(a.asks).toBe(1);
+    expect(rec.calls).toHaveLength(1);
+  });
+
+  it("uses only a record of the miner that was paid, and waits an hour before trying again", async () => {
+    const a = noId();
+    const token = tok();
+    const verdictId = await mint({ chainId: 8453, token });
+    const rec = node({ subnet_id: 999, response: { id: verdictId } });
+    let now = new Date("2026-11-14T10:00:00Z");
+    const d = deps({ telegraph: tg(a.client), nodeUrl: "https://node.test", fetch: rec.f, now: () => now });
+    const app = await receive(d, { project: "Wrong Miner", chainId: 8453, token }, "agent");
+    await process(d, app.id);
+    await tick(d);
+    const after = (await d.store.get(app.id))!.value;
+    expect(after.recovered).toBeUndefined();
+    expect(after.recoveryTried?.error).toMatch(/not a record of 845301/);
+    await tick(d);
+    expect(rec.calls).toHaveLength(1);
+    now = new Date(now.getTime() + RECOVERY_RETRY_MS + 1);
+    await tick(d);
+    expect(rec.calls).toHaveLength(2);
+  });
+
+  it("refuses a recorded verdict for another token", async () => {
+    const a = noId();
+    const other = await mint({ chainId: 8453, token: tok() });
+    const rec = node({ subnet_id: "845301", response: { id: other } });
+    const d = deps({ telegraph: tg(a.client), nodeUrl: "https://node.test", fetch: rec.f });
+    const app = await receive(d, { project: "Other Token", chainId: 8453, token: tok() }, "agent");
+    await process(d, app.id);
+    expect(await tick(d)).toMatchObject({ recovered: 0 });
+    const after = (await d.store.get(app.id))!.value;
+    expect(after.recovered).toBeUndefined();
+    expect(after.recoveryTried?.error).toMatch(/SUBJECT_MISMATCH/);
   });
 });

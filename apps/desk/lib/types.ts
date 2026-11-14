@@ -89,7 +89,19 @@ export interface Application {
   /** Telegraph asks that failed before any payment was sent; retried on later ticks, up to a limit. */
   attempts?: number;
   decision?: Decision;
+  /**
+   * A verdict found after the decision, for a paid Telegraph ask that came
+   * back without its verdict id: read, free, from the node's public record of
+   * the answer. `decision` stays exactly as it was written; this is appended
+   * beside it, and the ask is never made or paid again.
+   */
+  recovered?: { at: string; from: "signal-record"; decision: Decision };
+  /** The last recovery attempt that found no usable verdict (tried again after RECOVERY_RETRY_MS). */
+  recoveryTried?: { at: string; error: string };
 }
+
+/** The decision that stands: the recovered one, when a verdict was found later, else the one first written. */
+export const current = (a: Pick<Application, "decision" | "recovered">): Decision | undefined => a.recovered?.decision ?? a.decision;
 
 export type Column = "incoming" | "shortlist" | "analyst" | "declined";
 export function columnOf(a: { status: Application["status"]; decision?: { action: Action } }): Column {

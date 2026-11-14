@@ -1,6 +1,7 @@
 import { SkeinError, type Skein, type TelegraphAskOutcomeFail, type TelegraphAskOutcomeOk, type TelegraphAsker, type VerdictObject, type VerdictResult } from "@skeinlabs/sdk";
 import { mutate, type Store, type Summary } from "./store";
 import { CHAINS, EXCHANGE, RULE, type Action, type Application, type AskRecord, type Decision, type Origin } from "./types";
+import { SKEIN_MINER_IDS } from "@skeinlabs/sdk";
 
 /**
  * The Desk agent. It receives a listing application, buys one Skein verdict
@@ -29,6 +30,9 @@ export interface AgentDeps {
   waitMs?: number;
   /** Form and webhook applications a UTC day bought through Telegraph (the rest use the partner key, or wait). Default 1. */
   telegraphFormDaily?: number;
+  /** The Telegraph node, whose public record of each paid answer (/engine/v1/signal/{hash}) recovers a verdict id the answer dropped. */
+  nodeUrl?: string;
+  fetch?: typeof fetch;
 }
 
 export type TelegraphSkein = (wrap: (client: TelegraphAsker) => TelegraphAsker) => Skein;
@@ -444,10 +448,70 @@ async function saveAsk(store: Store, id: string, me: string, rec: AskRecord): Pr
   }
 }
 
-/** Settles everything still open, oldest first, within a time budget. Called by the scheduler only. */
-export async function tick(deps: AgentDeps, budgetMs = 20_000): Promise<{ open: number; decided: number }> {
+/** How long after a recovery attempt that found nothing the next one may run. */
+export const RECOVERY_RETRY_MS = 60 * 60_000;
+
+/** A decision that may still have a verdict to recover: a paid Telegraph ask that came back without its verdict id. */
+export const recoverable = (d: Pick<Decision, "refusal" | "rail" | "signalHash"> | undefined) =>
+  !!d && d.rail === "telegraph" && d.refusal?.code === "TELEGRAPH_NO_VERDICT" && typeof d.signalHash === "string" && /^0x[0-9a-fA-F]{64}$/.test(d.signalHash);
+
+/**
+ * The verdict id the miner answered with, from the node's public record of
+ * the paid answer. Only a record for the miner that was paid (or, when that is
+ * not known, one of Skein's) counts.
+ */
+export async function signalVerdictId(nodeUrl: string, signalHash: string, minerId: string | null | undefined, fetchImpl: typeof fetch = fetch): Promise<string> {
+  const res = await fetchImpl(`${nodeUrl.replace(/\/$/, "")}/engine/v1/signal/${signalHash}`, { signal: AbortSignal.timeout(8_000) });
+  if (!res.ok) throw new Error(`the node has no record of signal ${signalHash} (HTTP ${res.status})`);
+  const body = (await res.json()) as { payload?: { subnet_id?: unknown; response?: { id?: unknown; pending_id?: unknown } } };
+  const p = body.payload;
+  const miners = new Set(minerId ? [minerId] : SKEIN_MINER_IDS);
+  if (!p || !miners.has(String(p.subnet_id))) throw new Error(`signal ${signalHash} is not a record of ${[...miners].join(" or ")}'s answer`);
+  const id = [p.response?.id, p.response?.pending_id].find((x): x is string => typeof x === "string" && VERDICT_ID.test(x));
+  if (!id) throw new Error(`the record of signal ${signalHash} names no verdict`);
+  return id;
+}
+
+/**
+ * Recovers the verdict of a paid ask that was decided without one
+ * (TELEGRAPH_NO_VERDICT): reads the verdict id from the node's record of the
+ * answer, reads the verdict (free), checks it is for this token, and appends
+ * the decision it gives as `recovered`. The first decision is kept as it was;
+ * nothing is asked or paid again. Returns the application when it changed.
+ */
+export async function recover(deps: AgentDeps, id: string): Promise<Application | null> {
+  const read = await deps.store.get(id);
+  if (!read) return null;
+  const a = read.value;
+  const d = a.decision;
+  if (a.status !== "decided" || a.recovered || !recoverable(d)) return null;
+  const now = deps.now?.() ?? new Date();
+  if (a.recoveryTried && now.getTime() - Date.parse(a.recoveryTried.at) < RECOVERY_RETRY_MS) return null;
+  const reader = deps.skein ?? deps.telegraph?.((c) => c) ?? null;
+  if (!reader || !deps.nodeUrl) return null;
+  const rec: AskRecord = {
+    at: d!.at, billing: "paid", amountUsdc: d!.paidUsdc, minerId: d!.minerId ?? null, receiptHash: d!.receiptHash, signalHash: d!.signalHash ?? null, verdictId: null,
+  };
+  let next: Application;
+  try {
+    const verdictId = await signalVerdictId(deps.nodeUrl, d!.signalHash!, d!.minerId, deps.fetch ?? fetch);
+    const outcome = telegraphOutcome(a, await reader.wait(verdictId, { timeoutMs: deps.waitMs ?? 8_000 }), { ...rec, verdictId });
+    if ("refusal" in outcome) throw new Error(`${outcome.refusal.code}: ${outcome.refusal.message}`);
+    // The action and its letter follow the verdict; the time to decide stays the first decision's (the verdict existed by then).
+    const decision: Decision = { ...decide(a, outcome, deps.webUrl, now), at: d!.at, seconds: d!.seconds };
+    next = { ...a, recovered: { at: now.toISOString(), from: "signal-record", decision }, recoveryTried: undefined };
+  } catch (e) {
+    if (e instanceof SkeinError && transient(e)) return null;
+    next = { ...a, recoveryTried: { at: now.toISOString(), error: (e instanceof Error ? e.message : String(e)).slice(0, 300) } };
+  }
+  return (await deps.store.update(next, read.etag)) ? next : null;
+}
+
+/** Settles everything still open, oldest first, within a time budget, then recovers verdicts of paid asks decided without one. Called by the scheduler only. */
+export async function tick(deps: AgentDeps, budgetMs = 20_000): Promise<{ open: number; decided: number; recovered: number }> {
   const started = Date.now();
-  const open = (await deps.store.list()).filter((a) => a.status !== "decided").reverse();
+  const all = await deps.store.list();
+  const open = all.filter((a) => a.status !== "decided").reverse();
   let decided = 0;
   for (const a of open) {
     if (Date.now() - started > budgetMs) break;
@@ -455,5 +519,11 @@ export async function tick(deps: AgentDeps, budgetMs = 20_000): Promise<{ open: 
     const out = await process(deps, a.id, a).catch((e) => (console.error(`agent on ${a.id}:`, e), null));
     if (out?.status === "decided") decided++;
   }
-  return { open: open.length - decided, decided };
+  let recovered = 0;
+  for (const a of all.filter((s) => s.status === "decided" && !s.recovered && recoverable(s.decision))) {
+    if (Date.now() - started > budgetMs) break;
+    const out = await recover(deps, a.id).catch((e) => (console.error(`recovering ${a.id}:`, e), null));
+    if (out?.recovered) recovered++;
+  }
+  return { open: open.length - decided, decided, recovered };
 }

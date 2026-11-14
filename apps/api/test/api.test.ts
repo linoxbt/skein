@@ -164,6 +164,8 @@ describe("read-only routes", () => {
     const l = await j(app.request("/v1/ledger"));
     expect(l).toMatchObject({ verdicts: { APPROVE: 1 }, upstreamSpendUsdc: 0.06, receipts: 6, minersUsed: 6 });
     expect(l.stability).toMatchObject({ byEngine: [] });
+    // The latest verdict that decided something, for the site to feature.
+    expect(l.latestDecided).toMatchObject({ verdict: "APPROVE", id: expect.stringMatching(/^vrd_/) });
     // The /ledger charts: verdicts and spend per UTC day, and distinct miners paid per check.
     expect(l.byDay).toEqual([{ day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), verdicts: { APPROVE: 1 }, upstreamUsdc: 0.06 }]);
     expect(Object.values(l.minersByCheck).reduce((a: number, b) => a + (b as number), 0)).toBe(6);

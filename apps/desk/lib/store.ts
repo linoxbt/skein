@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Application } from "./types";
+import { current as standing, type Application } from "./types";
 
 /** A stored value and the version it was read at; writes name the version they replace. */
 export interface Versioned<T> {
@@ -195,13 +195,16 @@ export type Summary = Pick<Application, "id" | "receivedAt" | "source" | "projec
     NonNullable<Application["decision"]>,
     "at" | "action" | "verdict" | "verdictId" | "summary" | "rail" | "paidUsdc" | "billing" | "listPriceUsdc" | "upstreamUsdc" | "receipts" | "receiptHash" | "minerId" | "signalHash" | "seconds" | "verdictHash" | "refusal"
   >;
+  /** Set when the decision shown was recovered later (see Application.recovered): when, and what the first one said. */
+  recovered?: { at: string; was: string };
 };
 
 export function summarise(a: Application): Summary {
-  const d = a.decision;
+  const d = standing(a);
   return {
     id: a.id, receivedAt: a.receivedAt, source: a.source, project: a.project, subject: a.subject, status: a.status,
     ...(a.origin ? { origin: a.origin.feed } : {}),
+    ...(a.recovered && a.decision ? { recovered: { at: a.recovered.at, was: a.decision.refusal?.code ?? a.decision.summary } } : {}),
     ...(d
       ? {
           decision: {
@@ -273,7 +276,7 @@ export class Store {
    * order), so a card can never stay in the wrong column for good.
    */
   async heal(a: Application, indexed: Summary | undefined): Promise<void> {
-    if (indexed && indexed.status === a.status && !!indexed.decision === !!a.decision) return;
+    if (indexed && indexed.status === a.status && !!indexed.decision === !!a.decision && !!indexed.recovered === !!a.recovered) return;
     await this.reindex(a);
   }
 
