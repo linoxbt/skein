@@ -36,8 +36,20 @@ function Card({ a }: { a: Summary }) {
             {a.status === "buying" ? "buying verdict" : "received"}
           </span>
         )}
-        {d ? <span className="font-mono text-[12px] text-ink-2">{d.seconds}s · {d.rail === "telegraph" ? `Telegraph ${paidLabel(d)}` : `${d.receipts} receipts`}</span> : null}
+        {d ? <span className="font-mono text-[12px] text-ink-2">{d.seconds}s · {d.receipts} receipts</span> : null}
       </div>
+      {d ? (
+        <div className="mt-2 font-mono text-[11px] text-ink-2">
+          {d.rail === "telegraph" ? (
+            <span className="text-thread-deep">bought through Telegraph · {paidLabel(d)}{d.minerId ? ` · miner ${d.minerId}` : ""}</span>
+          ) : d.rail === "apiKey" ? (
+            "partner key · no Telegraph payment"
+          ) : (
+            "nothing bought"
+          )}
+          {a.recovered ? <span> · verdict recovered from the node&apos;s record</span> : null}
+        </div>
+      ) : null}
     </Link>
   );
 }
@@ -46,10 +58,11 @@ export default function Queue() {
   const { state, error } = useApplications();
   const apps = state?.applications ?? [];
   const decided = apps.filter((a) => a.decision);
-  // Cost figures are per real verdict: a refusal bought nothing and would flatter the average.
+  // The Desk's own purchases: verdicts it paid for through Telegraph, machine to machine. Partner-key runs cost the Desk nothing.
+  const viaTelegraph = decided.filter((a) => a.decision?.rail === "telegraph");
+  const paid = viaTelegraph.reduce((s, a) => s + (a.decision?.paidUsdc ?? 0), 0);
+  // Evidence per verdict: only real verdicts count (a refusal bought nothing and would flatter the average).
   const withVerdict = decided.filter((a) => a.decision?.verdict);
-  const paid = decided.reduce((s, a) => s + (a.decision?.paidUsdc ?? 0), 0);
-  const listPrice = withVerdict.reduce((s, a) => s + (a.decision?.listPriceUsdc ?? 0), 0);
   const upstream = withVerdict.reduce((s, a) => s + (a.decision?.upstreamUsdc ?? 0), 0);
   const secs = decided.map((a) => a.decision!.seconds).sort((x, y) => x - y);
   const median = secs.length ? secs[Math.floor(secs.length / 2)]! : null;
@@ -75,10 +88,10 @@ export default function Queue() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
           {(
             [
-              ["applications", state ? String(apps.length) : "—", false],
-              ["decided by the agent", state ? String(decided.length) : "—", false],
-              // Skein's list price; what the Desk itself paid is in the line below and in the log.
-              ["list price per verdict", withVerdict.length ? usd(listPrice / withVerdict.length) : "—", true],
+              ["decided by the agent", state ? `${decided.length}/${apps.length}` : "—", false],
+              ["bought through Telegraph", state ? String(viaTelegraph.length) : "—", false],
+              // What the Desk paid per Telegraph purchase: the price of one Skein verdict on the network.
+              ["desk paid per Telegraph verdict", viaTelegraph.length ? usd(paid / viaTelegraph.length) : "—", true],
               ["median time to decide", median !== null ? `${median}s` : "—", false],
             ] as [string, string, boolean][]
           ).map(([label, value, gold]) => (
@@ -95,7 +108,7 @@ export default function Queue() {
               ? `Agent offline: no ${state.rail === "telegraph" ? "Telegraph payer key" : "Skein key"} is configured, so applications wait in Incoming.`
               : state?.agent === "misconfigured"
                 ? `Agent cannot buy right now (${state.lastError?.code}): applications wait in Incoming and are retried on its next run.`
-                : `Agent online · paying ${state?.rail === "telegraph" ? "through Telegraph escrow on the testnet, with no person involved" : "with a Skein partner key (free during the hackathon)"}${state?.autoDaily ? ` · files up to ${state.autoDaily} fresh launch${state.autoDaily === 1 ? "" : "es"} a day itself` : ""} · the Desk has paid ${usd(paid)} in total · evidence behind each verdict: ${withVerdict.length ? usd(upstream / withVerdict.length) : "—"} of paid Telegraph inputs`}
+                : `Agent online · paying ${state?.rail === "telegraph" ? "through Telegraph escrow on the testnet, with no person involved" : "with a Skein partner key (free during the hackathon)"}${state?.autoDaily ? ` · files up to ${state.autoDaily} fresh launch${state.autoDaily === 1 ? "" : "es"} a day itself` : ""} · the Desk has paid ${usd(paid)} through Telegraph in total · evidence Skein bought behind each verdict: ${withVerdict.length ? usd(upstream / withVerdict.length) : "—"} of paid Telegraph inputs · partner-key verdicts cost the Desk nothing`}
         </p>
       </Section>
 

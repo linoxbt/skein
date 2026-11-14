@@ -148,7 +148,7 @@ export const OPENAPI = {
     "/v1/ledger": {
       get: {
         summary: "The public spend ledger",
-        description: "All-time totals: verdicts, upstream spend, receipts, miners; revenueOwedUsdc (Telegraph answers at the floor, ABSTAIN included), revenueSettledUsdc (x402, gross), refundsOwedUsdc and refundsSentUsdc. Stability, abstain causes, byDay (verdicts and upstream spend per UTC day) and minersByCheck (distinct miners paid per check) cover the last 30 days (windowDays).",
+        description: "All-time totals: verdicts, upstream spend, receipts, miners; revenueOwedUsdc (Telegraph answers at the floor, ABSTAIN included), revenueSettledUsdc (x402, gross), refundsOwedUsdc and refundsSentUsdc. Stability, abstain causes, byDay (verdicts and upstream spend per UTC day) and minersByCheck (distinct miners paid per check) cover the last 30 days (windowDays). recent: the 10 latest verdicts; latestDecided: the latest that is not ABSTAIN (or null).",
         responses: { "200": { description: "Totals" } },
       },
     },

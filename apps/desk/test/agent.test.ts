@@ -83,7 +83,7 @@ describe("the Desk agent", () => {
     expect(first.verdictId).toMatch(/^vrd_/);
     expect(columnOf(first)).toBe("incoming");
     const r = await tick({ ...d, waitMs: 60_000 }, 60_000);
-    expect(r).toEqual({ open: 0, decided: 1 });
+    expect(r).toEqual({ open: 0, decided: 1, recovered: 0 });
     const done = (await d.store.get(app.id))!.value;
     // The sanctions miner hangs: a required check is missing, so ABSTAIN goes to an analyst.
     expect(done.decision).toMatchObject({ action: "analyst", verdict: "ABSTAIN" });
