@@ -8,15 +8,15 @@ Deadline: **December 1, 2026, 23:59 UTC**.
 | Field | Answer |
 |---|---|
 | Project name | Skein |
-| Track | Providers (Skein, registered miner 5137) and Apps & Agents (Skein Desk), disclosed as the same team (spec §1) |
-| Missions | Mission 01 Exchange (listing decisions, signed risk memo); Mission 14 Web3 Native & DeFi (Skein Sniper) |
+| Track | Two entries, disclosed as the same team (rules §1 allows this when each is a distinct contribution): **Miners / Providers** (Skein, registered miner 5137 serving `FRAUD_RISK_GENERAL`) and **Apps & Agents** (Skein Desk) |
+| Missions | Apps & Agents: **Mission 01 Exchange**, through Skein Desk (the mission's "autonomous listings desk": signed listing risk memo with a cost line). Skein Sniper is a second app aimed at **Mission 14 Web3 Native & DeFi** ("rug-proof memecoin sniper"); see "Working apps" for what it does and does not complete yet |
 | Intents bought | SMART_CONTRACT_AUDIT_GENERAL, SANCTIONS_SCREENING_MATCH_GENERAL, TOKEN_HOLDER_COUNT_GENERAL, LIQUIDITY_DEPTH_VERIFY_GENERAL, WASH_TRADING_DETECTION_GENERAL, SOCIAL_BOT_DETECTION_GENERAL, CODE_REVIEW_GENERAL |
 | Intent sold | FRAUD_RISK_GENERAL: miner registration 5137, catalogue id 845301, slug `skein-listing-verdict`, 0.25 USDC an answer |
 | Working link | https://skeinlabs.site (web app), https://desk.skeinlabs.site (listing desk agent), https://api.skeinlabs.site (API) |
 | Repository | https://github.com/linoxbt/skein |
 | GitHub username that starred the bounties repo | `linoxbt` |
 | Team / contact | **TODO (owner): your name and contact before submitting** |
-| Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 48 s, narrated; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`) |
+| Demo video | https://github.com/linoxbt/skein/blob/main/docs/demo/skein-motion.mp4 (3 min 53 s, narrated, live footage; a plain 2 min 33 s screen walkthrough is at `docs/demo/skein-demo.mp4`; a 42 s teaser is `docs/demo/skein-teaser.mp4`) |
 
 ## Short public summary
 
@@ -170,6 +170,16 @@ x402 payments use Base Sepolia.
   simultaneous verdicts on two API instances and real PostgreSQL, with every
   money invariant holding (`docs/LOADTEST.md`). See `docs/RUNBOOK.md`.
 
+## Working apps (rules §8: each app, its missions, what it buys, its outcome)
+
+| App | Mission | Intelligence bought through Telegraph | Outcome | Status |
+|---|---|---|---|---|
+| **Skein Desk** (desk.skeinlabs.site) | 01 Exchange | One `FRAUD_RISK_GENERAL` ask to Skein's miner 845301 per application, paid from Desk's own escrow wallet (0x4d8dc7083f1edA89bec38070E8dAb5630a3e75f3). Skein in turn buys contract audit, sanctions, holder count, liquidity depth, wash trading, social bots and code review from other miners, with a receipt for each. | Each application is shortlisted, declined or sent to an analyst, with a signed listing risk memo, its receipts and its cost. New launches are filed by the agent itself (autonomous intake). | Code live. The Telegraph rail switches on when `DESK_PAYER_KEY` is set on Netlify (owner step); until then Desk pays through the partner-key API. |
+| **Skein Sniper** (sniper feed) | 14 Web3 Native & DeFi | A Skein verdict for every new Base pool before any (paper) trade: contract audit, wash trading, liquidity, holders and sanctions. | No APPROVE, no trade; 360 launches checked and dodged by Nov 13, none bought. | Buys through the partner-key API, not a Telegraph ask, so it does **not** yet show mission 14's required Telegraph purchase. Moving it to the Telegraph rail needs a funded payer key and SDK 0.3.1 (or the workspace SDK). |
+
+Skein itself makes the network purchases behind every verdict: 1,017 paid
+Telegraph receipts from 10 miners by Nov 12 (live at /ledger).
+
 ## Apps & Agents commercial summary
 
 1. **Who it is for.** Exchange and launchpad listing teams, and trading agents
@@ -196,6 +206,27 @@ x402 payments use Base Sepolia.
    - Maintained by the Skein team at https://github.com/linoxbt/skein; issues
      and pull requests are welcome.
 
+## Updates, tutorials and developer activation (rules §6, 20 points)
+
+Link each public update here, with its date (the rules ask for at least three,
+on separate dates: the problem, real progress, a working result). Tag
+@Telegraphprotoc on X and disclose the hackathon and its prizes.
+
+| Date | Where | What it showed |
+|---|---|---|
+| *(owner)* | *(link)* | *(e.g. the launch post in docs/demo/POST.md, with the teaser)* |
+| *(owner)* | *(link)* | |
+| *(owner)* | *(link)* | |
+
+Material that already exists:
+- the tutorial at https://skeinlabs.site/tutorial;
+- the runnable example in `examples/listing-gate`;
+- the SDK and MCP server on npm;
+- the reviewer guide.
+
+Independent use counts only with evidence: someone outside the team
+reproducing a request, filing an issue or integrating. None is claimed yet.
+
 ## Showcase permission
 
 Telegraph may share publicly:
@@ -211,7 +242,8 @@ Buyer introductions: *(yes or no, your choice)*.
 - [ ] Register at https://hackathon.telegraphprotocol.com, using **Register
       for Season II**. It needs your email and a one-time code.
 - [ ] Star https://github.com/telegraphprotocol/bounties while signed in as
-      `linoxbt`.
+      `linoxbt` (required for every track; the form asks for the username).
+- [ ] Post at least three public updates on separate dates and list them above.
 - [ ] Fill in your name and email, and the buyer-introductions answer, above.
 - [ ] Submit through the H2 website by Dec 1, 23:59 UTC, pasting the sections
       above.
