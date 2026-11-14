@@ -14,6 +14,14 @@
   command = "cd ../.. && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @skein/desk... build"
   publish = ".next"
 
+# The functions import workspace packages whose exports point at TypeScript
+# source (@skeinlabs/sdk -> src/index.ts). Netlify's default packager copies
+# them as they are, and Node cannot load .ts at run time, so every background
+# run failed with ERR_MODULE_NOT_FOUND (Nov 14). esbuild bundles and compiles
+# them into each function.
+[functions]
+  node_bundler = "esbuild"
+
 [build.environment]
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
