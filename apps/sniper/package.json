@@ -11,13 +11,13 @@
     "dev": "tsx src/main.ts"
   },
   "dependencies": {
-    "@hono/node-server": "2.1.5",
+    "@hono/node-server": "2.1.8",
     "@skein/errors": "workspace:*",
     "@skeinlabs/sdk": "npm:@skeinlabs/sdk@0.2.0",
-    "hono": "4.13.13",
+    "hono": "4.13.18",
     "pg": "8.23.1",
     "tsx": "4.23.15",
-    "viem": "2.57.5"
+    "viem": "2.57.19"
   },
   "devDependencies": {
     "@skein/api": "workspace:*",

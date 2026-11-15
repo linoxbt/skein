@@ -17,7 +17,7 @@
     "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.9",
+    "@electric-sql/pglite": "0.5.16",
     "@skein/pipeline": "workspace:*",
     "@skein/policies": "workspace:*",
     "@skein/telegraph": "workspace:*",

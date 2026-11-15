@@ -15,7 +15,7 @@
     "tsx": "4.23.15"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.9",
+    "@electric-sql/pglite": "0.5.16",
     "@skein/db": "workspace:*",
     "@types/pg": "8.23.1",
     "drizzle-orm": "0.45.4"
