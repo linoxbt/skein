@@ -21,7 +21,7 @@
     "@skein/api": "workspace:*",
     "@skein/engine": "workspace:*",
     "@skein/telegraph": "workspace:*",
-    "tsup": "8.5.0",
+    "tsup": "9.0.0",
     "typescript": "5.9.3",
     "viem": "2.57.5"
   },
