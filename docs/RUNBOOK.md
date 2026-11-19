@@ -101,6 +101,28 @@ Netlify logs are under the site → Logs → Functions, or Observability.
   3. Fix the guard so it reads the new form, keeping every refusal it makes
      for a payment Skein would actually sign.
 
+### Every purchase fails with `challenge pays 0x… expected the Diamond 0x…`
+
+- **Seen:** Nov 17 to 19, 2026, about 48 hours, unnoticed: the probe's 3-hour
+  window emptied once the sniper had spent its daily checks on failures, and
+  the alarm "recovered". Since then the probe holds an alarm open on an empty
+  window, alerts on `probe:intents` (a required check's 24-hour error rate)
+  and `probe:decided` (no decided verdict for 24 h), the uptime workflow
+  checks `upstreamFailing`, and the API refuses x402 sales while it is set.
+- **Cause that time:** Telegraph redeployed its Diamond (escrow, registry and
+  x402 receiver) to `0x72a70e94…`; the node's 402 paid the new one and the
+  guard, pinned to the old one, refused to sign. Escrow balances do not carry
+  over.
+- **Fix:**
+  1. Confirm the new address on Telegraph's docs (Addresses & Parameters), not
+     from the 402 alone.
+  2. Set `TELEGRAPH_DIAMOND` on the api service (and `TESTNET.diamond` in
+     `packages/telegraph/src/config.ts` for Desk, the sniper and the SDK).
+  3. Deposit on the new Diamond for the purchaser and the Desk payer
+     (`miner/tools.ts deposit`), then check `miner/tools.ts status`
+     (`escrowAvailableUsdc`).
+  4. Recapture the 402 fixtures and run the telegraph tests.
+
 ### Verdicts answer 503 DAILY_CAP_REACHED
 
 - **Cause:** the day's upstream spend reached `DAILY_CAP_USDC`. This is by design.

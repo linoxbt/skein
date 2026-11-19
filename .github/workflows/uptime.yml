@@ -47,6 +47,8 @@ jobs:
           check "API wallet"         https://api.skeinlabs.site/v1/status 200 '"walletAlert":true'
           check "API spend cap"      https://api.skeinlabs.site/v1/status 200 '"capAlert":true'
           check "API errors"         https://api.skeinlabs.site/v1/status 200 '"errorsLastHour":[1-9]'
+          # Every recent upstream purchase failing (the 17 Nov Diamond move went unnoticed for two days).
+          check "API purchases"      https://api.skeinlabs.site/v1/status 200 '"upstreamFailing":"'
           # Watch the watcher: the Railway probe runs every 10 minutes and records each run.
           probe=$(curl -sS -m 20 https://api.skeinlabs.site/v1/status | grep -o '"probeAt":"[^"]*"' | cut -d'"' -f4 || true)
           if [ -z "$probe" ] || [ $(( $(date -u +%s) - $(date -u -d "$probe" +%s) )) -gt 2400 ]; then

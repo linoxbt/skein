@@ -16,7 +16,7 @@ beforeAll(async () => {
 });
 
 /** A fake internet: every service healthy unless `broken` says otherwise. */
-function world(broken: Set<string>, status: Record<string, unknown> = {}, verify: Record<string, unknown> = { ok: true, checks: {}, problems: [] }) {
+function world(broken: Set<string>, status: Record<string, unknown> = {}, verify: Record<string, unknown> = { ok: true, checks: {}, problems: [] }, ledger: Record<string, unknown> = {}) {
   const pushes: { title: string; body: string }[] = [];
   const f = (async (input: string | URL, init?: RequestInit) => {
     const url = String(input);
@@ -26,7 +26,7 @@ function world(broken: Set<string>, status: Record<string, unknown> = {}, verify
     }
     if (broken.has("api") && url.includes("/healthz") && url.includes("api.")) return new Response("down", { status: 502 });
     if (url.endsWith("/v1/status")) return Response.json({ walletAlert: false, capAlert: false, errorsLastHour: 0, payerEscrowUsdc: 108, ofacSnapshot: { fetched: "2026-11-11", ageDays: 1, maxAgeDays: 30, stale: false }, ...status });
-    if (url.endsWith("/v1/ledger")) return Response.json({ recent: [{ id: "vrd_latest" }] });
+    if (url.endsWith("/v1/ledger")) return Response.json({ recent: [{ id: "vrd_latest" }], latestDecided: { id: "vrd_decided", verdict: "REJECT", createdAt: new Date().toISOString() }, ...ledger });
     if (url.endsWith("/v1/verify")) return Response.json(verify);
     if (url.includes("/v/vrd_doesnotexist")) return new Response("nf", { status: 404 });
     if (url.includes("/api/miners/")) return new Response('{"activation_status":"active"}');
@@ -37,7 +37,7 @@ function world(broken: Set<string>, status: Record<string, unknown> = {}, verify
 
 describe("probe", () => {
   it("covers every public service, the escrow, the cap, errors, the miner and the backup", () => {
-    expect(CHECKS.map((c) => c.key)).toEqual(["api", "api-db", "escrow", "cap", "db-role", "errors", "abstain", "purchases", "latency", "ofac", "repro", "web", "web-404", "desk", "sniper", "miner", "backup"]);
+    expect(CHECKS.map((c) => c.key)).toEqual(["api", "api-db", "escrow", "cap", "db-role", "errors", "abstain", "purchases", "latency", "intents", "ofac", "repro", "decided", "web", "web-404", "desk", "sniper", "miner", "backup"]);
   });
 
   it("alerts once when something breaks, stays quiet while it stays broken, and says when it recovers", async () => {
@@ -144,5 +144,44 @@ describe("probe", () => {
     expect(sslFor("postgres://u:p@localhost/db")).toEqual({});
     expect(sslFor("postgres://u:p@db.example.supabase.co:5432/db", undefined)).toEqual({ ssl: true });
     expect(sslFor("postgres://u:localhost@proxy.rlwy.net:1234/db", "PEM")).toEqual({ ssl: { ca: "PEM" } });
+  });
+
+  it("keeps an outage alarm open when the outage empties its window (audit P2: a stopped stream is not a recovery)", async () => {
+    await beat(pg, "backup");
+    const failing = world(new Set(), { quality: { windowHours: 3, verdicts: 12, abstain: 12, abstainFailed: 12, purchases: 48, purchaseErrors: 48 } });
+    const a1 = new Alerter({ url: "https://ntfy.sh/skein-held", service: "skein-probe", db: pg, fetch: failing.f });
+    expect((await runOnce({ ctx: { fetch: failing.f, db: pg, now: Date.now }, alerter: a1, db: pg, retryMs: 1 })).failing.map((x) => x.key).sort()).toEqual(["abstain", "purchases"]);
+    // Traffic stops (a daily quota spent on failures): nothing to judge, so nothing recovers.
+    const empty = world(new Set(), { quality: { windowHours: 3, verdicts: 0, abstain: 0, purchases: 0, purchaseErrors: 0 } });
+    const a2 = new Alerter({ url: "https://ntfy.sh/skein-held", service: "skein-probe", db: pg, fetch: empty.f });
+    const r = await runOnce({ ctx: { fetch: empty.f, db: pg, now: Date.now }, alerter: a2, db: pg, retryMs: 1 });
+    expect(r.held).toEqual(expect.arrayContaining(["abstain", "purchases", "latency"]));
+    expect(empty.pushes.filter((p) => p.title.includes("recovered"))).toEqual([]);
+    const open = await pg.query<{ key: string; failing: boolean }>(`SELECT key, failing FROM alert_state WHERE key IN ('probe:abstain', 'probe:purchases')`);
+    expect(open.rows.every((x) => x.failing)).toBe(true);
+  });
+
+  it("alerts when a required check's purchases fail for a day, and when nothing has been decided for a day", async () => {
+    await beat(pg, "backup");
+    const intents = [
+      { check: "contract_audit", intent: "SMART_CONTRACT_AUDIT_GENERAL", calls24h: 41, errorRate24h: 1 },
+      { check: "sanctions", intent: "SANCTIONS_SCREENING_MATCH_GENERAL", calls24h: 41, errorRate24h: 1 },
+      { check: "social_bots", intent: "SOCIAL_BOT_DETECTION_GENERAL", calls24h: 41, errorRate24h: 1 }, // optional: not judged
+      { check: "liquidity_depth", intent: "LIQUIDITY_DEPTH_VERIFY_GENERAL", calls24h: 3, errorRate24h: 1 }, // too few calls
+    ];
+    const w = world(new Set(), { intents }, undefined, { latestDecided: { id: "vrd_old", verdict: "REJECT", createdAt: new Date(Date.now() - 40 * 3_600_000).toISOString() } });
+    const alerter = new Alerter({ url: "https://ntfy.sh/skein-supply", service: "skein-probe", db: pg, fetch: w.f });
+    const r = await runOnce({ ctx: { fetch: w.f, db: pg, now: Date.now }, alerter, db: pg, retryMs: 1 });
+    expect(r.failing.map((x) => x.key).sort()).toEqual(["decided", "intents"]);
+    const bodies = w.pushes.map((p) => p.body).join("\n");
+    expect(bodies).toContain("contract_audit 100% of 41, sanctions 100% of 41 of purchases failed in 24 h");
+    expect(bodies).not.toContain("social_bots");
+    expect(bodies).toMatch(/no APPROVE, REJECT or ESCALATE for 40\.\d h/);
+
+    // A healthy supply and a recent decision are quiet; no decided verdict ever is held, not failed.
+    const fine = world(new Set(), { intents: [{ check: "contract_audit", calls24h: 41, errorRate24h: 0.05 }] }, undefined, { latestDecided: null });
+    const quiet = await runOnce({ ctx: { fetch: fine.f, db: pg, now: Date.now }, alerter: new Alerter({ url: "https://ntfy.sh/skein-supply2", service: "skein-probe", db: pg, fetch: fine.f }), db: pg, retryMs: 1 });
+    expect(quiet.failing.map((x) => x.key)).toEqual([]);
+    expect(quiet.held).toContain("decided");
   });
 });

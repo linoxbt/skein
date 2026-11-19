@@ -6,6 +6,8 @@ import { createApp, walletState } from "./app";
 import { publishPolicies, snapshotCatalogue } from "./catalog";
 import { configFromEnv, productionProblems } from "./config";
 import { connectForRuntime } from "./db";
+import { schema } from "@skein/db";
+import { count, gte } from "drizzle-orm";
 import { parseSeedConsumers, revokeKeys, seedConsumers } from "./seed";
 import { VerdictService } from "./service";
 import { createReporter } from "@skein/errors";
@@ -81,8 +83,13 @@ const timers = [
     if (n) {
       console.warn(`marked ${n} run(s) lost (stopped before finishing)`);
       await alerts.raise("lost-runs", `${n} verdict run(s) stopped before finishing and were marked lost`);
-    }
+    } else await alerts.clear("lost-runs", "no verdict run has been lost since");
   }, "lost-run sweep"),
+  // The unhandled-error alert (raised by app.onError) clears once an hour passes without one, across replicas.
+  every(5 * 60_000, async () => {
+    const [errs] = await db.select({ n: count() }).from(schema.errorLog).where(gte(schema.errorLog.at, new Date(Date.now() - 3_600_000)));
+    if ((errs?.n ?? 0) === 0) await alerts.clear("unhandled-error", "no unhandled API error in the last hour");
+  }, "error alert"),
   // Spec §8: stop-and-alert at 80% of the day's cap (verdicts stop at GLOBAL_CAP_STOP_PCT, 80 by default).
   every(5 * 60_000, async () => {
     const spent = await service.spentTodayUusdc();

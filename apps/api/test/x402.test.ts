@@ -343,3 +343,31 @@ describe("x402 on POST /v1/verdicts", () => {
     expect(() => x402FromEnv({ X402_PAY_TO: PAY_TO, SKEIN_PRICE_USDC: "0.3", X402_PRICE_USDC: "0.25" })).toThrow(/differs/);
   });
 });
+
+describe("x402 while upstream buying is down (audit P2)", () => {
+  it("refuses an uncached verdict before settling when the last purchases all failed, and says so on /v1/status", async () => {
+    const down = await simulatedApi({ fast: true, env: {} });
+    const x402 = x402FromEnv({ X402_PAY_TO: PAY_TO, X402_PAYER_PER_MINUTE: "1000", X402_PAYER_DAILY_MAX: "1000" })!;
+    const downApp = createApp(new VerdictService({ ...down.service.deps, config: { ...down.config, x402 }, facilitatorFetch: fakeFacilitator }));
+    await down.db.insert(schema.verdictRuns).values({ id: "vrd_down", channel: "api", subjectChainId: 8453, subjectToken: "0x00000000000000000000000000000000000ab4ff", policyId: "dex-list", policyVersion: "0.2.0", contextHash: "none", status: "done" });
+    const mismatch = "mismatch: challenge pays 0x72a7… expected the Diamond 0x3624…";
+    for (let i = 0; i < 10; i++) {
+      await down.db.insert(schema.purchases).values({ verdictId: "vrd_down", check: "contract_audit", intent: "SMART_CONTRACT_AUDIT_GENERAL", pinned: true, rail: "escrow", amountUusdc: 0, durationMs: 5, attempts: 1, sourceGroup: "goplus", adapterVersion: "1", billing: "none", error: mismatch });
+    }
+    const unpaid = await downApp.request("/v1/verdicts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subject: { chainId: 8453, token: "0x00000000000000000000000000000000000ab4fe" } }) });
+    const t = ((await unpaid.json()) as { accepts: PaymentRequirements[] }).accepts[0]!;
+    const settles = calls.filter((x) => x.path === "settle").length;
+    const res = await downApp.request("/v1/verdicts", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-payment": await pay(t) },
+      body: JSON.stringify({ subject: { chainId: 8453, token: "0x00000000000000000000000000000000000ab4fe" } }),
+    });
+    expect(res.status).toBe(503);
+    const err = ((await res.json()) as { error: { code: string; message: string } }).error;
+    expect(err.code).toBe("UPSTREAM_UNAVAILABLE");
+    expect(err.message).toMatch(/last 10 all failed .*nothing was charged/);
+    expect(calls.filter((x) => x.path === "settle").length).toBe(settles);
+    const status = (await (await downApp.request("/v1/status")).json()) as { upstreamFailing: string | null };
+    expect(status.upstreamFailing).toMatch(/upstream purchases are failing/);
+  });
+});

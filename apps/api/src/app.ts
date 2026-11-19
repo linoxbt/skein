@@ -691,6 +691,10 @@ export function createApp(service: VerdictService) {
     const v = await facilitator!.verify(payment, terms);
     if (!v.isValid) return needPayment(c, terms, `the facilitator refused the payment: ${v.invalidReason ?? "invalid"}`);
     if (!(await service.findCached(a.subject, a.record.policy, a.ctxHash))) {
+      // Never sell a verdict that can only ABSTAIN: while every recent purchase is failing (a moved
+      // escrow contract, a node outage), an uncached x402 run is refused before the payment settles.
+      const failing = await upstreamFailing();
+      if (failing) throw new ApiError(503, "UPSTREAM_UNAVAILABLE", `${failing} (nothing was charged)`, undefined, { "Retry-After": "600" });
       const refusal = (await precheck(a.consumer)) ?? planRefusal(a.record, a.budgetUsdcMax);
       if (refusal) throw new ApiError(refusal.status, refusal.code, `${refusal.message} (nothing was charged)`, refusal.details, refusal.headers);
     }
@@ -1010,6 +1014,23 @@ export function createApp(service: VerdictService) {
    * and verdict latency (p50/p95 of bought verdicts) for the p95 alert.
    */
   const QUALITY_WINDOW_H = 3;
+  /**
+   * Whether upstream buying is down right now: the last UPSTREAM_SAMPLE purchases
+   * of the last 6 hours all failed. A reason, or null. Checked before taking an
+   * x402 payment, so nobody pays for a verdict that can only ABSTAIN.
+   */
+  const UPSTREAM_SAMPLE = 10;
+  const upstreamFailing = memo(60_000, async (): Promise<string | null> => {
+    const since = new Date(now().getTime() - 6 * 3_600_000);
+    const recent = await db
+      .select({ error: schema.purchases.error })
+      .from(schema.purchases)
+      .where(gte(schema.purchases.createdAt, since))
+      .orderBy(desc(schema.purchases.createdAt))
+      .limit(UPSTREAM_SAMPLE);
+    if (recent.length < UPSTREAM_SAMPLE || recent.some((r) => r.error === null)) return null;
+    return `upstream purchases are failing: the last ${UPSTREAM_SAMPLE} all failed (${(recent[0]!.error ?? "").slice(0, 160)}); verdicts would only ABSTAIN`;
+  });
   const quality = memo(30_000, async () => {
     const since = new Date(now().getTime() - QUALITY_WINDOW_H * 3_600_000);
     const [v] = await db
@@ -1076,6 +1097,8 @@ export function createApp(service: VerdictService) {
       // Uncached verdicts stop (503) while this is set; cached ones are still served.
       paused: paused !== null,
       pausedReason: paused,
+      // Set while every recent purchase is failing: x402 sales of uncached verdicts are refused meanwhile.
+      upstreamFailing: await upstreamFailing().catch(() => null),
       catalogueFetchedAt: service.catalogue.fetchedAt,
       intents: Object.entries(CHECK_INTENTS).map(([check, intent]) => {
         const miners = intent ? service.catalogue.minersByIntent[intent] ?? [] : [];
