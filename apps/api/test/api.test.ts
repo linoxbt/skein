@@ -24,7 +24,7 @@ const KEY = "sk_part_test_key";
 const MINER_KEY = "miner-secret";
 
 const ANSWERS: Record<string, unknown> = {
-  "200001": { result: { [TOKEN]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
+  "200001": { result: { [TOKEN]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0", creator_address: "0x5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f" } } },
   "78021": { on_list: false },
   "7373": { liquidity_usd: 4_500_000 },
   "9002": { holders_count: 120_000 },

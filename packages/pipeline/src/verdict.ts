@@ -23,6 +23,26 @@ import type { PoolResolver } from "./pool";
 import { buildRequest, forCandidate, withDepthMarker, type VerdictContext } from "./requests";
 
 /** One upstream attempt, success or failure: a bill-of-materials line. */
+const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+const ZERO = /^0x0{40}$/;
+/**
+ * The deployer (creator) and owner a contract audit names for the token, from
+ * a GoPlus-style answer: { result: { [token]: { creator_address, owner_address } } }.
+ * Untrusted data: only well-formed, non-zero addresses are kept.
+ */
+export function auditPeople(raw: unknown, token: string): { deployer?: string; owner?: string } {
+  const result = raw && typeof raw === "object" ? ((raw as { result?: unknown }).result ?? raw) : null;
+  if (!result || typeof result !== "object") return {};
+  const entries = result as Record<string, unknown>;
+  const row = entries[token.toLowerCase()] ?? entries[token] ?? Object.values(entries).find((v) => v && typeof v === "object" && "creator_address" in (v as object));
+  if (!row || typeof row !== "object") return {};
+  const pick = (v: unknown) => (typeof v === "string" && ADDRESS.test(v) && !ZERO.test(v) ? v.toLowerCase() : undefined);
+  const r = row as { creator_address?: unknown; owner_address?: unknown };
+  const deployer = pick(r.creator_address);
+  const owner = pick(r.owner_address);
+  return { ...(deployer ? { deployer } : {}), ...(owner && owner !== deployer ? { owner } : {}) };
+}
+
 export interface PurchaseRecord {
   check: Check;
   intent: string;
@@ -380,12 +400,43 @@ export async function runVerdict(input: VerdictInput, deps: VerdictDeps): Promis
     if (!r.routed && res.finding?.status === "UNKNOWN" && res.next < r.cands.length) retries.push({ pp: r.pp, built: r.built, cands: r.cands, next: res.next });
   };
 
-  const settled = await Promise.allSettled(ready.map(buyOne));
+  // Sanctions screens the people behind the token (spec section 4), not the
+  // contract: with no deployer from the caller, it waits for the contract audit,
+  // which names the token's creator and owner, and screens those (audit R1).
+  // With no deployer known at all, sanctions is not answered rather than
+  // passed on a screen of the token's own address.
+  const sanctions = ctx.deployer ? undefined : ready.find((r) => r.pp.check === "sanctions");
+  const first = sanctions ? ready.filter((r) => r !== sanctions) : ready;
+  const tasks = first.map(buyOne);
+  if (sanctions) {
+    const auditAt = first.findIndex((r) => r.pp.check === "contract_audit");
+    tasks.push(
+      (async () => {
+        if (auditAt >= 0) await tasks[auditAt]!.catch(() => {});
+        const audit = purchases.find((x) => x.check === "contract_audit" && x.rawResult !== undefined);
+        const people = auditPeople(audit?.rawResult, subject.token);
+        if (!people.deployer) return skip("sanctions", "no_deployer_known");
+        ctx.deployer = people.deployer;
+        const hits = screenAddresses({ deployer: people.deployer, ...(people.owner ? { owner: people.owner } : {}) });
+        if (hits.length) {
+          const f = sdnFinding(hits);
+          unpurchased.push(f);
+          emit({ type: "finding", finding: f });
+          return;
+        }
+        const built = buildRequest("sanctions", sanctions.pp.intent, subject, ctx);
+        if (!built.ok) return skip("sanctions", built.note);
+        await buyOne({ ...sanctions, built: built.req });
+      })(),
+    );
+  }
+  const order0 = sanctions ? [...first, sanctions] : ready;
+  const settled = await Promise.allSettled(tasks);
   for (const [i, r] of settled.entries()) {
     // buyOne records its own failures; a rejection here is a bug or a failed
     // onPurchase write. Keep the check visible as an ERROR rather than lose the verdict.
-    if (r.status === "rejected" && !purchases.some((x) => x.check === ready[i]!.pp.check)) {
-      skip(ready[i]!.pp.check, "internal_error");
+    if (r.status === "rejected" && !purchases.some((x) => x.check === order0[i]!.pp.check) && !unpurchased.some((f) => f.check === order0[i]!.pp.check)) {
+      skip(order0[i]!.pp.check, "internal_error");
     }
   }
 

@@ -782,6 +782,20 @@ decision, which stays as written. Nothing is asked or paid again. A record that
 does not check out is noted and tried again after an hour. Since PR #35 the SDK
 reads the same record during the ask, so new purchases should not need this.
 
+**L43. Sanctions screens the deployer the audit names, or is not answered.**
+Spec section 4 screens the deployer and treasury, but with no `deployer` in the
+request (every Telegraph call, most API calls) the paid name screen and the
+OFAC address screen were sent the token contract's own address, and a PASS on
+that counted as the required check answered. Now, with no deployer from the
+caller, the sanctions purchase waits for the contract audit, whose answer names
+the token's creator and owner (all 60 recorded audit answers carry
+`creator_address`), and screens those: an OFAC SDN match is a REJECT without
+buying the paid screen; otherwise the paid screen gets the creator. When no
+deployer is known at all, sanctions is UNAVAILABLE (`no_deployer_known`), so
+the verdict abstains rather than pass a screen that could not see a
+sanctioned deployer. Cost: the sanctions call starts after the audit returns
+(about 2 s).
+
 ## Spec deviations recorded by the audit
 
 - **No OpenTelemetry traces (spec §15).** Errors go to Sentry and `error_log`,

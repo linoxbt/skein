@@ -50,7 +50,7 @@ export async function simulatedApi(opts: { env?: Record<string, string | undefin
       const answer = (result: unknown, min = 300, max = 1600): Behaviour => ({ kind: "answer", result, delayMs: jitter(min, max) });
       switch (minerId) {
         case "200001":
-          return answer({ result: { [token || "0x0"]: { is_honeypot: "0", is_open_source: "1", is_mintable: "0", buy_tax: "0", sell_tax: "0.01" } } }, 1500, 3500);
+          return answer({ result: { [token || "0x0"]: { is_honeypot: "0", is_open_source: "1", is_mintable: "0", buy_tax: "0", sell_tax: "0.01", creator_address: "0x5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f" } } }, 1500, 3500);
         case "78021":
           return str(params.entity).endsWith("e") ? { kind: "hang" } : answer({ on_list: false, entity: params.entity }, 200, 600);
         case "7373":

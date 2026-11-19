@@ -53,7 +53,7 @@ async function deps() {
   }
   const now = Date.parse("2026-11-03T10:00:00Z");
   const canned: Record<string, unknown> = {
-    "200001": { result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
+    "200001": { result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0", creator_address: "0x5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f" } } },
     "78021": { matched: "clear" },
     // Liquidity is pinned to 7373 first (allowlist order), 72006 as its fallback.
     "7373": { liquidity_usd: 4_500_000 },
