@@ -135,3 +135,36 @@ describe("admin: manage every key", () => {
     expect((await req(api, "/v1/admin/keys/not-a-uuid/revoke", { key: ADMIN_KEY, body: {} })).status).toBe(400);
   });
 });
+
+describe("self-serve budgets are held atomically (audit S1)", () => {
+  const carol = privateKeyToAccount(`0x${"c3".repeat(32)}`);
+  const dave = privateKeyToAccount(`0x${"d4".repeat(32)}`);
+  const erin = privateKeyToAccount(`0x${"e5".repeat(32)}`);
+  let n = 0x5e1f;
+  const fresh = () => `0x${(n++).toString(16).padStart(40, "0")}`;
+  const selfSpent = async (a: Api) => ((await (await req(a, "/v1/admin/keys", { key: ADMIN_KEY })).json()) as { selfServe: { spentTodayUsdc: number } }).selfServe.spentTodayUsdc;
+
+  it("concurrent self-serve keys cannot spend past their shared daily budget together", async () => {
+    // Room for one verdict's upstream spend (0.02 here): without the shared hold, three concurrent runs would spend 0.06.
+    const a = await simulatedApi({ fast: true, env: {}, config: { adminKeyHashes: [ADMIN_HASH], selfServe: { enabled: true, capUusdc: 500_000, totalDailyUusdc: 30_000 } } });
+    const keys = await Promise.all([carol, dave, erin].map(async (w) => (await signIn(a, w)).body.key as string));
+    const results = await Promise.all(keys.map((k) => verdict(a, k, fresh())));
+    expect(results.every((r) => r.status === 200 || r.status === 429)).toBe(true);
+    expect(await selfSpent(a)).toBeLessThanOrEqual(0.03);
+    expect(await selfSpent(a)).toBeGreaterThan(0);
+  });
+
+  it("a wallet that signs in again keeps the day's spend of its earlier keys", async () => {
+    const a = await simulatedApi({ fast: true, env: {}, config: { adminKeyHashes: [ADMIN_HASH], selfServe: { enabled: true, capUusdc: 25_000, totalDailyUusdc: 3_000_000 } } });
+    const first = (await signIn(a, carol)).body.key as string;
+    expect((await verdict(a, first, fresh())).status).toBe(200);
+    const spentOnce = await selfSpent(a);
+    expect(spentOnce).toBeGreaterThan(0);
+    const second = (await signIn(a, carol)).body.key as string;
+    expect((await verdict(a, first, fresh())).status).toBe(401);
+    // The new key is the same wallet: what the first key spent still counts against the wallet's 0.025 (exact amounts: packages/db store.test.ts).
+    const again = await verdict(a, second, fresh());
+    expect([200, 429]).toContain(again.status);
+    expect(await selfSpent(a)).toBeLessThanOrEqual(0.025);
+  });
+});

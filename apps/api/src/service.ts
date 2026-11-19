@@ -52,6 +52,8 @@ export interface Consumer {
   dailyCapUusdc: number;
   /** partner, self (a self-serve key: shares SELF_SERVE_TOTAL_DAILY_USDC), x402. */
   plan?: string;
+  /** The wallet a self-serve key was issued to (its cap counts across every key that wallet held). */
+  wallet?: string | null;
 }
 
 export interface StartRequest {
@@ -266,6 +268,13 @@ export class VerdictService {
             ...(req.consumer ? { consumerDailyUusdc: req.consumer.dailyCapUusdc } : {}),
             // Uncached Telegraph requests (spot checks and the refreshes they start) have their own day budget (D5).
             ...(capChannel === "telegraph" ? { channelDailyUusdc: config.spotcheckDailyCapUusdc } : {}),
+            // Self-serve keys: one shared day budget, and a per-wallet cap that survives re-signing (audit S1).
+            ...(req.consumer?.plan === "self"
+              ? {
+                  plan: { plan: "self", dailyUusdc: config.selfServe.totalDailyUusdc },
+                  ...(req.consumer.wallet ? { wallet: { address: req.consumer.wallet, dailyUusdc: config.selfServe.capUusdc } } : {}),
+                }
+              : {}),
           },
           now: this.now,
         });
