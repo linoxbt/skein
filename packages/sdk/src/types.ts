@@ -159,6 +159,7 @@ export interface TelegraphAsker {
   ask(
     req: { intent: string; params?: Record<string, unknown> },
     /** deadline: one absolute deadline (epoch ms) for the whole ask; timeoutMs bounds each request. */
-    opts: { minerId?: string; timeoutMs: number; deadline?: number },
+    /** maxUusdc: the most this one ask may sign for (the SDK passes maxUsdcPerCall); an asker must refuse a 402 above it. */
+    opts: { minerId?: string; timeoutMs: number; deadline?: number; maxUusdc?: number },
   ): Promise<TelegraphAskOutcomeOk | TelegraphAskOutcomeFail>;
 }

@@ -134,6 +134,15 @@ describe("verdict() through Telegraph", () => {
     expect(v.payment.rail === "telegraph" && v.payment.receiptHash).toBe(node.charges[0]!.receiptHash);
   });
 
+  it("signs no more than its own maxUsdcPerCall, whatever the client's cap (audit S4)", async () => {
+    // The list-price pre-check passes (0.25 <= 0.30); the 402 then asks 0.90, under the client's 5 USDC cap.
+    const node = new FakeNode({ priceUusdc: 900_000, respond: () => ({ kind: "answer", result: {} }) });
+    const err = await skein({ maxUsdcPerCall: 0.3, payer: { kind: "telegraph", client: telegraphClient(node, 5_000_000) } }).verdict({ subject: { chainId: 8453, token: TOKEN } }).catch((e) => e);
+    expect(err).toBeInstanceOf(SkeinError);
+    expect(err.code).toMatch(/^TELEGRAPH_/);
+    expect(node.charges).toHaveLength(0);
+  });
+
   it("writes the subject the way the miner endpoint reads it", () => {
     expect(subjectText({ chainId: 1, token: TOKEN })).toBe(`ethereum:${TOKEN}`);
     expect(subjectText({ chainId: 56, token: TOKEN })).toBe(`bsc:${TOKEN}`);

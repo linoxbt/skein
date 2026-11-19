@@ -71,9 +71,12 @@ export interface ClaimLimits {
   maxChecks: number;
   maxUsdc: number;
   reserveUsdc: number;
+  /** A cap on one rail's checks today (decided, error and in flight): the Telegraph share of a mixed sniper. */
+  rail?: { name: string; max: number };
 }
 
-export type ClaimResult = "claimed" | "taken" | "cap";
+/** "railcap": the day's checks on limits.rail are used up (the others may still have room). */
+export type ClaimResult = "claimed" | "taken" | "cap" | "railcap";
 
 export interface Store {
   /** Records a new launch; false when the token was already seen. */
@@ -158,6 +161,10 @@ export function memoryStore(): Store {
       // Synchronous from here to the write: nothing else runs in between.
       if (m.get(r.token)?.status !== "watching") return "taken";
       if (!room(tally([...m.values()], limits.since), limits)) return "cap";
+      if (limits.rail) {
+        const on = [...m.values()].filter((x) => x.rail === limits.rail!.name && ["decided", "error", "checking"].includes(x.status) && !!x.checkedAt && Date.parse(x.checkedAt) >= limits.since.getTime()).length;
+        if (on >= limits.rail.max) return "railcap";
+      }
       m.set(r.token, structuredClone({ ...r, status: "checking" as const }));
       return "claimed";
     },
@@ -244,6 +251,13 @@ export async function pgStoreOn(pool: PgLike): Promise<Store> {
         if (!room(s, limits)) {
           await c.query("rollback");
           return "cap";
+        }
+        if (limits.rail) {
+          const on = await c.query("select count(*) as n from sniper_tokens where checked_at >= $1 and status in ('decided', 'error', 'checking') and rec->>'rail' = $2", [limits.since, limits.rail.name]);
+          if (Number(on.rows[0]?.n ?? 0) >= limits.rail.max) {
+            await c.query("rollback");
+            return "railcap";
+          }
         }
         const rec = { ...r, status: "checking" as const };
         const u = await c.query("update sniper_tokens set status = 'checking', checked_at = $2, rec = $3 where token = $1 and status = 'watching'", [r.token, rec.checkedAt ?? new Date().toISOString(), rec]);

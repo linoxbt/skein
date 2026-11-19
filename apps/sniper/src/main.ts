@@ -14,7 +14,7 @@
 //   SNIPER_TICK_SEC   (see agent.ts DEFAULTS; a value that is not a number stops the sniper)
 //   PORT                   default 8080
 import { serve } from "@hono/node-server";
-import { Skein, type Payer, type VerdictResult } from "@skeinlabs/sdk";
+import { Skein, type PayerByRail, type VerdictResult } from "@skeinlabs/sdk";
 import { Sniper, DEFAULTS, liquidityFloor, type SniperConfig } from "./agent";
 import { dexScreener } from "./market";
 import { createServer } from "./server";
@@ -50,15 +50,22 @@ const apiUrl = (env.SKEIN_API_URL ?? "https://api.skeinlabs.site").replace(/\/$/
 const skeinWeb = env.SKEIN_WEB_URL ?? "https://skeinlabs.site";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function payer(): Promise<Payer> {
-  if (env.SNIPER_PAYER_KEY) {
-    const { TelegraphClient, networkFromEnv, viemSigner } = await import("@skeinlabs/sdk/telegraph");
-    const client = new TelegraphClient({ network: networkFromEnv(env), signer: viemSigner(env.SNIPER_PAYER_KEY as `0x${string}`), maxUusdcPerCall: Math.round(config.maxUsdcPerCall * 1e6) });
-    // Pinned to Skein's miner: on a routed ask any miner on the intent could answer.
-    return { kind: "telegraph", client, intent: env.SNIPER_INTENT || "FRAUD_RISK_GENERAL", minerId: env.SNIPER_MINER_ID || "845301" };
-  }
+async function telegraphPayer(key: string): Promise<PayerByRail["telegraph"]> {
+  const { TelegraphClient, networkFromEnv, viemSigner } = await import("@skeinlabs/sdk/telegraph");
+  const client = new TelegraphClient({ network: networkFromEnv(env), signer: viemSigner(key as `0x${string}`), maxUusdcPerCall: Math.round(config.maxUsdcPerCall * 1e6) });
+  // Pinned to Skein's miner: on a routed ask any miner on the intent could answer.
+  return { kind: "telegraph", client, intent: env.SNIPER_INTENT || "FRAUD_RISK_GENERAL", minerId: env.SNIPER_MINER_ID || "845301" };
+}
+
+/**
+ * The rails: a partner key (SNIPER_SKEIN_KEY), a funded Telegraph burner
+ * (SNIPER_PAYER_KEY), or both. With both, the first SNIPER_TELEGRAPH_DAILY
+ * checks of each day (default 4) buy through Telegraph and the rest use the key.
+ */
+async function payer(): Promise<PayerByRail["apiKey"] | PayerByRail["telegraph"]> {
   if (env.SNIPER_SKEIN_KEY) return { kind: "apiKey", key: env.SNIPER_SKEIN_KEY };
-  return fail("set SNIPER_SKEIN_KEY (a Skein partner key) or SNIPER_PAYER_KEY (a funded Telegraph burner)");
+  if (env.SNIPER_PAYER_KEY) return telegraphPayer(env.SNIPER_PAYER_KEY);
+  return fail("set SNIPER_SKEIN_KEY (a Skein partner key), SNIPER_PAYER_KEY (a funded Telegraph burner), or both");
 }
 
 /** Skein's attester: pinned, or read from /v1/status with retries. Never silently none. */
@@ -83,6 +90,11 @@ async function attester(): Promise<string> {
 
 const p = await payer();
 const skein = new Skein({ apiUrl, payer: p, maxUsdcPerCall: config.maxUsdcPerCall, timeoutMs: 100_000 });
+const telegraphDaily = num("SNIPER_TELEGRAPH_DAILY", 4);
+const mixed =
+  p.kind === "apiKey" && env.SNIPER_PAYER_KEY && telegraphDaily > 0
+    ? { skein: new Skein({ apiUrl, payer: await telegraphPayer(env.SNIPER_PAYER_KEY), maxUsdcPerCall: config.maxUsdcPerCall, timeoutMs: 100_000 }), daily: telegraphDaily }
+    : undefined;
 const signer = await attester();
 const { verifyAttestation } = await import("@skeinlabs/sdk/attest");
 const verify = async (v: VerdictResult) => (v.attestation ? (await verifyAttestation(v, { signer })).ok : false);
@@ -104,12 +116,12 @@ const store = env.DATABASE_URL ? await pgStore(env.DATABASE_URL) : memoryStore()
 // requeued on the partner-key rail, never re-asked (and counted as paid) on the Telegraph rail.
 
 const watcher = new Watcher(rpcChain(env.BASE_RPC_URL || "https://base-rpc.publicnode.com"));
-const sniper = new Sniper({ store, market: dexScreener(), skein, rail: p.kind === "telegraph" ? "telegraph" : "apiKey", watch: () => watcher.poll(), verify, config, log: (m) => console.log(`[sniper] ${m}`) });
+const sniper = new Sniper({ store, market: dexScreener(), skein, rail: p.kind === "telegraph" ? "telegraph" : "apiKey", ...(mixed ? { telegraph: mixed } : {}), watch: () => watcher.poll(), verify, config, log: (m) => console.log(`[sniper] ${m}`) });
 
-const app = createServer(store, config, { rail: p.kind, attester: signer, skeinWeb });
+const app = createServer(store, config, { rail: mixed ? `telegraph (first ${mixed.daily} a day) + apiKey` : p.kind, attester: signer, skeinWeb });
 const port = num("PORT", 8080);
 serve({ fetch: app.fetch, port });
-console.log(`skein sniper on :${port} · ${p.kind} rail · policy ${config.policy} · min liquidity $${config.minLiquidityUsd} · ${config.dailyChecks} checks / ${config.dailyUsdc} USDC a day · attester ${signer} · store ${env.DATABASE_URL ? "postgres" : "memory"}`);
+console.log(`skein sniper on :${port} · ${mixed ? `telegraph (first ${mixed.daily}/day) + apiKey` : p.kind} rail · policy ${config.policy} · min liquidity $${config.minLiquidityUsd} · ${config.dailyChecks} checks / ${config.dailyUsdc} USDC a day · attester ${signer} · store ${env.DATABASE_URL ? "postgres" : "memory"}`);
 
 // Error tracking: SENTRY_DSN (Sentry or compatible); off when unset.
 const errors = createReporter({ dsn: env.SENTRY_DSN, service: "skein-sniper", release: env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) });
