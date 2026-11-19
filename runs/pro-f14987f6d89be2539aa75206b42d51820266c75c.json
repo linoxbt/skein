@@ -1,0 +1,101 @@
+{
+  "caseId": "pro-f14987f6d89be2539aa75206b42d51820266c75c",
+  "importedFrom": "vrd_mwingh7h23360z2z6c49",
+  "boughtAt": "2026-11-16T02:33:59.749Z",
+  "policyRef": "agent-pretrade@0.3.0",
+  "wallMs": 3709,
+  "verdict": {
+    "findings": [
+      {
+        "check": "holder_count",
+        "status": "UNKNOWN",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7302",
+          "signalHash": "0x81f8950415b57e835c96d4793155c1bbd0badbfe489a02d8b30d280fb743cc0c",
+          "receiptHash": "0x2f453fd51c6890199fc104d773abd14d068c8bb7603bbc78afb4bd7d93781dcc"
+        },
+        "notes": [
+          "missing_holders_count"
+        ],
+        "adapterVersion": "0.2.0"
+      },
+      {
+        "check": "sanctions",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.3,
+        "sourceGroup": "13.237.89.59",
+        "evidence": {
+          "minerId": "78021",
+          "signalHash": "0x62047fe949010f2da60b31d6c9babbc668bcf1bdc89145db48ee45679bae967b",
+          "receiptHash": "0xc798428c6b5566e3a1c2b38db40ba92659f8e23f1b5fd91000a49f713eb40cdd"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "adapterVersion": "0.3.0"
+      },
+      {
+        "check": "wash_trading",
+        "status": "WARN",
+        "severity": 0,
+        "confidence": 0.6,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7378",
+          "signalHash": "0x41e9d6b6ff1e7aa5760a4a3d1f0b1f806f2ce79a4ff1eb404051d4ac09ba7231",
+          "receiptHash": "0xb522348fdf435e5ec32016c8559972fce4339613c2a5b1fdcfe49e66b69a2882"
+        },
+        "notes": [
+          "label_inconclusive"
+        ],
+        "adapterVersion": "0.4.0"
+      },
+      {
+        "check": "contract_audit",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "ABSTAIN",
+      "coverageBps": 1500
+    }
+  },
+  "purchases": [
+    {
+      "check": "holder_count",
+      "amountUusdc": 10000,
+      "durationMs": 1602
+    },
+    {
+      "check": "sanctions",
+      "amountUusdc": 10000,
+      "durationMs": 1295
+    },
+    {
+      "check": "wash_trading",
+      "amountUusdc": 10000,
+      "durationMs": 3347
+    }
+  ]
+}
