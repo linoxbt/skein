@@ -522,3 +522,62 @@ describe("the OFAC snapshot (audit M2)", () => {
     expect(knownLists()[sdnSnapshot().list]).toContain(sdnSnapshot().sourceSha256);
   });
 });
+
+describe("sanctions screens the deployer the audit names (audit R1)", () => {
+  const CREATOR = "0x2222222222222222222222222222222222222222";
+  const OWNER = "0x3333333333333333333333333333333333333333";
+  const SDN = "0x0330070fd38ec3bb94f58fa55d40368271e9e54a";
+  const audit = (row: Record<string, unknown>) => ({ code: 1, result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", is_mintable: "0", buy_tax: "0", sell_tax: "0", ...row } } });
+  function run(auditAnswer: unknown) {
+    const asked: { minerId: string; body: Record<string, unknown> }[] = [];
+    const node = new FakeNode({
+      nowSec: () => Math.floor(SEASON / 1000),
+      respond: (minerId, body) => {
+        asked.push({ minerId, body });
+        const result = minerId === "200001" ? auditAnswer : minerId === "78021" ? { on_list: false, entity: CREATOR } : CLEAN[minerId] ?? {};
+        return { kind: "answer", result, resultShape: minerId === "200001" ? "raw" : "intent" };
+      },
+    });
+    const client = new TelegraphClient({ network: TESTNET, signer: viemSigner(KEY), fetch: node.fetch, maxUusdcPerCall: 50_000, now: () => SEASON });
+    const deps: VerdictDeps & { client: TelegraphClient } = { client, catalogue, priceUusdc: 250_000, resolver: pool, now: () => new Date(SEASON) };
+    // No deployer from the caller (the Telegraph path and most API calls).
+    return { node, asked, out: runVerdict({ policy: dex(), subject, context: { socialHandle: "project" } }, deps) };
+  }
+  const params = (asked: { minerId: string; body: Record<string, unknown> }[], miner: string) =>
+    JSON.stringify(asked.filter((a) => a.minerId === miner).map((a) => a.body));
+
+  it("sends the paid name screen the audit's creator, never the token", async () => {
+    const { asked, out } = run(audit({ creator_address: CREATOR, owner_address: OWNER }));
+    const r = await out;
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(params(asked, "78021")).toContain(CREATOR);
+    expect(params(asked, "78021")).not.toContain(subject.token.toLowerCase());
+    expect(r.verdict.findings.find((f) => f.check === "sanctions")?.status).toBe("PASS");
+  });
+
+  it("with no deployer named anywhere, sanctions is unanswered (not a PASS) and its screen is not bought", async () => {
+    const { asked, node, out } = run(audit({}));
+    const r = await out;
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(asked.some((a) => a.minerId === "78021")).toBe(false);
+    expect(node.charges.some((c) => c.minerId === "78021")).toBe(false);
+    const s = r.verdict.findings.find((f) => f.check === "sanctions")!;
+    expect(s.status).toBe("UNAVAILABLE");
+    expect(s.notes).toContain("no_deployer_known");
+    expect(r.verdict.decision.verdict).toBe("ABSTAIN");
+    expect(reproduce(r.stored, dex(), { knownLists: knownLists() })).toMatchObject({ ok: true });
+  });
+
+  it("a creator on the OFAC SDN list is a REJECT, and the paid screen is not bought for it", async () => {
+    const { asked, out } = run(audit({ creator_address: SDN }));
+    const r = await out;
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(asked.some((a) => a.minerId === "78021")).toBe(false);
+    expect(r.verdict.decision.verdict).toBe("REJECT");
+    expect(r.verdict.findings.find((f) => f.check === "sanctions")?.status).toBe("FAIL");
+    expect(reproduce(r.stored, dex(), { knownLists: knownLists() })).toMatchObject({ ok: true });
+  });
+});

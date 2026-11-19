@@ -22,12 +22,12 @@ function setup(respond: (minerId: string, body: Record<string, unknown>, n: numb
 
 const ask = { intent: "TOKEN_HOLDER_COUNT_GENERAL", params: { token: "0x1", chain: "ethereum" } };
 
-// The live node's 402, captured 2026-11-02 from /engine/v1/ask/7302 (unpaid, free).
+// The live node's 402 from /engine/v1/ask/7302 (unpaid, free), recaptured 2026-11-19 after the Diamond moved on 2026-11-17.
 const LIVE = JSON.parse(readFileSync(new URL("./fixtures/live-402-7302.json", import.meta.url), "utf8"));
-const TEMPLATE: string = LIVE.body.accepts[1].extra.message;
+const TEMPLATE: string = LIVE.body.accepts.find((a: { scheme: string }) => a.scheme === "escrow").extra.message;
 const swap = (from: string, to: string) => TEMPLATE.replace(from, to);
 
-// The same ask on 2026-11-11: the node now also offers "exact" payments on Base Sepolia and Solana devnet.
+// The same ask's multi-chain challenge ("exact" on Sepolia, Base Sepolia and Solana devnet, plus escrow), captured 2026-11-19.
 const MULTI = JSON.parse(readFileSync(new URL("./fixtures/live-402-7302-multichain.json", import.meta.url), "utf8"));
 
 describe("the multi-chain 402 (fixture)", () => {
@@ -82,7 +82,7 @@ describe("a tampered escrow template is refused before signing", () => {
   it.each([
     ["a second Amount line", swap("Resource: /v1/ask/7302", "Resource: /v1/ask/7302\nAmount: 5000000 uUSDC")],
     ["an Amount hidden in another line", swap("Resource: /v1/ask/7302", "Resource: Amount: 1 uUSDC")],
-    ["another payee", swap("Pay To: 0x3624eb012b5e998bb57b6be6c9cfc9c4bc5eb99b", "Pay To: 0x000000000000000000000000000000000000dead")],
+    ["another payee", swap("Pay To: 0x72a70e949362670bf8bcead24efc5b8f950aa08b", "Pay To: 0x000000000000000000000000000000000000dead")],
     ["another network", swap("Network: eip155:11155111", "Network: eip155:1")],
     ["an unknown placeholder", swap("Resource: /v1/ask/7302", "Resource: /v1/ask/{miner}")],
     ["a signer field that is not a bare placeholder", swap("Wallet: {from}", "Wallet: {from} and 0xabc")],

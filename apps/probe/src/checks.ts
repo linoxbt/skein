@@ -1,7 +1,12 @@
 import { lastBeat, type Queryable } from "@skein/alerts";
 
-/** One check's outcome: ok, or a short reason a person can act on. */
-export type Result = { ok: true } | { ok: false; reason: string };
+/**
+ * One check's outcome: ok, or a short reason a person can act on. `hold`: the
+ * check had too little to judge (an empty window), so an open alert stays open
+ * and a quiet one stays quiet. An outage that stops traffic must not read as a recovery.
+ */
+export type Result = { ok: true; hold?: true } | { ok: false; reason: string };
+const HOLD: Result = { ok: true, hold: true };
 export interface Check {
   key: string;
   name: string;
@@ -53,7 +58,7 @@ const json = (body: string): Record<string, unknown> | null => {
 
 /** The /v1/status checks share one request per run. */
 let statusCache: Promise<{ status: number; body: string }> | null = null;
-function status(key: string, name: string, test: (s: Record<string, unknown>) => string | null): Check {
+function status(key: string, name: string, test: (s: Record<string, unknown>) => string | null | Result): Check {
   return {
     key,
     name,
@@ -65,6 +70,7 @@ function status(key: string, name: string, test: (s: Record<string, unknown>) =>
         const s = json(r.body);
         if (!s) return { ok: false, reason: "/v1/status is not JSON" };
         const bad = test(s);
+        if (bad && typeof bad === "object") return bad;
         return bad ? { ok: false, reason: bad } : { ok: true };
       } catch (e) {
         return { ok: false, reason: `/v1/status: ${(e as Error).message}` };
@@ -84,6 +90,12 @@ const MIN_PURCHASES = Number(process.env.PROBE_MIN_PURCHASES ?? 10);
 const MAX_PURCHASE_ERROR_SHARE = Number(process.env.PROBE_MAX_PURCHASE_ERROR_SHARE ?? 0.5);
 
 const MAX_P95_MS = Number(process.env.PROBE_MAX_P95_MS ?? 10_000);
+/** Per-intent error rates over 24 h (/v1/status intents): a required check's supply failing for a day pages someone. */
+const INTENT_CHECKS = (process.env.PROBE_INTENT_CHECKS ?? "contract_audit,sanctions,liquidity_depth,holder_count,wash_trading").split(",").map((c) => c.trim()).filter(Boolean);
+const MIN_INTENT_CALLS = Number(process.env.PROBE_MIN_INTENT_CALLS ?? 5);
+const MAX_INTENT_ERROR = Number(process.env.PROBE_MAX_INTENT_ERROR ?? 0.5);
+/** Hours without a single decided (non-ABSTAIN) verdict before it pages. */
+const MAX_HOURS_UNDECIDED = Number(process.env.PROBE_MAX_HOURS_UNDECIDED ?? 24);
 
 type Quality = { windowHours: number; verdicts: number; abstain: number; abstainFailed?: number; purchases: number; purchaseErrors: number; verdictP95Ms?: number | null };
 const quality = (s: Record<string, unknown>) => (s.quality && typeof s.quality === "object" ? (s.quality as Quality) : null);
@@ -105,22 +117,29 @@ export const CHECKS: Check[] = [
   // Counts only ABSTAINs caused by failed purchases: a policy may abstain by design.
   status("abstain", "ABSTAIN share", (s) => {
     const q = quality(s);
-    if (!q || q.verdicts < MIN_VERDICTS) return null;
+    if (!q || q.verdicts < MIN_VERDICTS) return HOLD;
     const failed = q.abstainFailed ?? q.abstain;
     const share = failed / q.verdicts;
     return share > MAX_ABSTAIN_SHARE ? `${failed} of ${q.verdicts} verdicts in the last ${q.windowHours} h were ABSTAIN on a failed purchase (${pct(share)}, limit ${pct(MAX_ABSTAIN_SHARE)}): see /v1/ledger abstain.causes` : null;
   }),
   status("purchases", "Upstream purchases", (s) => {
     const q = quality(s);
-    if (!q || q.purchases < MIN_PURCHASES) return null;
+    if (!q || q.purchases < MIN_PURCHASES) return HOLD;
     const share = q.purchaseErrors / q.purchases;
     return share > MAX_PURCHASE_ERROR_SHARE ? `${q.purchaseErrors} of ${q.purchases} purchases in the last ${q.windowHours} h failed (${pct(share)}, limit ${pct(MAX_PURCHASE_ERROR_SHARE)}): read a recent verdict's /bom errors` : null;
   }),
   // Spec §15: alert when p95 verdict latency passes 10 s (bought verdicts of the last 3 h; small samples are not judged).
   status("latency", "Verdict latency", (s) => {
     const q = quality(s);
-    if (!q || q.verdicts < MIN_VERDICTS || q.verdictP95Ms == null) return null;
+    if (!q || q.verdicts < MIN_VERDICTS || q.verdictP95Ms == null) return HOLD;
     return q.verdictP95Ms > MAX_P95_MS ? `p95 verdict latency is ${(q.verdictP95Ms / 1000).toFixed(1)} s over the last ${q.windowHours} h (limit ${MAX_P95_MS / 1000} s): see /v1/status intents for the slow check` : null;
+  }),
+  // A required check's purchases failing for a day (a moved escrow contract, a dead miner): 24 h, so it cannot age out of the window.
+  status("intents", "Required checks' supply", (s) => {
+    const intents = Array.isArray(s.intents) ? (s.intents as { check?: string; intent?: string | null; calls24h?: number; errorRate24h?: number | null }[]) : [];
+    const bad = intents.filter((i) => i.check && INTENT_CHECKS.includes(i.check) && (i.calls24h ?? 0) >= MIN_INTENT_CALLS && (i.errorRate24h ?? 0) >= MAX_INTENT_ERROR);
+    if (!bad.length) return null;
+    return `${bad.map((i) => `${i.check} ${pct(i.errorRate24h ?? 0)} of ${i.calls24h}`).join(", ")} of purchases failed in 24 h (limit ${pct(MAX_INTENT_ERROR)}): read a recent verdict's /bom errors (docs/RUNBOOK.md)`;
   }),
   // The pinned OFAC address list must not go stale (audit M2): refresh it with scripts/ofac-snapshot.py.
   status("ofac", "OFAC snapshot", (s) => {
@@ -147,6 +166,23 @@ export const CHECKS: Check[] = [
         return { ok: false, reason: `verdict ${id} does not reproduce (${failing.join(", ") || "see problems"}): ${((r.problems as string[]) ?? []).slice(0, 3).join("; ")}` };
       } catch (e) {
         return { ok: false, reason: `repro check: ${(e as Error).message}` };
+      }
+    },
+  },
+  // No decided verdict for a day: Skein is up but deciding nothing (every verdict ABSTAIN).
+  {
+    key: "decided",
+    name: "Decided verdicts",
+    async run(ctx) {
+      try {
+        const l = await get(ctx, `${API}/v1/ledger`);
+        if (l.status !== 200) return { ok: false, reason: `/v1/ledger answered HTTP ${l.status}` };
+        const at = (json(l.body)?.latestDecided as { createdAt?: string } | null | undefined)?.createdAt;
+        if (!at) return HOLD;
+        const hours = (ctx.now() - Date.parse(at)) / 3_600_000;
+        return hours > MAX_HOURS_UNDECIDED ? { ok: false, reason: `no APPROVE, REJECT or ESCALATE for ${hours.toFixed(1)} h (limit ${MAX_HOURS_UNDECIDED} h): every verdict since abstained; read /v1/ledger abstain.causes` } : { ok: true };
+      } catch (e) {
+        return { ok: false, reason: `decided check: ${(e as Error).message}` };
       }
     },
   },

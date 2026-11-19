@@ -17,7 +17,7 @@ const snapshot = JSON.parse(readFileSync(new URL("../../telegraph/snapshots/2026
 
 async function aRun(sanctionsHangs = false) {
   const answers: Record<string, unknown> = {
-    "200001": { result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0" } } },
+    "200001": { result: { [subject.token]: { is_honeypot: "0", is_open_source: "1", buy_tax: "0", sell_tax: "0", creator_address: "0x5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f5e1f" } } },
     "78021": { on_list: false },
     "7373": { liquidity_usd: 4_500_000 },
     "9002": { holders_count: 120_000 },
@@ -219,6 +219,25 @@ describe("runs and spend", () => {
     const tg = spendGate(db, { runId: "y", channel: "telegraph", caps: { dailyUusdc: 1_000_000, channelDailyUusdc: 5_000 }, now });
     expect(await tg.reserve(6_000)).toBeNull();
     expect(await tg.reserve(5_000)).not.toBeNull();
+  });
+
+  it("holds a plan's shared budget and a wallet's cap across its keys, under the same lock (audit S1)", async () => {
+    const now = () => new Date("2026-11-08T12:00:00Z");
+    const W = "0x00000000000000000000000000000000000c0ffe";
+    const self = (name: string, wallet: string) => db.insert(schema.consumers).values({ name, kind: "agent", plan: "self", wallet, apiKeyHash: `h-${name}` }).returning().then((r) => r[0]!);
+    // Three wallets reserving at once against a 30,000 shared budget: never past it together.
+    const cs = await Promise.all(["s1", "s2", "s3"].map((n, i) => self(n, `0x00000000000000000000000000000000000000a${i}`)));
+    const gate = (consumerId: string, run: string, wallet: string) =>
+      spendGate(db, { runId: run, channel: "api", consumerId, caps: { dailyUusdc: 1e9, consumerDailyUusdc: 50_000, plan: { plan: "self", dailyUusdc: 30_000 }, wallet: { address: wallet, dailyUusdc: 50_000 } }, now });
+    const holds = await Promise.all(cs.map((c, i) => gate(c.id, `p${i}`, c.wallet!).reserve(20_000)));
+    expect(holds.filter(Boolean)).toHaveLength(1);
+    // A wallet's cap counts the keys it held before: a re-signed key starts with its old spend.
+    const before = await self("old-key", W);
+    expect(await spendGate(db, { runId: "w1", channel: "api", consumerId: before.id, caps: { dailyUusdc: 1e9, consumerDailyUusdc: 25_000, wallet: { address: W, dailyUusdc: 25_000 } }, now }).reserve(20_000)).not.toBeNull();
+    const after = await self("new-key", W);
+    const fresh = spendGate(db, { runId: "w2", channel: "api", consumerId: after.id, caps: { dailyUusdc: 1e9, consumerDailyUusdc: 25_000, wallet: { address: W, dailyUusdc: 25_000 } }, now });
+    expect(await fresh.reserve(20_000)).toBeNull();
+    expect(await fresh.reserve(5_000)).not.toBeNull();
   });
 
   it("a settled hold and the spend ledger cannot be rewritten, and evidence cannot be truncated", async () => {

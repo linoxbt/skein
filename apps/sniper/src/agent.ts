@@ -78,6 +78,12 @@ export interface AgentDeps {
   skein: Skein;
   /** How verdicts are paid: a Telegraph check interrupted mid-flight may have been billed, so it is never asked again. */
   rail: "apiKey" | "telegraph";
+  /**
+   * A second rail for a mixed sniper: the first `daily` checks of each UTC day
+   * buy through Telegraph (Mission 14's machine-to-machine purchase), the rest
+   * through `skein` on the partner key. Omitted: every check uses `skein`.
+   */
+  telegraph?: { skein: Skein; daily: number };
   /** Polls the chain for new pools; omitted in tests that feed launches directly. */
   watch?: () => Promise<Launch[]>;
   /** Checks a verdict's Skein signature against the pinned attester. Required: no verified signature, no trade. */
@@ -208,17 +214,29 @@ export class Sniper {
    */
   async check(r: TokenRecord): Promise<TokenRecord | "cap" | "taken"> {
     const started = this.now();
-    const claimed = await this.d.store.claim(
-      { ...r, status: "checking", checkedAt: started.toISOString(), rail: this.d.rail },
-      { since: startOfUtcDay(started), maxChecks: this.cfg.dailyChecks, maxUsdc: this.cfg.dailyUsdc, reserveUsdc: this.d.rail === "telegraph" ? this.cfg.maxUsdcPerCall : 0 },
-    );
-    if (claimed !== "claimed") return claimed;
+    const limits = { since: startOfUtcDay(started), maxChecks: this.cfg.dailyChecks, maxUsdc: this.cfg.dailyUsdc };
+    const claimOn = (rail: "apiKey" | "telegraph", railCap?: number) =>
+      this.d.store.claim(
+        { ...r, status: "checking", checkedAt: started.toISOString(), rail },
+        { ...limits, reserveUsdc: rail === "telegraph" ? this.cfg.maxUsdcPerCall : 0, ...(railCap !== undefined ? { rail: { name: rail, max: railCap } } : {}) },
+      );
+    // A mixed sniper: Telegraph while today's Telegraph share lasts, then the partner key.
+    let rail = this.d.rail;
+    let skein = this.d.skein;
+    let claimed = this.d.telegraph ? await claimOn("telegraph", this.d.telegraph.daily) : await claimOn(rail);
+    if (this.d.telegraph) {
+      if (claimed === "claimed") {
+        rail = "telegraph";
+        skein = this.d.telegraph.skein;
+      } else if (claimed === "railcap") claimed = await claimOn(rail);
+    }
+    if (claimed !== "claimed") return claimed === "railcap" ? "cap" : claimed;
     try {
-      const v = await this.d.skein.verdict({
+      const v = await skein.verdict({
         subject: { chainId: CHAIN_ID, token: r.token },
         policy: this.cfg.policy,
         // The Telegraph rail sends only the subject and the policy.
-        ...(r.pool && this.d.rail === "apiKey" ? { context: { pool: r.pool } } : {}),
+        ...(r.pool && rail === "apiKey" ? { context: { pool: r.pool } } : {}),
         idempotencyKey: `sniper-${r.token}`,
       });
       const subject = subjectProblems(v, r.token, this.cfg.policy);
@@ -262,7 +280,7 @@ export class Sniper {
         ...r,
         status: "error",
         checkedAt: started.toISOString(),
-        rail: this.d.rail,
+        rail,
         action: "skip",
         note: why,
         // Money that moved (or may have) without a usable verdict still counts.

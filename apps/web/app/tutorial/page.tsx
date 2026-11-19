@@ -244,7 +244,7 @@ export KEY=0x…            # the burner's private key: never a wallet that hold
 export ME=0x…             # its address
 export RPC=https://ethereum-sepolia-rpc.publicnode.com
 export USDC=0xcc194e1a843B658526D0D5C431f670028582Ae17     # Telegraph test USDC
-export DIAMOND=0x3624EB012B5E998BB57B6bE6C9Cfc9c4bc5eb99b  # Telegraph escrow
+export DIAMOND=0x72a70e949362670Bf8bceAd24eFC5b8f950aa08b  # Telegraph escrow (the Diamond since 2026-11-17)
 
 # 2. Sepolia ETH for gas: any public Sepolia faucet, sent to $ME
 
@@ -255,8 +255,8 @@ cast send $USDC "mint(address,uint256)" $ME 10000000 --rpc-url $RPC --private-ke
 cast send $USDC "approve(address,uint256)" $DIAMOND 5000000 --rpc-url $RPC --private-key $KEY
 cast send $DIAMOND "depositUSDC(uint256)" 5000000 --rpc-url $RPC --private-key $KEY
 
-# 5. Check the escrow balance (micro-USDC)
-cast call $DIAMOND "effectiveBalance(address)(int256)" $ME --rpc-url $RPC`;
+# 5. Check the escrow balance (micro-USDC): "available" is what asks may spend
+curl -s https://devnode.telegraphprotocol.com/v1/ledger/account/$ME`;
 
 const telegraphCode = (api: string) => `npm install viem   # the Telegraph entry signs with it
 
@@ -795,7 +795,7 @@ export default function TutorialPage() {
                 ["Every verdict is ABSTAIN", <>The required checks did not answer: see <C>reasons</C> and <C>openRisks</C>, and the <A href="/status">status page</A> for which intents have live miners. You are charged upstream cost only.</>],
                 [<C key="5">UPSTREAM_UNAVAILABLE</C>, "A required intent has no live miner right now. Retry later, or choose a policy that does not require it."],
                 [<C key="6">TIMEOUT</C>, <>Upstream answers were slow. The verdict may still seal: call <C>wait(id)</C> with the id from the error&apos;s <C>details</C>.</>],
-                ["Telegraph: insufficient balance", <>Deposit more test USDC into escrow (section 09, step 4) and check <C>effectiveBalance</C>.</>],
+                ["Telegraph: insufficient balance", <>Deposit more test USDC into escrow (section 09, step 4) and check <C>available</C> at the node&apos;s <C>/v1/ledger/account/&lt;address&gt;</C>. Balances on the Diamond before 2026-11-17 did not carry over.</>],
                 ["Telegraph: challenge refused", <>The price was above your client&apos;s <C>maxUusdcPerCall</C>, or the challenge failed its checks. Nothing was signed.</>],
                 ["MCP tools don't appear", <>Restart the client after editing its config, and check its MCP log: the server prints <C>skein-mcp ready</C> to stderr.</>],
               ]}

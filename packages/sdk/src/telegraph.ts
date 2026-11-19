@@ -22,5 +22,6 @@ export {
   PreSeasonError,
   ChallengeMismatchError,
   NetworkConfigError,
+  escrowAccount,
 } from "@skein/telegraph";
-export type { NetworkConfig, ClientOptions, AskOutcome, AskRequest, AskResponse, AskFailureKind, MessageSigner, Receipt } from "@skein/telegraph";
+export type { EscrowAccount, NetworkConfig, ClientOptions, AskOutcome, AskRequest, AskResponse, AskFailureKind, MessageSigner, Receipt } from "@skein/telegraph";

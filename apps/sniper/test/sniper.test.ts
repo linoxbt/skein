@@ -270,6 +270,23 @@ describe("daily caps and restarts (M14)", () => {
     expect((await store.checkedSince(new Date(0), 1))[0]).toMatchObject({ status: "decided", action: "buy" });
   });
 
+  it("a mixed sniper buys the day's first checks through Telegraph, then uses the partner key (Mission 14)", async () => {
+    const store = memoryStore();
+    const tokens = Array.from({ length: 5 }, () => tok("a"));
+    await watched(store, tokens, new Date(day.getTime() - 10 * 60_000));
+    const viaTelegraph = stubSkein(() => ({}));
+    const viaKey = stubSkein(() => ({ payment: { rail: "apiKey" } as VerdictResult["payment"] }));
+    const s = sniper({ store, market: fakeMarket(book(tokens)), now: () => day, skein: viaKey, rail: "apiKey", telegraph: { skein: viaTelegraph, daily: 2 }, verify: async () => true, config: { dailyChecks: 40, checksPerTick: 5, dailyUsdc: 12 } });
+    await s.tick();
+    expect(viaTelegraph.asked).toHaveLength(2);
+    expect(viaKey.asked).toHaveLength(3);
+    const rows = await store.checkedSince(new Date(day.getTime() - 3_600_000), 10);
+    expect(rows.filter((r) => r.rail === "telegraph")).toHaveLength(2);
+    expect(rows.filter((r) => r.rail === "apiKey")).toHaveLength(3);
+    // Only the Telegraph checks moved money.
+    expect((await store.stats(day)).paidUsdc).toBeCloseTo(0.5);
+  });
+
   it("two replicas on one store ask once per token and share the cap", async () => {
     const store = memoryStore();
     const tokens = Array.from({ length: 6 }, () => tok("a"));
@@ -337,6 +354,9 @@ describe("the Postgres store", () => {
       expect(await store.claim({ ...recs[2]!, checkedAt: at }, { ...limits, maxUsdc: 10 })).toBe("claimed");
       // Three checks today (decided, error, in flight): the check cap.
       expect(await store.claim({ ...recs[3]!, checkedAt: at }, { ...limits, maxUsdc: 10 })).toBe("cap");
+      // A rail's own daily share: two checks on "telegraph" today (the decided and the error rows are untagged here).
+      const tagged = { ...recs[3]!, checkedAt: at, rail: "telegraph" as const };
+      expect(await store.claim(tagged, { ...limits, maxChecks: 10, maxUsdc: 10, rail: { name: "telegraph", max: 0 } })).toBe("railcap");
       const s = await store.stats(day);
       expect(s).toMatchObject({ checked: 1, bought: 1, dodged: 0, errors: 1, inFlight: 1, paidUsdc: 0.5, listUsdc: 0.25 });
       expect(s.seen).toBeGreaterThanOrEqual(4);

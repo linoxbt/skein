@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import { createPublicClient, http, parseAbi } from "viem";
 import { sepolia } from "viem/chains";
+import { networkFromEnv } from "@skein/telegraph";
 const args = process.argv.slice(2);
 const registered = args.includes("--registered");
 const draft = args.includes("--draft");
@@ -29,15 +30,16 @@ for (const [i, e] of (y.endpoints ?? []).entries()) {
   if (!e.description) problems.push(`endpoint ${i} has no description`);
   for (const it of e.intents ?? []) if (!sup.includes(it)) problems.push(`endpoint ${i} intent ${it} not in supported_intents`);
 }
-const pub = createPublicClient({ chain: sepolia, transport: http("https://ethereum-sepolia-rpc.publicnode.com") });
+const net = networkFromEnv();
+const pub = createPublicClient({ chain: sepolia, transport: http(net.rpcUrl) });
 const abi = parseAbi(["function isCanonicalIntent(string) view returns (bool)"]);
 // One on-chain read per intent.
 for (const it of sup) {
-  const canonical = await pub.readContract({ address: "0x3624EB012B5E998BB57B6bE6C9Cfc9c4bc5eb99b", abi, functionName: "isCanonicalIntent", args: [it] });
+  const canonical = await pub.readContract({ address: net.diamond as `0x${string}`, abi, functionName: "isCanonicalIntent", args: [it] });
   console.log(`intent ${it}: canonical=${canonical}`);
   if (!canonical) (draft ? notes : problems).push(`intent ${it} is not canonical`);
 }
-const miners = await (await fetch("https://devnode.telegraphprotocol.com/api/miners")).json();
+const miners = await (await fetch(`${net.nodeUrl.replace(/\/$/, "")}/api/miners`)).json();
 const list = Array.isArray(miners) ? miners : miners.miners;
 const clash = list.filter((m: any) => String(m.id) === String(y.id) || m.slug === y.slug);
 console.log(`id ${y.id} / slug ${y.slug}: ${clash.length} live miners use them (0 = free)`);

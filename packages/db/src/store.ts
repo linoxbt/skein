@@ -218,6 +218,10 @@ export interface SpendCaps {
   consumerDailyUusdc?: number;
   /** This channel's daily cap (e.g. uncached Telegraph requests). */
   channelDailyUusdc?: number;
+  /** A budget shared by every consumer on one plan (self-serve keys: SELF_SERVE_TOTAL_DAILY_USDC). */
+  plan?: { plan: string; dailyUusdc: number };
+  /** A cap per wallet across every key it has held (a self-serve wallet re-signing gets a new key, not a new budget). */
+  wallet?: { address: string; dailyUusdc: number };
 }
 
 /** A UTC day key, so every replica agrees on which day a hold belongs to. */
@@ -247,6 +251,23 @@ export function spendGate(db: Db, args: { runId: string; channel: string; consum
         if (args.caps.channelDailyUusdc !== undefined) {
           const [ch] = await tx.select({ s: used }).from(schema.spendHolds).where(and(eq(schema.spendHolds.day, day), eq(schema.spendHolds.channel, args.channel)));
           if (Number(ch?.s ?? 0) + uusdc > args.caps.channelDailyUusdc) return null;
+        }
+        // Group budgets, under the same lock as every other cap, so concurrent runs cannot pass them together.
+        if (args.caps.plan) {
+          const [g] = await tx
+            .select({ s: used })
+            .from(schema.spendHolds)
+            .innerJoin(schema.consumers, eq(schema.consumers.id, schema.spendHolds.consumerId))
+            .where(and(eq(schema.spendHolds.day, day), eq(schema.consumers.plan, args.caps.plan.plan)));
+          if (Number(g?.s ?? 0) + uusdc > args.caps.plan.dailyUusdc) return null;
+        }
+        if (args.caps.wallet) {
+          const [w] = await tx
+            .select({ s: used })
+            .from(schema.spendHolds)
+            .innerJoin(schema.consumers, eq(schema.consumers.id, schema.spendHolds.consumerId))
+            .where(and(eq(schema.spendHolds.day, day), eq(schema.consumers.wallet, args.caps.wallet.address)));
+          if (Number(w?.s ?? 0) + uusdc > args.caps.wallet.dailyUusdc) return null;
         }
         const [row] = await tx
           .insert(schema.spendHolds)

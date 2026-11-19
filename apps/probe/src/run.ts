@@ -15,6 +15,8 @@ export function sslFor(url: string, caCert = process.env.DATABASE_CA_CERT): { ss
 
 export interface RunReport {
   ok: string[];
+  /** Checks with too little to judge this run: their alert state is left as it was. */
+  held: string[];
   failing: { key: string; reason: string }[];
 }
 
@@ -27,9 +29,11 @@ export async function runOnce(opts: { checks?: Check[]; ctx: Ctx; alerter: Alert
   resetStatusCache();
   const checks = opts.checks ?? CHECKS;
   const results = await Promise.all(checks.map(async (c) => ({ c, r: await confirm(c, opts.ctx, opts.retryMs) })));
-  const report: RunReport = { ok: [], failing: [] };
+  const report: RunReport = { ok: [], held: [], failing: [] };
   for (const { c, r } of results) {
-    if (r.ok) {
+    if (r.ok && r.hold) {
+      report.held.push(c.key);
+    } else if (r.ok) {
       report.ok.push(c.key);
       await opts.alerter.clear(`probe:${c.key}`, `${c.name} is back to normal`);
     } else {

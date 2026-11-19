@@ -1,7 +1,11 @@
 /**
  * Network settings. Defaults are the testnet values from the docs' Addresses
- * page (read 2026-10-30); every one can be overridden from the environment,
- * and the purchaser refuses a 402 challenge that disagrees with them.
+ * & Parameters page; every one can be overridden from the environment, and
+ * the purchaser refuses a 402 challenge that disagrees with them.
+ *
+ * The Diamond (the escrow, the registry and the x402 receiver) was redeployed
+ * on 2026-11-17 at 0x72a70e94…; the previous one, 0x3624EB01…, is kept by
+ * Telegraph only as a rollback and its escrow balances do not carry over.
  */
 export interface NetworkConfig {
   nodeUrl: string;
@@ -17,7 +21,7 @@ export const TESTNET: Readonly<NetworkConfig> = {
   nodeUrl: "https://devnode.telegraphprotocol.com",
   caip2: "eip155:11155111",
   chainId: 11155111,
-  diamond: "0x3624EB012B5E998BB57B6bE6C9Cfc9c4bc5eb99b",
+  diamond: "0x72a70e949362670Bf8bceAd24eFC5b8f950aa08b",
   usdc: "0xcc194e1a843B658526D0D5C431f670028582Ae17",
   rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
 };

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.2
+
+The Telegraph rail pays the Diamond Telegraph moved to on 2026-11-17.
+
+- **New Diamond.** `TESTNET.diamond` is `0x72a70e949362670Bf8bceAd24eFC5b8f950aa08b`.
+  The node's 402 has paid it since 2026-11-17; 0.3.1's client, pinned to the
+  old `0x3624EB01…` (now a rollback only), refused every challenge
+  (`ChallengeMismatchError`). Escrow balances did not carry over: deposit
+  again on the new Diamond (tutorial section 09).
+- **`escrowAccount(nodeUrl, address)`** in `@skeinlabs/sdk/telegraph`: the
+  node's view of an escrow account (`available`, `balance`, `unbilled`). The
+  new Diamond has no `effectiveBalance`/`agentDebt`.
+- **The SDK's cap reaches the signer.** On the Telegraph rail `maxUsdcPerCall`
+  is passed to the client as the ask's `maxUusdc`, so a client built with a
+  higher cap can no longer sign above the SDK's.
+
 ## 0.3.1
 
 The Telegraph rail works again, and is bound to the request.

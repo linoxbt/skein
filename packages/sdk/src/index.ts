@@ -554,7 +554,10 @@ export class Skein<R extends Rail = DefaultRail> {
     const minerId = payer.routed ? undefined : (payer.minerId ?? SKEIN_MINER_ID);
     const expected = new Set([...(payer.expectedMinerIds ?? SKEIN_MINER_IDS), ...(minerId ? [minerId] : [])].map(String));
     // One absolute deadline for the whole ask (probe, payment, retry, identity lookups).
-    const out = await payer.client.ask({ intent, params }, { ...(minerId ? { minerId } : {}), timeoutMs: this.timeoutMs, deadline: Date.now() + this.timeoutMs });
+    // The SDK's own cap goes to the signer too (audit S4): the pre-check above compares the list
+    // price, but what is signed is the 402's amount, and the client's own cap may be higher.
+    const cap = this.opts.maxUsdcPerCall !== undefined ? { maxUusdc: Math.round(this.opts.maxUsdcPerCall * 1_000_000) } : {};
+    const out = await payer.client.ask({ intent, params }, { ...(minerId ? { minerId } : {}), timeoutMs: this.timeoutMs, deadline: Date.now() + this.timeoutMs, ...cap });
     if (!out.ok) {
       const paidUusdc = out.paidUusdc ?? 0;
       throw new SkeinError(
