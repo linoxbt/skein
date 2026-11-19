@@ -1,6 +1,6 @@
 // Registration and escrow tooling for the Skein miner (spec section 4).
 //
-//   npx tsx miner/tools.ts status [address]          escrow balance, debt, wallet USDC, MACHINA and ETH (read-only)
+//   npx tsx miner/tools.ts status [address]          escrow (available, balance, unbilled), wallet USDC, MACHINA and ETH (read-only)
 //   npx tsx miner/tools.ts mint-usdc <usdc> [--as registration] [--yes]   mint Telegraph test USDC to the key's own address
 //   npx tsx miner/tools.ts check-intent <INTENT>     isCanonicalIntent (read-only)
 //   npx tsx miner/tools.ts hash [yaml]               the registration hash: SHA-256 of the raw YAML bytes
@@ -22,15 +22,13 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { networkFromEnv } from "@skein/telegraph";
+import { escrowAccount, networkFromEnv } from "@skein/telegraph";
 import { createPublicClient, createWalletClient, erc20Abi, http, keccak256, parseAbi, parseEventLogs, toBytes, type Hex, type Log } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
 const DIAMOND_ABI = parseAbi([
   "function depositUSDC(uint256 amount)",
-  "function effectiveBalance(address account) view returns (int256)",
-  "function agentDebt(address account) view returns (uint256)",
   "function isCanonicalIntent(string intent) view returns (bool)",
   "function registerMiner(string yamlUrl, bytes32 yamlHash, address feeAddress, uint256 minPrice, string[] intents)",
   // Telegraph docs, Miner registration, step 5 (topic 0x7305b0d0…, matched against the 2026-11-07 registration).
@@ -116,16 +114,16 @@ switch (cmd) {
   case "status": {
     const who = (arg ?? (process.env.PURCHASER_PRIVATE_KEY ? account("PURCHASER_PRIVATE_KEY").address : undefined)) as Hex | undefined;
     if (!who) throw new Error("give an address or set PURCHASER_PRIVATE_KEY");
-    const [eff, debt, bal, mach, eth] = await Promise.all([
-      pub.readContract({ address: diamond, abi: DIAMOND_ABI, functionName: "effectiveBalance", args: [who] }),
-      pub.readContract({ address: diamond, abi: DIAMOND_ABI, functionName: "agentDebt", args: [who] }),
+    // Escrow from the node's ledger (the 2026-11-17 Diamond keeps no effectiveBalance/agentDebt on chain).
+    const [esc, bal, mach, eth] = await Promise.all([
+      escrowAccount(net.nodeUrl, who),
       pub.readContract({ address: usdc, abi: erc20Abi, functionName: "balanceOf", args: [who] }),
       pub.readContract({ address: machina, abi: erc20Abi, functionName: "balanceOf", args: [who] }),
       pub.getBalance({ address: who }),
     ]);
     console.log(
       JSON.stringify(
-        { address: who, escrowEffectiveUsdc: Number(eff) / 1e6, agentDebtUsdc: Number(debt) / 1e6, walletUsdc: Number(bal) / 1e6, walletMachina: Number(mach) / 1e18, walletEth: Number(eth) / 1e18 },
+        { address: who, escrowAvailableUsdc: esc.available / 1e6, escrowBalanceUsdc: esc.balance / 1e6, escrowUnbilledUsdc: esc.unbilled / 1e6, walletUsdc: Number(bal) / 1e6, walletMachina: Number(mach) / 1e18, walletEth: Number(eth) / 1e18 },
         null,
         2,
       ),

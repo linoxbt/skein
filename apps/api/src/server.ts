@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import { dexScreenerResolver } from "@skein/pipeline";
-import { TelegraphClient, viemSigner } from "@skein/telegraph";
-import { createPublicClient, erc20Abi, http, parseAbi } from "viem";
+import { escrowAccount, TelegraphClient, viemSigner } from "@skein/telegraph";
+import { createPublicClient, erc20Abi, http } from "viem";
 import { createApp, walletState } from "./app";
 import { publishPolicies, snapshotCatalogue } from "./catalog";
 import { configFromEnv, productionProblems } from "./config";
@@ -68,7 +68,6 @@ const every = (ms: number, task: () => Promise<unknown>, name: string) => {
 
 
 // The purchaser's escrow and wallet balances, for the /v1/status alert.
-const ESCROW_ABI = parseAbi(["function effectiveBalance(address account) view returns (int256)"]);
 const chain = createPublicClient({ transport: http(config.network.rpcUrl) });
 const timers = [
   every(5 * 60_000, async () => {
@@ -98,8 +97,9 @@ const timers = [
         const who = signer.address as `0x${string}`;
         const [b, e] = await Promise.all([
           chain.readContract({ address: config.network.usdc as `0x${string}`, abi: erc20Abi, functionName: "balanceOf", args: [who] }),
-          // What purchases spend: the escrow's effective balance (deposits less debt), not the wallet.
-          chain.readContract({ address: config.network.diamond as `0x${string}`, abi: ESCROW_ABI, functionName: "effectiveBalance", args: [who] }),
+          // What purchases spend: the escrow's available balance as the node reports it (deposits, less
+          // what its ledger roots charged and what is billed but not yet charged). See packages/telegraph/src/ledger.ts.
+          escrowAccount(config.network.nodeUrl, who).then((a) => a.available),
         ]);
         walletState.set(Number(b));
         walletState.setEscrow(Number(e));
