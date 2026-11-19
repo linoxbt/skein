@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- Built on `@skeinlabs/sdk` 0.3.2: the Telegraph rail pays the Diamond Telegraph
+  moved to on 2026-11-17, and never signs above `SKEIN_MAX_USDC_PER_CALL`.
+
 ## 0.3.1
 
 - Depends on `@skeinlabs/sdk` ^0.3.1: the Telegraph rail asks Skein's miner
