@@ -1,0 +1,99 @@
+{
+  "caseId": "pro-8f4b9679c9d3f5facb9215017d47b186ca4681fe",
+  "importedFrom": "vrd_mwk7taat0u6h2f5u1542",
+  "boughtAt": "2026-11-17T04:51:36.948Z",
+  "policyRef": "agent-pretrade@0.3.0",
+  "wallMs": 4818,
+  "verdict": {
+    "findings": [
+      {
+        "check": "holder_count",
+        "status": "UNKNOWN",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7302",
+          "signalHash": "0x72ac724cf822d3488bc18f731512aebbb45b6eeff3a9d9fe01cc2955d5777400",
+          "receiptHash": "0x9e2e2a6e55b956f565e1e9d6989d9883047ebc716744698bed4ea44ae34f1b08"
+        },
+        "notes": [
+          "missing_holders_count"
+        ],
+        "adapterVersion": "0.2.0"
+      },
+      {
+        "check": "sanctions",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.3,
+        "sourceGroup": "13.237.89.59",
+        "evidence": {
+          "minerId": "78021",
+          "signalHash": "0x1dc5f47367267992b53042d67db5bb8e9128287622a714b8d6de05d58e7b27d5",
+          "receiptHash": "0xbc966008f187726e201b9589a62660465d7b62f6a564d8697b2bcd52f7d185a1"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "adapterVersion": "0.3.0"
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "ERROR",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7373"
+        },
+        "notes": [
+          "purchase_failed"
+        ],
+        "adapterVersion": "0.5.0"
+      },
+      {
+        "check": "contract_audit",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "wash_trading",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "ABSTAIN",
+      "coverageBps": 0
+    }
+  },
+  "purchases": [
+    {
+      "check": "holder_count",
+      "amountUusdc": 10000,
+      "durationMs": 1163
+    },
+    {
+      "check": "liquidity_depth",
+      "amountUusdc": 10000,
+      "durationMs": 4655
+    },
+    {
+      "check": "sanctions",
+      "amountUusdc": 10000,
+      "durationMs": 1148
+    }
+  ]
+}
