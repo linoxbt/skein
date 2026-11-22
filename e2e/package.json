@@ -9,9 +9,9 @@
     "e2e": "tsx smoke.ts"
   },
   "devDependencies": {
-    "@hono/node-server": "2.1.5",
+    "@hono/node-server": "2.1.9",
     "@skein/api": "workspace:*",
-    "axe-core": "4.13.0",
-    "playwright": "1.63.0"
+    "axe-core": "4.14.1",
+    "playwright": "1.65.1"
   }
 }
