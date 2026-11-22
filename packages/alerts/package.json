@@ -12,7 +12,7 @@
     "test": "vitest run --hookTimeout=120000 --testTimeout=120000"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.9",
+    "@electric-sql/pglite": "0.5.17",
     "@skein/db": "workspace:*",
     "drizzle-orm": "0.45.4"
   }

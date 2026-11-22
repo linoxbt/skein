@@ -23,7 +23,7 @@
     "@skein/telegraph": "workspace:*",
     "tsup": "8.5.0",
     "typescript": "5.9.3",
-    "viem": "2.57.5"
+    "viem": "2.58.1"
   },
   "license": "Apache-2.0",
   "repository": {
