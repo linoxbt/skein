@@ -1,0 +1,125 @@
+{
+  "caseId": "pro-ebacaf6988604d272f163bde1cd8a5f8d3cd00fc",
+  "importedFrom": "vrd_mwo7q47u6d5f1d2o694a",
+  "boughtAt": "2026-11-20T00:00:15.401Z",
+  "policyRef": "agent-pretrade@0.3.0",
+  "wallMs": 6441,
+  "verdict": {
+    "findings": [
+      {
+        "check": "holder_count",
+        "status": "PASS",
+        "severity": 0,
+        "metric": "holders_count",
+        "value": 19,
+        "unit": "addresses",
+        "confidence": 0.7,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "evidence": {
+          "minerId": "9002",
+          "signalHash": "0x8e74a3d2f5e7ae114a940f9e170d465dd14b238fc0e037b4bf307f19ce1fa8cb",
+          "receiptHash": "0x75cbafd9d529f6661ea7c511b9ddbc3287c4ae7e06c8d81dedd3e88e4583d186"
+        },
+        "notes": [],
+        "adapterVersion": "0.2.0"
+      },
+      {
+        "check": "sanctions",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.3,
+        "sourceGroup": "13.237.89.59",
+        "evidence": {
+          "minerId": "78021",
+          "signalHash": "0xec3ff280c2c8daf8378b4ff0d4a5379a1d2ffcf8c6d7af6fdb1a23b5c1b34c0e",
+          "receiptHash": "0xf0c478bf623e4768737a46df49cb95d217f5422c221d3de8dba3f3360b1b1cf3"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "adapterVersion": "0.3.0"
+      },
+      {
+        "check": "wash_trading",
+        "status": "WARN",
+        "severity": 0,
+        "confidence": 0.6,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7378",
+          "signalHash": "0x1305a73e2176e9a924eb8ccfec864325a548334df46fce9223f8e8a3af40bb01",
+          "receiptHash": "0x827fb546ab0652072bcdf5e390b0022a17a0fd848d6260898da421896a27da52"
+        },
+        "notes": [
+          "label_inconclusive"
+        ],
+        "adapterVersion": "0.4.0"
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "PASS",
+        "severity": 0,
+        "metric": "liquidity_usd",
+        "value": 219540.04,
+        "unit": "USD",
+        "confidence": 0.7,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7373",
+          "signalHash": "0x51a05d93333aa687453dabf294b4ea5a59961ccf4b31e6ace0bc94ca38da967b",
+          "receiptHash": "0xc254e7c7937e4017c167990a918e734cf4038e822c29795ed46070aa27ada146"
+        },
+        "notes": [],
+        "adapterVersion": "0.5.0"
+      },
+      {
+        "check": "contract_audit",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.6,
+        "sourceGroup": "gopluslabs.io",
+        "evidence": {
+          "minerId": "200001",
+          "signalHash": "0x72d49f772caadce029c086b6b21ae9cd53839255ac9abd3111d3d017ca8152e7",
+          "receiptHash": "0xedeea3976d3c9ad9f467fbaa99e142104559f41cafc8a6c23d50269453765fab"
+        },
+        "notes": [
+          "tax_not_reported"
+        ],
+        "adapterVersion": "0.6.0"
+      }
+    ],
+    "decision": {
+      "verdict": "ESCALATE",
+      "coverageBps": 10000
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "amountUusdc": 10000,
+      "durationMs": 2597
+    },
+    {
+      "check": "holder_count",
+      "amountUusdc": 10000,
+      "durationMs": 6053
+    },
+    {
+      "check": "liquidity_depth",
+      "amountUusdc": 10000,
+      "durationMs": 5162
+    },
+    {
+      "check": "sanctions",
+      "amountUusdc": 10000,
+      "durationMs": 1785
+    },
+    {
+      "check": "wash_trading",
+      "amountUusdc": 10000,
+      "durationMs": 2991
+    }
+  ]
+}

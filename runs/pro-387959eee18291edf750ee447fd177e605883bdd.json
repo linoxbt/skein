@@ -1,0 +1,103 @@
+{
+  "caseId": "pro-387959eee18291edf750ee447fd177e605883bdd",
+  "importedFrom": "vrd_mwoij7i80v1m664c0j3q",
+  "boughtAt": "2026-11-20T05:02:47.139Z",
+  "policyRef": "agent-pretrade@0.3.0",
+  "wallMs": 4763,
+  "verdict": {
+    "findings": [
+      {
+        "check": "holder_count",
+        "status": "PASS",
+        "severity": 0,
+        "metric": "holders_count",
+        "value": 54,
+        "unit": "addresses",
+        "confidence": 0.7,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "evidence": {
+          "minerId": "9002",
+          "signalHash": "0x686db758cda1279492e8be558406f7948394ca3e7bc0c06876d161b1fe4f3420",
+          "receiptHash": "0xc59e85d384f2666017ffc5b6e281b01c4a5d97a688b1190d8724ad9ddbacc606"
+        },
+        "notes": [],
+        "adapterVersion": "0.2.0"
+      },
+      {
+        "check": "wash_trading",
+        "status": "WARN",
+        "severity": 0,
+        "confidence": 0.6,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7378",
+          "signalHash": "0x0a37d3738c40a1b984b332b0fb03b4df08a3bec10a36e0144ce633fdf3afc2cd",
+          "receiptHash": "0x39a6c31513e7b7097c105c0ffc3de14427c028588c72f19f3135aa811eb7ff82"
+        },
+        "notes": [
+          "label_inconclusive"
+        ],
+        "adapterVersion": "0.4.0"
+      },
+      {
+        "check": "contract_audit",
+        "status": "WARN",
+        "severity": 2,
+        "confidence": 0.6,
+        "sourceGroup": "gopluslabs.io",
+        "evidence": {
+          "minerId": "200001",
+          "signalHash": "0x33f33e2174f5a91da3220f7f46631bdc3ffdb7a3278e260df5c35c7fa79bfd1a",
+          "receiptHash": "0xb2b2c2439e0c10ac53de629f3917ac25c1548f16266ee4f1e77da25d2509a76a"
+        },
+        "notes": [
+          "is_mintable",
+          "tax_not_reported",
+          "transfer_pausable"
+        ],
+        "adapterVersion": "0.6.0"
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "sanctions",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "REJECT",
+      "coverageBps": 7000
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "amountUusdc": 10000,
+      "durationMs": 2130
+    },
+    {
+      "check": "holder_count",
+      "amountUusdc": 10000,
+      "durationMs": 4511
+    },
+    {
+      "check": "wash_trading",
+      "amountUusdc": 10000,
+      "durationMs": 2527
+    }
+  ]
+}
