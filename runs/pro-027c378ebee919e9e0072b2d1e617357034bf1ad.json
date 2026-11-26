@@ -1,0 +1,90 @@
+{
+  "caseId": "pro-027c378ebee919e9e0072b2d1e617357034bf1ad",
+  "importedFrom": "vrd_mwsilxt62y3d2g1c0d6s",
+  "boughtAt": "2026-11-23T00:15:56.604Z",
+  "policyRef": "agent-pretrade@0.3.0",
+  "wallMs": 2122,
+  "verdict": {
+    "findings": [
+      {
+        "check": "sanctions",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.3,
+        "sourceGroup": "13.237.89.59",
+        "evidence": {
+          "minerId": "78021",
+          "signalHash": "0x5de07a55f552adcaf2623ed327fb97090a8b008a818337d1e13381a956ba4b8f",
+          "receiptHash": "0x9ee11e22327499bcd6d6eb8711aee7e30cd675a78c4d497858b9320f3779dba8"
+        },
+        "notes": [
+          "address_matching_unverified",
+          "no_match"
+        ],
+        "adapterVersion": "0.3.0"
+      },
+      {
+        "check": "contract_audit",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.6,
+        "sourceGroup": "gopluslabs.io",
+        "evidence": {
+          "minerId": "200001",
+          "signalHash": "0x175ffde8aacd5c72bc1efefbd7e7ae544adc0eb2d129c76a73787dccafd80ad4",
+          "receiptHash": "0x709eb722eb9fbaad53985bce7443e22e73dd9a055b2c15f17ebcf5b10c3eeb50"
+        },
+        "notes": [
+          "tax_not_reported"
+        ],
+        "adapterVersion": "0.6.0"
+      },
+      {
+        "check": "holder_count",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "wash_trading",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "ABSTAIN",
+      "coverageBps": 4500
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "amountUusdc": 10000,
+      "durationMs": 1859
+    },
+    {
+      "check": "sanctions",
+      "amountUusdc": 10000,
+      "durationMs": 502
+    }
+  ]
+}
