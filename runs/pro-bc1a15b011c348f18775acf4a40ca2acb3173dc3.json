@@ -1,0 +1,102 @@
+{
+  "caseId": "pro-bc1a15b011c348f18775acf4a40ca2acb3173dc3",
+  "importedFrom": "vrd_mwu0si3v594c013x086u",
+  "boughtAt": "2026-11-24T01:32:45.734Z",
+  "policyRef": "agent-pretrade@0.3.0",
+  "wallMs": 5743,
+  "verdict": {
+    "findings": [
+      {
+        "check": "holder_count",
+        "status": "PASS",
+        "severity": 0,
+        "metric": "holders_count",
+        "value": 13,
+        "unit": "addresses",
+        "confidence": 0.7,
+        "sourceGroup": "telegraph-onchain-tx-lookup-miner.onrender.com",
+        "evidence": {
+          "minerId": "9002",
+          "signalHash": "0x8b71e32785204b716ee51f71c109d77b649ad8f122e49b966eaeb3632151fb75",
+          "receiptHash": "0xf804fc92c847a0c9603879cc8180661043a10bffc84fdbb2406ecbc7c5346214"
+        },
+        "notes": [],
+        "adapterVersion": "0.2.0"
+      },
+      {
+        "check": "liquidity_depth",
+        "status": "PASS",
+        "severity": 0,
+        "metric": "liquidity_usd",
+        "value": 170669.08,
+        "unit": "USD",
+        "confidence": 0.7,
+        "sourceGroup": "margyn.workers.dev",
+        "evidence": {
+          "minerId": "7373",
+          "signalHash": "0x302063c7b28ce02fb51316c7e6d55ac1e08f52612f849c8f45262cfe1a05cbd7",
+          "receiptHash": "0xe717b2e18d7702188e413b1f91281b2099c4f33d43de5cf18bcd202c49cc0b1e"
+        },
+        "notes": [],
+        "adapterVersion": "0.5.0"
+      },
+      {
+        "check": "contract_audit",
+        "status": "PASS",
+        "severity": 0,
+        "confidence": 0.6,
+        "sourceGroup": "gopluslabs.io",
+        "evidence": {
+          "minerId": "200001",
+          "signalHash": "0x7b0380f57295b5cd2aee02535f9abbf0e37f7dad9e15b68a7cdebb595d20058b",
+          "receiptHash": "0x1a991828cb16feaae7838c25fc902423bce701daac122fe908b42872c122f026"
+        },
+        "notes": [
+          "tax_not_reported"
+        ],
+        "adapterVersion": "0.6.0"
+      },
+      {
+        "check": "sanctions",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      },
+      {
+        "check": "wash_trading",
+        "status": "UNAVAILABLE",
+        "severity": 0,
+        "confidence": 0,
+        "sourceGroup": "none",
+        "notes": [
+          "daily_cap_reached"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "ABSTAIN",
+      "coverageBps": 8500
+    }
+  },
+  "purchases": [
+    {
+      "check": "contract_audit",
+      "amountUusdc": 10000,
+      "durationMs": 2509
+    },
+    {
+      "check": "holder_count",
+      "amountUusdc": 10000,
+      "durationMs": 5365
+    },
+    {
+      "check": "liquidity_depth",
+      "amountUusdc": 10000,
+      "durationMs": 4410
+    }
+  ]
+}
